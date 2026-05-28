@@ -193,11 +193,11 @@ function WorkspacePage() {
                       }`}
                     >
                       <span className="line-clamp-1 font-medium">{it.title}</span>
-                      <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <StatusDot status={it.status} />
-                        {STATUS_LABEL[it.status]}
-                        {it.assigneeName ? <span>· {it.assigneeName}</span> : null}
-                      </span>
+                      {it.assigneeName ? (
+                        <span className="text-xs text-muted-foreground">
+                          {it.assigneeName}
+                        </span>
+                      ) : null}
                     </button>
                   </li>
                 ))}
