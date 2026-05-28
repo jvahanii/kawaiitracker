@@ -62,26 +62,26 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --radius: 1.25rem;
+  --background: oklch(0.985 0.018 350);
+  --foreground: oklch(0.34 0.08 350);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --card-foreground: oklch(0.34 0.08 350);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --popover-foreground: oklch(0.34 0.08 350);
+  --primary: oklch(0.74 0.17 355);
+  --primary-foreground: oklch(0.99 0.01 350);
+  --secondary: oklch(0.94 0.045 320);
+  --secondary-foreground: oklch(0.4 0.1 340);
+  --muted: oklch(0.96 0.025 340);
+  --muted-foreground: oklch(0.58 0.08 340);
+  --accent: oklch(0.9 0.08 200);
+  --accent-foreground: oklch(0.34 0.08 240);
+  --destructive: oklch(0.7 0.2 20);
+  --destructive-foreground: oklch(0.99 0.01 350);
+  --border: oklch(0.9 0.045 340);
+  --input: oklch(0.9 0.045 340);
+  --ring: oklch(0.74 0.17 355);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -137,9 +137,68 @@
     border-color: var(--color-border);
   }
 
+  html, body {
+    font-family: "Quicksand", system-ui, sans-serif;
+  }
+
   body {
-    background-color: var(--color-background);
     color: var(--color-foreground);
+    background-color: var(--color-background);
+    background-image:
+      radial-gradient(at 12% 8%, oklch(0.94 0.08 350 / 0.7) 0px, transparent 50%),
+      radial-gradient(at 88% 12%, oklch(0.92 0.09 200 / 0.6) 0px, transparent 50%),
+      radial-gradient(at 75% 92%, oklch(0.93 0.08 310 / 0.55) 0px, transparent 50%),
+      radial-gradient(at 18% 88%, oklch(0.95 0.07 90 / 0.55) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: "Fredoka", "Quicksand", system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  .kawaii-card {
+    background: color-mix(in oklab, white 85%, var(--color-primary) 4%);
+    border: 2px solid var(--color-border);
+    border-radius: 1.75rem;
+    box-shadow:
+      0 1px 0 0 white inset,
+      0 12px 0 -6px color-mix(in oklab, var(--color-primary) 18%, transparent),
+      0 24px 50px -20px color-mix(in oklab, var(--color-primary) 35%, transparent);
+  }
+  .kawaii-button {
+    border-radius: 9999px;
+    font-weight: 600;
+    padding: 0.6rem 1.25rem;
+    border: 2px solid color-mix(in oklab, var(--color-primary) 60%, black 5%);
+    background: linear-gradient(180deg,
+      color-mix(in oklab, var(--color-primary) 85%, white 10%),
+      var(--color-primary));
+    color: var(--color-primary-foreground);
+    box-shadow: 0 4px 0 0 color-mix(in oklab, var(--color-primary) 60%, black 20%);
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  .kawaii-button:hover { transform: translateY(-1px); }
+  .kawaii-button:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 0 color-mix(in oklab, var(--color-primary) 60%, black 20%);
+  }
+  .kawaii-button-soft {
+    border-radius: 9999px;
+    font-weight: 600;
+    padding: 0.55rem 1.15rem;
+    border: 2px solid var(--color-border);
+    background: white;
+    color: var(--color-foreground);
+    box-shadow: 0 4px 0 0 var(--color-border);
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  .kawaii-button-soft:hover { transform: translateY(-1px); }
+  .kawaii-button-soft:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 0 var(--color-border);
   }
 }
 
