@@ -59,9 +59,9 @@ function LoginPage() {
         <button
           type="submit"
           disabled={m.isPending}
-          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+          className="kawaii-button w-full disabled:opacity-60"
         >
-          {m.isPending ? t("login.submitting") : t("login.submit")}
+          {m.isPending ? t("login.submitting") : `${t("login.submit")} ♡`}
         </button>
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
@@ -85,16 +85,28 @@ export function AuthShell({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-background p-8 shadow-sm">
-        <div className="flex items-center justify-between">
+    <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden text-2xl">
+        <span className="absolute left-[8%] top-[12%] animate-pulse">🌸</span>
+        <span className="absolute right-[10%] top-[18%]">✨</span>
+        <span className="absolute left-[14%] bottom-[18%]">🍡</span>
+        <span className="absolute right-[12%] bottom-[14%] animate-pulse">💖</span>
+        <span className="absolute left-[45%] top-[6%]">☁️</span>
+      </div>
+      <div className="kawaii-card relative w-full max-w-sm p-8">
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 rounded-full border-2 border-border bg-white px-4 py-2 text-2xl shadow-sm">
+          (灬♥ω♥灬)
+        </div>
+        <div className="mt-4 flex items-center justify-between">
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-            {t("common.back")}
+            ← {t("common.back")}
           </Link>
           <LanguageSwitcher />
         </div>
-        <h1 className="mt-4 text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+        <h1 className="mt-5 text-center text-3xl font-bold tracking-tight text-foreground">
+          {title} <span className="inline-block">♡</span>
+        </h1>
+        <p className="mt-2 text-center text-sm text-muted-foreground">{subtitle}</p>
         <div className="mt-6">{children}</div>
       </div>
     </div>
