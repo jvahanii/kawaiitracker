@@ -106,7 +106,7 @@ function WorkspacePage() {
             }
             className="input h-8 py-0 text-sm"
           >
-            {tenants.map((t) => (
+            {tenants.map((t: { id: string; name: string }) => (
               <option key={t.id} value={t.id}>
                 {t.name}
               </option>
