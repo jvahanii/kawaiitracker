@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 import { signup } from "@/lib/api/auth.functions";
 import { AuthShell, Field } from "./login";
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignupPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const signupFn = useServerFn(signup);
   const [displayName, setDisplayName] = useState("");
@@ -25,7 +27,7 @@ function SignupPage() {
   });
 
   return (
-    <AuthShell title="Create your account" subtitle="One account, many workspaces.">
+    <AuthShell title={t("signup.title")} subtitle={t("signup.subtitle")}>
       <form
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
@@ -33,7 +35,7 @@ function SignupPage() {
         }}
         className="space-y-4"
       >
-        <Field label="Your name">
+        <Field label={t("signup.name")}>
           <input
             required
             value={displayName}
@@ -42,7 +44,7 @@ function SignupPage() {
             autoComplete="name"
           />
         </Field>
-        <Field label="Email">
+        <Field label={t("signup.email")}>
           <input
             type="email"
             required
@@ -52,7 +54,7 @@ function SignupPage() {
             autoComplete="email"
           />
         </Field>
-        <Field label="Password (8+ characters)">
+        <Field label={t("signup.password")}>
           <input
             type="password"
             required
@@ -71,13 +73,13 @@ function SignupPage() {
           disabled={m.isPending}
           className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
         >
-          {m.isPending ? "Creating…" : "Create account"}
+          {m.isPending ? t("signup.submitting") : t("signup.submit")}
         </button>
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Already have an account?{" "}
+        {t("signup.haveAccount")}{" "}
         <Link to="/login" className="text-foreground underline-offset-4 hover:underline">
-          Log in
+          {t("signup.loginLink")}
         </Link>
       </p>
     </AuthShell>
