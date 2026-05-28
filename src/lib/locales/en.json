@@ -1,0 +1,78 @@
+{
+  "common": {
+    "appName": "Tracker",
+    "language": "Language",
+    "english": "English",
+    "finnish": "Finnish",
+    "logout": "Log out",
+    "back": "← Tracker",
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "unsaved": "Unsaved changes",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "create": "Create",
+    "creating": "Creating…",
+    "join": "Join",
+    "joining": "Joining…",
+    "add": "Add"
+  },
+  "landing": {
+    "title": "Tracker — Multi-tenant item tracker",
+    "description": "Track items across teams. Create or join a workspace with a code.",
+    "login": "Log in",
+    "signup": "Sign up",
+    "heading": "Track items across teams.",
+    "sub": "Create a workspace, share an 8-character join code, and manage items together. Assignees and notes — nothing more.",
+    "getStarted": "Get started",
+    "haveAccount": "I have an account"
+  },
+  "login": {
+    "metaTitle": "Log in — Tracker",
+    "title": "Welcome back",
+    "subtitle": "Log in to your workspace.",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Log in",
+    "submitting": "Logging in…",
+    "newHere": "New here?",
+    "createAccount": "Create an account"
+  },
+  "signup": {
+    "metaTitle": "Sign up — Tracker",
+    "title": "Create your account",
+    "subtitle": "One account, many workspaces.",
+    "name": "Your name",
+    "email": "Email",
+    "password": "Password (8+ characters)",
+    "submit": "Create account",
+    "submitting": "Creating…",
+    "haveAccount": "Already have an account?",
+    "loginLink": "Log in"
+  },
+  "onboarding": {
+    "metaTitle": "Get started — Tracker",
+    "heading": "Get started",
+    "sub": "Create a new workspace, or join one with an 8-character code.",
+    "createTitle": "Create a workspace",
+    "joinTitle": "Join with a code",
+    "namePlaceholder": "Acme Inc.",
+    "codePlaceholder": "ABCD2345"
+  },
+  "workspace": {
+    "metaTitle": "Workspace — Tracker",
+    "newWorkspace": "+ Workspace",
+    "joinCode": "Join code:",
+    "joinCodeTitle": "Share this code so teammates can join the workspace. Click to copy.",
+    "searchPlaceholder": "Search items…",
+    "newItemPlaceholder": "New item title…",
+    "noItems": "No items yet.",
+    "selectOrCreate": "Select an item, or create a new one.",
+    "assignee": "Assignee",
+    "unassigned": "Unassigned",
+    "notesPlaceholder": "Notes…",
+    "updated": "Updated {{when}}",
+    "confirmDelete": "Delete this item?"
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "common": {
+    "appName": "Tracker",
+    "language": "Kieli",
+    "english": "Englanti",
+    "finnish": "Suomi",
+    "logout": "Kirjaudu ulos",
+    "back": "← Tracker",
+    "loading": "Ladataan…",
+    "saving": "Tallennetaan…",
+    "saved": "Tallennettu",
+    "unsaved": "Tallentamattomia muutoksia",
+    "delete": "Poista",
+    "cancel": "Peruuta",
+    "create": "Luo",
+    "creating": "Luodaan…",
+    "join": "Liity",
+    "joining": "Liitytään…",
+    "add": "Lisää"
+  },
+  "landing": {
+    "title": "Tracker — Monitilainen seurantatyökalu",
+    "description": "Seuraa kohteita tiimien kesken. Luo työtila tai liity koodilla.",
+    "login": "Kirjaudu",
+    "signup": "Rekisteröidy",
+    "heading": "Seuraa kohteita tiimien kesken.",
+    "sub": "Luo työtila, jaa 8-merkkinen liittymiskoodi ja hallitse kohteita yhdessä. Vastuuhenkilöt ja muistiinpanot — ei muuta.",
+    "getStarted": "Aloita",
+    "haveAccount": "Minulla on tili"
+  },
+  "login": {
+    "metaTitle": "Kirjaudu — Tracker",
+    "title": "Tervetuloa takaisin",
+    "subtitle": "Kirjaudu työtilaasi.",
+    "email": "Sähköposti",
+    "password": "Salasana",
+    "submit": "Kirjaudu",
+    "submitting": "Kirjaudutaan…",
+    "newHere": "Uusi käyttäjä?",
+    "createAccount": "Luo tili"
+  },
+  "signup": {
+    "metaTitle": "Rekisteröidy — Tracker",
+    "title": "Luo tili",
+    "subtitle": "Yksi tili, useita työtiloja.",
+    "name": "Nimesi",
+    "email": "Sähköposti",
+    "password": "Salasana (vähintään 8 merkkiä)",
+    "submit": "Luo tili",
+    "submitting": "Luodaan…",
+    "haveAccount": "Onko sinulla jo tili?",
+    "loginLink": "Kirjaudu"
+  },
+  "onboarding": {
+    "metaTitle": "Aloita — Tracker",
+    "heading": "Aloita",
+    "sub": "Luo uusi työtila tai liity olemassa olevaan 8-merkkisellä koodilla.",
+    "createTitle": "Luo työtila",
+    "joinTitle": "Liity koodilla",
+    "namePlaceholder": "Acme Oy",
+    "codePlaceholder": "ABCD2345"
+  },
+  "workspace": {
+    "metaTitle": "Työtila — Tracker",
+    "newWorkspace": "+ Työtila",
+    "joinCode": "Liittymiskoodi:",
+    "joinCodeTitle": "Jaa tämä koodi, jotta tiimisi voi liittyä. Kopioi klikkaamalla.",
+    "searchPlaceholder": "Etsi kohteita…",
+    "newItemPlaceholder": "Uuden kohteen otsikko…",
+    "noItems": "Ei vielä kohteita.",
+    "selectOrCreate": "Valitse kohde tai luo uusi.",
+    "assignee": "Vastuuhenkilö",
+    "unassigned": "Ei vastuuhenkilöä",
+    "notesPlaceholder": "Muistiinpanot…",
+    "updated": "Päivitetty {{when}}",
+    "confirmDelete": "Poistetaanko tämä kohde?"
+  }
+}
