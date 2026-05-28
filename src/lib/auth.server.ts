@@ -67,6 +67,7 @@ export function getSessionConfig() {
       httpOnly: true,
       sameSite: "none" as const,
       secure: true,
+      partitioned: true,
       path: "/",
     },
   };
