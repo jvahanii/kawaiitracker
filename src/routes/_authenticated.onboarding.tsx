@@ -2,8 +2,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 import { createTenant, joinTenant } from "@/lib/api/tenants.functions";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   head: () => ({ meta: [{ title: "Get started — Tracker" }] }),
@@ -11,6 +13,7 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 });
 
 function Onboarding() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const createFn = useServerFn(createTenant);
   const joinFn = useServerFn(joinTenant);
@@ -29,13 +32,16 @@ function Onboarding() {
   return (
     <div className="min-h-screen bg-muted/30 px-4 py-16">
       <div className="mx-auto max-w-xl">
-        <h1 className="text-2xl font-semibold tracking-tight">Get started</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Create a new workspace, or join one with an 8-character code.
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("onboarding.heading")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("onboarding.sub")}</p>
+          </div>
+          <LanguageSwitcher />
+        </div>
         <div className="mt-8 grid gap-6 sm:grid-cols-2">
           <section className="rounded-xl border border-border bg-background p-6">
-            <h2 className="text-base font-semibold">Create a workspace</h2>
+            <h2 className="text-base font-semibold">{t("onboarding.createTitle")}</h2>
             <form
               onSubmit={(e: FormEvent) => {
                 e.preventDefault();
@@ -47,7 +53,7 @@ function Onboarding() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Acme Inc."
+                placeholder={t("onboarding.namePlaceholder")}
                 className="input"
               />
               {createM.error ? (
@@ -58,12 +64,12 @@ function Onboarding() {
                 disabled={createM.isPending}
                 className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
               >
-                {createM.isPending ? "Creating…" : "Create"}
+                {createM.isPending ? t("common.creating") : t("common.create")}
               </button>
             </form>
           </section>
           <section className="rounded-xl border border-border bg-background p-6">
-            <h2 className="text-base font-semibold">Join with a code</h2>
+            <h2 className="text-base font-semibold">{t("onboarding.joinTitle")}</h2>
             <form
               onSubmit={(e: FormEvent) => {
                 e.preventDefault();
@@ -75,7 +81,7 @@ function Onboarding() {
                 required
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="ABCD2345"
+                placeholder={t("onboarding.codePlaceholder")}
                 maxLength={16}
                 className="input font-mono tracking-widest"
               />
@@ -87,7 +93,7 @@ function Onboarding() {
                 disabled={joinM.isPending}
                 className="w-full rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
               >
-                {joinM.isPending ? "Joining…" : "Join"}
+                {joinM.isPending ? t("common.joining") : t("common.join")}
               </button>
             </form>
           </section>

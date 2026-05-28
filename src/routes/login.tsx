@@ -2,8 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 import { login } from "@/lib/api/auth.functions";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Log in — Tracker" }] }),
@@ -11,6 +13,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const loginFn = useServerFn(login);
   const [email, setEmail] = useState("");
@@ -22,7 +25,7 @@ function LoginPage() {
   });
 
   return (
-    <AuthShell title="Welcome back" subtitle="Log in to your workspace.">
+    <AuthShell title={t("login.title")} subtitle={t("login.subtitle")}>
       <form
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
@@ -30,7 +33,7 @@ function LoginPage() {
         }}
         className="space-y-4"
       >
-        <Field label="Email">
+        <Field label={t("login.email")}>
           <input
             type="email"
             required
@@ -40,7 +43,7 @@ function LoginPage() {
             autoComplete="email"
           />
         </Field>
-        <Field label="Password">
+        <Field label={t("login.password")}>
           <input
             type="password"
             required
@@ -58,13 +61,13 @@ function LoginPage() {
           disabled={m.isPending}
           className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
         >
-          {m.isPending ? "Logging in…" : "Log in"}
+          {m.isPending ? t("login.submitting") : t("login.submit")}
         </button>
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        New here?{" "}
+        {t("login.newHere")}{" "}
         <Link to="/signup" className="text-foreground underline-offset-4 hover:underline">
-          Create an account
+          {t("login.createAccount")}
         </Link>
       </p>
     </AuthShell>
@@ -80,12 +83,16 @@ export function AuthShell({
   subtitle: string;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-background p-8 shadow-sm">
-        <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Tracker
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+            {t("common.back")}
+          </Link>
+          <LanguageSwitcher />
+        </div>
         <h1 className="mt-4 text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
         <div className="mt-6">{children}</div>
