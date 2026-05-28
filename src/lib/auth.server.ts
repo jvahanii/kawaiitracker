@@ -65,7 +65,7 @@ export function getSessionConfig() {
     maxAge: 60 * 60 * 24 * 30, // 30 days
     cookie: {
       httpOnly: true,
-      sameSite: "lax" as const,
+      sameSite: "none" as const,
       secure: true,
       path: "/",
     },
