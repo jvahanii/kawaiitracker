@@ -257,7 +257,7 @@ function ItemDetail({
   onDelete: () => void;
 }) {
   const [title, setTitle] = useState(item.title);
-  const [status, setStatus] = useState<ItemStatus>(item.status);
+  const status = item.status;
   const [assigneeId, setAssigneeId] = useState<string | "">(item.assigneeId ?? "");
   const [notes, setNotes] = useState(item.notes);
   const [saving, setSaving] = useState(false);
