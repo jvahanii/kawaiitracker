@@ -245,6 +245,7 @@ function ItemDetail({
   }) => Promise<void>;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState(item.title);
   const status = item.status;
   const [assigneeId, setAssigneeId] = useState<string | "">(item.assigneeId ?? "");
@@ -284,14 +285,14 @@ function ItemDetail({
       />
       <div className="mt-4 flex flex-wrap gap-3 text-sm">
         <label className="flex items-center gap-2">
-          <span className="text-muted-foreground">Assignee</span>
+          <span className="text-muted-foreground">{t("workspace.assignee")}</span>
           <select
             value={assigneeId}
             onChange={(e) => setAssigneeId(e.target.value)}
             onBlur={save}
             className="input h-8 py-0"
           >
-            <option value="">Unassigned</option>
+            <option value="">{t("workspace.unassigned")}</option>
             {members.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.displayName}
@@ -304,26 +305,26 @@ function ItemDetail({
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         onBlur={save}
-        placeholder="Notes…"
+        placeholder={t("workspace.notesPlaceholder")}
         className="input mt-6 min-h-[260px] w-full resize-y leading-relaxed"
       />
       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
         <span>
           {saving
-            ? "Saving…"
+            ? t("common.saving")
             : dirty
-            ? "Unsaved changes"
+            ? t("common.unsaved")
             : savedAt
-            ? "Saved"
-            : `Updated ${new Date(item.updatedAt).toLocaleString()}`}
+            ? t("common.saved")
+            : t("workspace.updated", { when: new Date(item.updatedAt).toLocaleString() })}
         </span>
         <button
           onClick={() => {
-            if (confirm("Delete this item?")) onDelete();
+            if (confirm(t("workspace.confirmDelete"))) onDelete();
           }}
           className="rounded-md px-2 py-1 text-destructive hover:bg-destructive/10"
         >
-          Delete
+          {t("common.delete")}
         </button>
       </div>
     </div>
