@@ -26,11 +26,6 @@ export const Route = createFileRoute("/_authenticated/app/$tenantId")({
   component: WorkspacePage,
 });
 
-const STATUS_LABEL: Record<ItemStatus, string> = {
-  todo: "To do",
-  in_progress: "In progress",
-  done: "Done",
-};
 
 function WorkspacePage() {
   const { tenantId } = Route.useParams();
@@ -55,17 +50,15 @@ function WorkspacePage() {
   });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | ItemStatus>("all");
   const [search, setSearch] = useState("");
 
   const items = itemsQ.data ?? [];
   const filtered = useMemo(() => {
     return items.filter((i) => {
-      if (filter !== "all" && i.status !== filter) return false;
       if (search && !i.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [items, filter, search]);
+  }, [items, search]);
 
   useEffect(() => {
     if (selectedId && !items.find((i) => i.id === selectedId)) setSelectedId(null);
@@ -154,19 +147,6 @@ function WorkspacePage() {
               placeholder="Search items…"
               className="input h-8 text-sm"
             />
-            <div className="flex gap-1 text-xs">
-              {(["all", "todo", "in_progress", "done"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`rounded px-2 py-1 ${
-                    filter === f ? "bg-foreground text-background" : "hover:bg-accent"
-                  }`}
-                >
-                  {f === "all" ? "All" : STATUS_LABEL[f]}
-                </button>
-              ))}
-            </div>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -206,11 +186,11 @@ function WorkspacePage() {
                       }`}
                     >
                       <span className="line-clamp-1 font-medium">{it.title}</span>
-                      <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <StatusDot status={it.status} />
-                        {STATUS_LABEL[it.status]}
-                        {it.assigneeName ? <span>· {it.assigneeName}</span> : null}
-                      </span>
+                      {it.assigneeName ? (
+                        <span className="text-xs text-muted-foreground">
+                          {it.assigneeName}
+                        </span>
+                      ) : null}
                     </button>
                   </li>
                 ))}
@@ -243,15 +223,6 @@ function WorkspacePage() {
   );
 }
 
-function StatusDot({ status }: { status: ItemStatus }) {
-  const color =
-    status === "done"
-      ? "bg-emerald-500"
-      : status === "in_progress"
-      ? "bg-amber-500"
-      : "bg-muted-foreground/50";
-  return <span className={`h-1.5 w-1.5 rounded-full ${color}`} aria-hidden />;
-}
 
 function ItemDetail({
   item,
@@ -270,7 +241,7 @@ function ItemDetail({
   onDelete: () => void;
 }) {
   const [title, setTitle] = useState(item.title);
-  const [status, setStatus] = useState<ItemStatus>(item.status);
+  const status = item.status;
   const [assigneeId, setAssigneeId] = useState<string | "">(item.assigneeId ?? "");
   const [notes, setNotes] = useState(item.notes);
   const [saving, setSaving] = useState(false);
@@ -307,19 +278,6 @@ function ItemDetail({
         className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none"
       />
       <div className="mt-4 flex flex-wrap gap-3 text-sm">
-        <label className="flex items-center gap-2">
-          <span className="text-muted-foreground">Status</span>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as ItemStatus)}
-            onBlur={save}
-            className="input h-8 py-0"
-          >
-            <option value="todo">{STATUS_LABEL.todo}</option>
-            <option value="in_progress">{STATUS_LABEL.in_progress}</option>
-            <option value="done">{STATUS_LABEL.done}</option>
-          </select>
-        </label>
         <label className="flex items-center gap-2">
           <span className="text-muted-foreground">Assignee</span>
           <select
