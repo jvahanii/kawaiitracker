@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Tracker",
+    "appName": "Seuranta",
     "language": "Kieli",
     "english": "Englanti",
     "finnish": "Suomi",
@@ -29,7 +29,7 @@
     "haveAccount": "Minulla on tili"
   },
   "login": {
-    "metaTitle": "Kirjaudu — Tracker",
+    "metaTitle": "Kirjaudu — Seuranta",
     "title": "Tervetuloa takaisin",
     "subtitle": "Kirjaudu työtilaasi.",
     "email": "Sähköposti",
@@ -40,7 +40,7 @@
     "createAccount": "Luo tili"
   },
   "signup": {
-    "metaTitle": "Rekisteröidy — Tracker",
+    "metaTitle": "Rekisteröidy — Seuranta",
     "title": "Luo tili",
     "subtitle": "Yksi tili, useita työtiloja.",
     "name": "Nimesi",
@@ -52,7 +52,7 @@
     "loginLink": "Kirjaudu"
   },
   "onboarding": {
-    "metaTitle": "Aloita — Tracker",
+    "metaTitle": "Aloita — Seuranta",
     "heading": "Aloita",
     "sub": "Luo uusi työtila tai liity olemassa olevaan 8-merkkisellä koodilla.",
     "createTitle": "Luo työtila",
@@ -61,7 +61,7 @@
     "codePlaceholder": "ABCD2345"
   },
   "workspace": {
-    "metaTitle": "Työtila — Tracker",
+    "metaTitle": "Työtila — Seuranta",
     "newWorkspace": "+ Työtila",
     "joinCode": "Liittymiskoodi:",
     "joinCodeTitle": "Jaa tämä koodi, jotta tiimisi voi liittyä. Kopioi klikkaamalla.",
