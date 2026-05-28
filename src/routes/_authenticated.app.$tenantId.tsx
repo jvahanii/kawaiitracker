@@ -295,19 +295,6 @@ function ItemDetail({
       />
       <div className="mt-4 flex flex-wrap gap-3 text-sm">
         <label className="flex items-center gap-2">
-          <span className="text-muted-foreground">Status</span>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as ItemStatus)}
-            onBlur={save}
-            className="input h-8 py-0"
-          >
-            <option value="todo">{STATUS_LABEL.todo}</option>
-            <option value="in_progress">{STATUS_LABEL.in_progress}</option>
-            <option value="done">{STATUS_LABEL.done}</option>
-          </select>
-        </label>
-        <label className="flex items-center gap-2">
           <span className="text-muted-foreground">Assignee</span>
           <select
             value={assigneeId}
