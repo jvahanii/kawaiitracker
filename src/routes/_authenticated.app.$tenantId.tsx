@@ -26,11 +26,6 @@ export const Route = createFileRoute("/_authenticated/app/$tenantId")({
   component: WorkspacePage,
 });
 
-const STATUS_LABEL: Record<ItemStatus, string> = {
-  todo: "To do",
-  in_progress: "In progress",
-  done: "Done",
-};
 
 function WorkspacePage() {
   const { tenantId } = Route.useParams();
