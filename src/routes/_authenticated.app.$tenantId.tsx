@@ -2,6 +2,9 @@ import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-ro
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 import { logout } from "@/lib/api/auth.functions";
 import { listMyTenants, listTenantMembers } from "@/lib/api/tenants.functions";
@@ -28,6 +31,7 @@ export const Route = createFileRoute("/_authenticated/app/$tenantId")({
 
 
 function WorkspacePage() {
+  const { t } = useTranslation();
   const { tenantId } = Route.useParams();
   const { tenants, currentTenant } = Route.useRouteContext();
   const navigate = useNavigate();
