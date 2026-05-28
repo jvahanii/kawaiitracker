@@ -50,17 +50,15 @@ function WorkspacePage() {
   });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | ItemStatus>("all");
   const [search, setSearch] = useState("");
 
   const items = itemsQ.data ?? [];
   const filtered = useMemo(() => {
     return items.filter((i) => {
-      if (filter !== "all" && i.status !== filter) return false;
       if (search && !i.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [items, filter, search]);
+  }, [items, search]);
 
   useEffect(() => {
     if (selectedId && !items.find((i) => i.id === selectedId)) setSelectedId(null);
