@@ -205,18 +205,19 @@
 @layer components {
   .input {
     width: 100%;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-input);
-    background-color: var(--color-background);
+    border-radius: 9999px;
+    border: 2px solid var(--color-border);
+    background-color: white;
     color: var(--color-foreground);
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
     line-height: 1.25rem;
     outline: none;
-    transition: border-color 120ms, box-shadow 120ms;
+    transition: border-color 120ms, box-shadow 120ms, transform 120ms;
   }
+  .input::placeholder { color: color-mix(in oklab, var(--color-muted-foreground) 80%, transparent); }
   .input:focus {
-    border-color: var(--color-ring);
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ring) 25%, transparent);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-primary) 25%, transparent);
   }
 }
