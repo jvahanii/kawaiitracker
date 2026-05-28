@@ -154,19 +154,6 @@ function WorkspacePage() {
               placeholder="Search items…"
               className="input h-8 text-sm"
             />
-            <div className="flex gap-1 text-xs">
-              {(["all", "todo", "in_progress", "done"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`rounded px-2 py-1 ${
-                    filter === f ? "bg-foreground text-background" : "hover:bg-accent"
-                  }`}
-                >
-                  {f === "all" ? "All" : STATUS_LABEL[f]}
-                </button>
-              ))}
-            </div>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
