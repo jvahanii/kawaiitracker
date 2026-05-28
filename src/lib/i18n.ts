@@ -15,6 +15,7 @@ if (!i18n.isInitialized) {
     fallbackLng: "en",
     supportedLngs: ["en", "fi"],
     interpolation: { escapeValue: false },
+    react: { useSuspense: false },
     detection: {
       order: ["localStorage", "navigator"],
       caches: ["localStorage"],
