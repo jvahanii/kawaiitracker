@@ -230,15 +230,6 @@ function WorkspacePage() {
   );
 }
 
-function StatusDot({ status }: { status: ItemStatus }) {
-  const color =
-    status === "done"
-      ? "bg-emerald-500"
-      : status === "in_progress"
-      ? "bg-amber-500"
-      : "bg-muted-foreground/50";
-  return <span className={`h-1.5 w-1.5 rounded-full ${color}`} aria-hidden />;
-}
 
 function ItemDetail({
   item,
