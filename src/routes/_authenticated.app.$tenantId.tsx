@@ -95,7 +95,7 @@ function WorkspacePage() {
     <div className="flex h-screen flex-col bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold tracking-tight">Tracker</span>
+          <span className="text-sm font-semibold tracking-tight">{t("common.appName")}</span>
           <select
             value={tenantId}
             onChange={(e) =>
@@ -103,9 +103,9 @@ function WorkspacePage() {
             }
             className="input h-8 py-0 text-sm"
           >
-            {tenants.map((t: { id: string; name: string }) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
+            {tenants.map((tn: { id: string; name: string }) => (
+              <option key={tn.id} value={tn.id}>
+                {tn.name}
               </option>
             ))}
           </select>
@@ -113,20 +113,21 @@ function WorkspacePage() {
             to="/onboarding"
             className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
           >
-            + Workspace
+            {t("workspace.newWorkspace")}
           </Link>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <LanguageSwitcher />
           {currentTenant.role === "admin" ? (
             <button
               type="button"
               onClick={() => {
                 navigator.clipboard?.writeText(currentTenant.joinCode);
               }}
-              title="Share this code so teammates can join the workspace. Click to copy."
+              title={t("workspace.joinCodeTitle")}
               className="rounded bg-accent px-2 py-1 hover:bg-accent/80"
             >
-              <span className="mr-1">Join code:</span>
+              <span className="mr-1">{t("workspace.joinCode")}</span>
               <span className="font-mono font-semibold text-foreground">
                 {currentTenant.joinCode}
               </span>
@@ -136,7 +137,7 @@ function WorkspacePage() {
             onClick={() => logoutM.mutate()}
             className="rounded-md px-2 py-1 hover:bg-accent"
           >
-            Log out
+            {t("common.logout")}
           </button>
         </div>
       </header>
@@ -148,7 +149,7 @@ function WorkspacePage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search items…"
+              placeholder={t("workspace.searchPlaceholder")}
               className="input h-8 text-sm"
             />
             <form
@@ -163,22 +164,22 @@ function WorkspacePage() {
               <input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="New item title…"
+                placeholder={t("workspace.newItemPlaceholder")}
                 className="input h-8 flex-1 text-sm"
               />
               <button
                 type="submit"
                 className="rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
               >
-                Add
+                {t("common.add")}
               </button>
             </form>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {itemsQ.isLoading ? (
-              <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+              <p className="p-4 text-sm text-muted-foreground">{t("common.loading")}</p>
             ) : filtered.length === 0 ? (
-              <p className="p-4 text-sm text-muted-foreground">No items yet.</p>
+              <p className="p-4 text-sm text-muted-foreground">{t("workspace.noItems")}</p>
             ) : (
               <ul>
                 {filtered.map((it) => (
@@ -218,7 +219,7 @@ function WorkspacePage() {
             />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Select an item, or create a new one.
+              {t("workspace.selectOrCreate")}
             </div>
           )}
         </main>
