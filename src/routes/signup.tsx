@@ -71,9 +71,9 @@ function SignupPage() {
         <button
           type="submit"
           disabled={m.isPending}
-          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+          className="kawaii-button w-full disabled:opacity-60"
         >
-          {m.isPending ? t("signup.submitting") : t("signup.submit")}
+          {m.isPending ? t("signup.submitting") : `${t("signup.submit")} ✨`}
         </button>
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
