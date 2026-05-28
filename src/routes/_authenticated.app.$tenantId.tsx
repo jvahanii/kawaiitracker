@@ -121,9 +121,19 @@ function WorkspacePage() {
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           {currentTenant.role === "admin" ? (
-            <span className="rounded bg-accent px-2 py-1 font-mono">
-              Code: {currentTenant.joinCode}
-            </span>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard?.writeText(currentTenant.joinCode);
+              }}
+              title="Share this code so teammates can join the workspace. Click to copy."
+              className="rounded bg-accent px-2 py-1 hover:bg-accent/80"
+            >
+              <span className="mr-1">Join code:</span>
+              <span className="font-mono font-semibold text-foreground">
+                {currentTenant.joinCode}
+              </span>
+            </button>
           ) : null}
           <button
             onClick={() => logoutM.mutate()}
