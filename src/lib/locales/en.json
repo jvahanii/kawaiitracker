@@ -5,7 +5,7 @@
     "english": "English",
     "finnish": "Finnish",
     "logout": "Log out",
-    "back": "← Tracker",
+    "back": "← Kawaii",
     "loading": "Loading…",
     "saving": "Saving…",
     "saved": "Saved",
@@ -19,11 +19,11 @@
     "add": "Add"
   },
   "landing": {
-    "title": "Tracker — Multi-tenant item tracker",
+    "title": "Kawaii — Multi-tenant item tracker",
     "description": "Track savings and income. Create or join a workspace with a code.",
     "login": "Log in",
     "signup": "Sign up",
-    "heading": "Track items across teams.",
+    "heading": "Track savings and income across teams.",
     "sub": "Create a workspace, share an 8-character join code, and manage savings and income together",
     "getStarted": "Get started",
     "haveAccount": "I have an account"
@@ -37,28 +37,10 @@
     "submit": "Log in",
     "submitting": "Logging in…",
     "newHere": "New here?",
-    "createAccount": "Create an account",
-    "forgotPassword": "Forgot your password?"
-  },
-  "forgot": {
-    "title": "Reset your password",
-    "subtitle": "Enter your email and we'll generate a reset link.",
-    "submit": "Generate reset link",
-    "linkReady": "Here's your one-time reset link. Open it to set a new password:",
-    "expiresNote": "This link expires in 1 hour and can only be used once.",
-    "noAccount": "If an account exists for that email, a reset link has been prepared."
-  },
-  "reset": {
-    "title": "Set a new password",
-    "subtitle": "Choose a new password for your account.",
-    "submit": "Save new password",
-    "doneTitle": "Password updated",
-    "doneSubtitle": "You can now log in with your new password.",
-    "invalidTitle": "Invalid reset link",
-    "invalidSubtitle": "This reset link is missing or malformed."
+    "createAccount": "Create an account"
   },
   "signup": {
-    "metaTitle": "Sign up — Tracker",
+    "metaTitle": "Sign up — Kawaii",
     "title": "Create your account",
     "subtitle": "One account, many workspaces.",
     "name": "Your name",
