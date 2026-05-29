@@ -65,14 +65,14 @@
     "newWorkspace": "+ Workspace",
     "joinCode": "Join code:",
     "joinCodeTitle": "Share this code so teammates can join the workspace. Click to copy.",
-    "searchPlaceholder": "Search items…",
-    "newItemPlaceholder": "New item title…",
-    "noItems": "No items yet.",
-    "selectOrCreate": "Select an item, or create a new one.",
+    "searchPlaceholder": "Search savings and income…",
+    "newItemPlaceholder": "New savings or income title…",
+    "noItems": "No savings and income yet.",
+    "selectOrCreate": "Select a savings or income entry, or create a new one.",
     "assignee": "Assignee",
     "unassigned": "Unassigned",
     "notesPlaceholder": "Notes…",
     "updated": "Updated {{when}}",
-    "confirmDelete": "Delete this item?"
+    "confirmDelete": "Delete this entry?"
   }
 }
