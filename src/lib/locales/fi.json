@@ -37,7 +37,25 @@
     "submit": "Kirjaudu",
     "submitting": "Kirjaudutaan…",
     "newHere": "Uusi käyttäjä?",
-    "createAccount": "Luo tili"
+    "createAccount": "Luo tili",
+    "forgotPassword": "Unohditko salasanasi?"
+  },
+  "forgot": {
+    "title": "Nollaa salasanasi",
+    "subtitle": "Syötä sähköpostisi, niin luomme palautuslinkin.",
+    "submit": "Luo palautuslinkki",
+    "linkReady": "Tässä kertakäyttöinen palautuslinkkisi. Avaa se asettaaksesi uuden salasanan:",
+    "expiresNote": "Linkki vanhenee tunnissa ja toimii vain kerran.",
+    "noAccount": "Jos tili löytyy tällä sähköpostilla, palautuslinkki on valmisteltu."
+  },
+  "reset": {
+    "title": "Aseta uusi salasana",
+    "subtitle": "Valitse tilillesi uusi salasana.",
+    "submit": "Tallenna uusi salasana",
+    "doneTitle": "Salasana päivitetty",
+    "doneSubtitle": "Voit nyt kirjautua uudella salasanallasi.",
+    "invalidTitle": "Virheellinen palautuslinkki",
+    "invalidSubtitle": "Palautuslinkki puuttuu tai on virheellinen."
   },
   "signup": {
     "metaTitle": "Rekisteröidy — Seuranta",

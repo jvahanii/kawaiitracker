@@ -23,8 +23,16 @@ function SignupPage() {
   const m = useMutation({
     mutationFn: (data: { displayName: string; email: string; password: string }) =>
       signupFn({ data }),
-    onSuccess: () => navigate({ to: "/onboarding" }),
+    onSuccess: (res) => {
+      if (res.ok) navigate({ to: "/onboarding" });
+    },
   });
+
+  const errorMessage = m.error
+    ? (m.error as Error).message
+    : m.data && !m.data.ok
+      ? m.data.error
+      : null;
 
   return (
     <AuthShell title={t("signup.title")} subtitle={t("signup.subtitle")}>
@@ -65,8 +73,8 @@ function SignupPage() {
             autoComplete="new-password"
           />
         </Field>
-        {m.error ? (
-          <p className="text-sm text-destructive">{(m.error as Error).message}</p>
+        {errorMessage ? (
+          <p className="text-sm text-destructive">{errorMessage}</p>
         ) : null}
         <button
           type="submit"
