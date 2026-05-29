@@ -90,6 +90,8 @@ function Onboarding() {
               />
               {joinM.error ? (
                 <p className="text-sm text-destructive">{(joinM.error as Error).message}</p>
+              ) : joinM.data && !joinM.data.ok ? (
+                <p className="text-sm text-destructive">{joinM.data.error}</p>
               ) : null}
               <button
                 type="submit"
