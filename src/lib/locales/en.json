@@ -20,11 +20,11 @@
   },
   "landing": {
     "title": "Tracker — Multi-tenant item tracker",
-    "description": "Track items across teams. Create or join a workspace with a code.",
+    "description": "Track savings and income. Create or join a workspace with a code.",
     "login": "Log in",
     "signup": "Sign up",
     "heading": "Track items across teams.",
-    "sub": "Create a workspace, share an 8-character join code, and manage items together. Assignees and notes — nothing more.",
+    "sub": "Create a workspace, share an 8-character join code, and manage savings and income together",
     "getStarted": "Get started",
     "haveAccount": "I have an account"
   },
