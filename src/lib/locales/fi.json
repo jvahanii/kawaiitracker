@@ -65,14 +65,14 @@
     "newWorkspace": "+ Työtila",
     "joinCode": "Liittymiskoodi:",
     "joinCodeTitle": "Jaa tämä koodi, jotta tiimisi voi liittyä. Kopioi klikkaamalla.",
-    "searchPlaceholder": "Etsi kohteita…",
-    "newItemPlaceholder": "Uuden kohteen otsikko…",
-    "noItems": "Ei vielä kohteita.",
-    "selectOrCreate": "Valitse kohde tai luo uusi.",
+    "searchPlaceholder": "Etsi säästöjä ja tuloja…",
+    "newItemPlaceholder": "Uuden säästö- tai tulokohdan otsikko…",
+    "noItems": "Ei vielä säästöjä eikä tuloja.",
+    "selectOrCreate": "Valitse säästö- tai tulokohta tai luo uusi.",
     "assignee": "Vastuuhenkilö",
     "unassigned": "Ei vastuuhenkilöä",
     "notesPlaceholder": "Muistiinpanot…",
     "updated": "Päivitetty {{when}}",
-    "confirmDelete": "Poistetaanko tämä kohde?"
+    "confirmDelete": "Poistetaanko tämä kohta?"
   }
 }
