@@ -26,7 +26,10 @@ function Onboarding() {
   });
   const joinM = useMutation({
     mutationFn: (c: string) => joinFn({ data: { code: c } }),
-    onSuccess: (r) => navigate({ to: "/app/$tenantId", params: { tenantId: r.id } }),
+    onSuccess: (r) => {
+      if (!r.ok) return;
+      navigate({ to: "/app/$tenantId", params: { tenantId: r.id } });
+    },
   });
 
   return (
