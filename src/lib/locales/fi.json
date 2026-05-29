@@ -5,7 +5,7 @@
     "english": "Englanti",
     "finnish": "Suomi",
     "logout": "Kirjaudu ulos",
-    "back": "← Tracker",
+    "back": "← Kawaii",
     "loading": "Ladataan…",
     "saving": "Tallennetaan…",
     "saved": "Tallennettu",
@@ -19,11 +19,11 @@
     "add": "Lisää"
   },
   "landing": {
-    "title": "Tracker — Monitilainen seurantatyökalu",
-    "description": "Seuraa kohteita tiimien kesken. Luo työtila tai liity koodilla.",
+    "title": "Kawaii — Säästöjen ja tulojen seurantatyökalu",
+    "description": "Seuraa säästöjä ja tuloja. Luo työtila tai liity koodilla.",
     "login": "Kirjaudu",
     "signup": "Rekisteröidy",
-    "heading": "Seuraa kohteita tiimien kesken.",
+    "heading": "Seuraa säästöjä ja tuloja.",
     "sub": "Luo työtila, jaa 8-merkkinen liittymiskoodi ja hallitse kohteita yhdessä. Vastuuhenkilöt ja muistiinpanot — ei muuta.",
     "getStarted": "Aloita",
     "haveAccount": "Minulla on tili"
@@ -37,25 +37,7 @@
     "submit": "Kirjaudu",
     "submitting": "Kirjaudutaan…",
     "newHere": "Uusi käyttäjä?",
-    "createAccount": "Luo tili",
-    "forgotPassword": "Unohditko salasanasi?"
-  },
-  "forgot": {
-    "title": "Nollaa salasanasi",
-    "subtitle": "Syötä sähköpostisi, niin luomme palautuslinkin.",
-    "submit": "Luo palautuslinkki",
-    "linkReady": "Tässä kertakäyttöinen palautuslinkkisi. Avaa se asettaaksesi uuden salasanan:",
-    "expiresNote": "Linkki vanhenee tunnissa ja toimii vain kerran.",
-    "noAccount": "Jos tili löytyy tällä sähköpostilla, palautuslinkki on valmisteltu."
-  },
-  "reset": {
-    "title": "Aseta uusi salasana",
-    "subtitle": "Valitse tilillesi uusi salasana.",
-    "submit": "Tallenna uusi salasana",
-    "doneTitle": "Salasana päivitetty",
-    "doneSubtitle": "Voit nyt kirjautua uudella salasanallasi.",
-    "invalidTitle": "Virheellinen palautuslinkki",
-    "invalidSubtitle": "Palautuslinkki puuttuu tai on virheellinen."
+    "createAccount": "Luo tili"
   },
   "signup": {
     "metaTitle": "Rekisteröidy — Seuranta",
@@ -84,13 +66,13 @@
     "joinCode": "Liittymiskoodi:",
     "joinCodeTitle": "Jaa tämä koodi, jotta tiimisi voi liittyä. Kopioi klikkaamalla.",
     "searchPlaceholder": "Etsi säästöjä ja tuloja…",
-    "newItemPlaceholder": "Uuden säästö- tai tulokohdan otsikko…",
+    "newItemPlaceholder": "Uuden säästön tai tulonlähteen otsikko…",
     "noItems": "Ei vielä säästöjä eikä tuloja.",
-    "selectOrCreate": "Valitse säästö- tai tulokohta tai luo uusi.",
+    "selectOrCreate": "Valitse säästö- tai tulo tai luo uusi.",
     "assignee": "Vastuuhenkilö",
     "unassigned": "Ei vastuuhenkilöä",
     "notesPlaceholder": "Muistiinpanot…",
     "updated": "Päivitetty {{when}}",
-    "confirmDelete": "Poistetaanko tämä kohta?"
+    "confirmDelete": "Poistetaanko tämä?"
   }
 }
