@@ -21,8 +21,16 @@ function LoginPage() {
 
   const m = useMutation({
     mutationFn: (data: { email: string; password: string }) => loginFn({ data }),
-    onSuccess: () => navigate({ to: "/" }),
+    onSuccess: (res) => {
+      if (res.ok) navigate({ to: "/" });
+    },
   });
+
+  const errorMessage = m.error
+    ? (m.error as Error).message
+    : m.data && !m.data.ok
+      ? m.data.error
+      : null;
 
   return (
     <AuthShell title={t("login.title")} subtitle={t("login.subtitle")}>
@@ -53,8 +61,8 @@ function LoginPage() {
             autoComplete="current-password"
           />
         </Field>
-        {m.error ? (
-          <p className="text-sm text-destructive">{(m.error as Error).message}</p>
+        {errorMessage ? (
+          <p className="text-sm text-destructive">{errorMessage}</p>
         ) : null}
         <button
           type="submit"
@@ -64,7 +72,15 @@ function LoginPage() {
           {m.isPending ? t("login.submitting") : `${t("login.submit")} ♡`}
         </button>
       </form>
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-4 text-center text-sm">
+        <Link
+          to="/forgot-password"
+          className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          {t("login.forgotPassword")}
+        </Link>
+      </p>
+      <p className="mt-2 text-center text-sm text-muted-foreground">
         {t("login.newHere")}{" "}
         <Link to="/signup" className="text-foreground underline-offset-4 hover:underline">
           {t("login.createAccount")}
