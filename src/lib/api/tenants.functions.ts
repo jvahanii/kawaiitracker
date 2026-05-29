@@ -80,14 +80,14 @@ export const joinTenant = createServerFn({ method: "POST" })
       "select id, name from tenants where join_code = $1",
       [code],
     );
-    if (!tenant) throw new Error("No tenant found for that code");
+    if (!tenant) return { ok: false as const, error: "No tenant found for that code" };
     await query(
       `insert into tenant_members (tenant_id, user_id, role)
        values ($1, $2, 'member')
        on conflict (tenant_id, user_id) do nothing`,
       [tenant.id, userId],
     );
-    return { id: tenant.id, name: tenant.name };
+    return { ok: true as const, id: tenant.id, name: tenant.name };
   });
 
 export const listTenantMembers = createServerFn({ method: "GET" })
