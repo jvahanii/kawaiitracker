@@ -44,10 +44,10 @@ function Landing() {
       </header>
       <main className="relative mx-auto max-w-3xl px-6 py-20 text-center">
         <div className="mb-6 inline-block rounded-full border-2 border-border bg-white/80 px-4 py-1.5 text-sm font-medium text-muted-foreground shadow-sm">
-          ✨ ʕ•ᴥ•ʔ kawaii edition ✨
+          ✨ ʕ•ᴥ•ʔ ✨
         </div>
-        <h1 className="text-balance text-6xl font-bold tracking-tight">
-          {t("landing.heading")} <span className="inline-block">💕</span>
+        <h1 className="whitespace-pre-line text-balance text-6xl font-bold tracking-tight">
+          {t("landing.heading")}
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-balance text-base text-muted-foreground">
           {t("landing.sub")}
