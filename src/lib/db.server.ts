@@ -9,9 +9,8 @@ export function getPool(): Pool {
   if (!raw) {
     throw new Error("AIVEN_DATABASE_URL is not configured");
   }
-  // Parse manually so sslmode in the URL can't override our ssl options.
   const u = new URL(raw);
-  _pool = new Pool({
+  const pool = new Pool({
     host: u.hostname,
     port: u.port ? Number(u.port) : 5432,
     user: decodeURIComponent(u.username),
@@ -21,16 +20,51 @@ export function getPool(): Pool {
     max: 3,
     idleTimeoutMillis: 10_000,
   });
-  return _pool;
+  // Prevent idle-connection terminations from crashing the worker, and
+  // drop the cached pool so the next query rebuilds fresh connections.
+  pool.on("error", (err) => {
+    console.error("pg pool error:", err);
+    if (_pool === pool) _pool = undefined;
+  });
+  _pool = pool;
+  return pool;
+}
+
+function isConnectionError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    /Connection terminated/i.test(msg) ||
+    /timeout/i.test(msg) ||
+    /ECONNRESET/i.test(msg) ||
+    /ENOTFOUND/i.test(msg) ||
+    /server closed the connection/i.test(msg)
+  );
 }
 
 export async function query<T = unknown>(text: string, params: unknown[] = []) {
-  const pool = getPool();
-  const res = await pool.query<T extends Record<string, unknown> ? T : never>(
-    text,
-    params as unknown[],
-  );
-  return res.rows as T[];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const pool = getPool();
+    try {
+      const res = await pool.query<T extends Record<string, unknown> ? T : never>(
+        text,
+        params as unknown[],
+      );
+      return res.rows as T[];
+    } catch (err) {
+      if (attempt === 0 && isConnectionError(err)) {
+        // Drop the stale pool and retry once with a fresh one.
+        if (_pool === pool) _pool = undefined;
+        try {
+          await pool.end();
+        } catch {
+          // ignore
+        }
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("unreachable");
 }
 
 export async function queryOne<T = unknown>(text: string, params: unknown[] = []) {
