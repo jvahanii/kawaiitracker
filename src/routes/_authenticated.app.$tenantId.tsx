@@ -148,9 +148,8 @@ function WorkspacePage() {
         </div>
       </header>
 
-      <SavingsChart tenantId={tenantId} />
-
       <div className="flex min-h-0 flex-1">
+
 
         {/* Left pane */}
         <aside className="flex w-96 flex-col border-r border-border">
