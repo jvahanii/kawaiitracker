@@ -154,13 +154,6 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
             r.target = ((r.t! - tStart) / span) * goalAmt;
           }
         }
-        // Extend to the goal date if it's beyond the last data row
-        const last = rows[rows.length - 1];
-        if (tEnd > last.t!) {
-          const extra: Record<string, number> = { t: tEnd, target: goalAmt };
-          for (const id of ids) extra[id] = (last[id] as number) ?? 0;
-          rows.push(extra);
-        }
       }
     }
 
