@@ -154,13 +154,6 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
             r.target = ((r.t! - tStart) / span) * goalAmt;
           }
         }
-        // Extend to the goal date if it's beyond the last data row
-        const last = rows[rows.length - 1];
-        if (tEnd > last.t!) {
-          const extra: Record<string, number> = { t: tEnd, target: goalAmt };
-          for (const id of ids) extra[id] = (last[id] as number) ?? 0;
-          rows.push(extra);
-        }
       }
     }
 
@@ -252,11 +245,13 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                 <XAxis
                   dataKey="t"
                   type="number"
-                  domain={["dataMin", "dataMax"]}
+                  domain={[monthKey(new Date(year, 0, 1)), monthKey(new Date(year, 11, 1))]}
+                  allowDataOverflow
                   scale="time"
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   tickFormatter={(v) => monthFmt.format(new Date(Number(v)))}
                 />
+
                 <YAxis
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   tickFormatter={(v) => fmt(Number(v))}
