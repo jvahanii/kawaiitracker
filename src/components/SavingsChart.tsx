@@ -141,21 +141,19 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
       return row;
     });
 
-    // Target trajectory: linear from first month (0) to goal date (goal.amount)
+    // Target trajectory: linear from Jan (0) to Dec (goal.amount) of selected year
     const goalAmt = goal.amount;
-    const goalDate = goal.date ? new Date(goal.date) : null;
-    if (goalAmt && goalDate && !Number.isNaN(goalDate.getTime()) && rows.length > 0) {
+    if (goalAmt && rows.length > 0) {
       const tStart = rows[0].t!;
-      const tEnd = monthKey(goalDate);
-      if (tEnd > tStart) {
-        const span = tEnd - tStart;
+      const tEnd = rows[rows.length - 1].t!;
+      const span = tEnd - tStart;
+      if (span > 0) {
         for (const r of rows) {
-          if (r.t! >= tStart && r.t! <= tEnd) {
-            r.target = ((r.t! - tStart) / span) * goalAmt;
-          }
+          r.target = ((r.t! - tStart) / span) * goalAmt;
         }
       }
     }
+
 
     return { chartData: rows, itemKeys: ids };
   }, [entries, goal.amount, goal.date, year]);
@@ -336,7 +334,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     }}
                   />
                 ) : null}
-                {goal.amount && goal.date ? (
+                {goal.amount ? (
                   <Line
                     type="linear"
                     dataKey="target"
