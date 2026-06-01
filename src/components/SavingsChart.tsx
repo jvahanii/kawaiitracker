@@ -256,7 +256,9 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     const key = String(name);
                     if (key === "__actual") return [fmt(Number(v)), "Toteuma (yht.)"];
                     if (key === "target") return [fmt(Number(v)), t("workspace.goalAmount")];
-                    return [fmt(Number(v)), itemTitle(key)];
+                    if (key.endsWith("__a"))
+                      return [fmt(Number(v)), `${itemTitle(key.slice(0, -3))} (toteuma)`];
+                    return [fmt(Number(v)), `${itemTitle(key)} (suunn.)`];
                   }}
                 />
                 {itemKeys.map((id, idx) => {
@@ -267,10 +269,28 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                       type="monotone"
                       dataKey={id}
                       name={id}
-                      stackId="cfd"
+                      stackId="plan"
                       stroke={c}
                       fill={c}
-                      fillOpacity={0.55}
+                      fillOpacity={0.35}
+                      strokeWidth={1}
+                      strokeDasharray="3 3"
+                      isAnimationActive={false}
+                    />
+                  );
+                })}
+                {itemKeys.map((id, idx) => {
+                  const c = darkColorFor(id, idx);
+                  return (
+                    <Area
+                      key={`${id}__a`}
+                      type="monotone"
+                      dataKey={`${id}__a`}
+                      name={`${id}__a`}
+                      stackId="actual"
+                      stroke={c}
+                      fill={c}
+                      fillOpacity={0.85}
                       strokeWidth={1.5}
                       isAnimationActive={false}
                     />
