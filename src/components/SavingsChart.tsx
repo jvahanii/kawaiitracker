@@ -334,7 +334,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     }}
                   />
                 ) : null}
-                {goal.amount && goal.date ? (
+                {goal.amount ? (
                   <Line
                     type="linear"
                     dataKey="target"
