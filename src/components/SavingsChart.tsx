@@ -245,11 +245,13 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                 <XAxis
                   dataKey="t"
                   type="number"
-                  domain={["dataMin", "dataMax"]}
+                  domain={[monthKey(new Date(year, 0, 1)), monthKey(new Date(year, 11, 1))]}
+                  allowDataOverflow
                   scale="time"
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   tickFormatter={(v) => monthFmt.format(new Date(Number(v)))}
                 />
+
                 <YAxis
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   tickFormatter={(v) => fmt(Number(v))}
