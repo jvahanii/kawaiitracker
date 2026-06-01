@@ -238,17 +238,6 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
             className="input h-7 w-28 py-0 text-xs"
           />
         </label>
-        <label className="flex items-center gap-1">
-          <span className="text-muted-foreground">{t("workspace.goalDate")}</span>
-          <input
-            type="date"
-            value={goal.date ?? ""}
-            min={`${year}-01-01`}
-            max={`${year}-12-31`}
-            onChange={(e) => saveGoal({ ...goal, date: e.target.value || null })}
-            className="input h-7 py-0 text-xs"
-          />
-        </label>
       </div>
 
       {!hasData ? (
