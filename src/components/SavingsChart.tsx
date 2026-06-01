@@ -270,7 +270,20 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     }}
                   />
                 ) : null}
-              </AreaChart>
+                {goal.amount && goal.date ? (
+                  <Line
+                    type="linear"
+                    dataKey="target"
+                    name="target"
+                    stroke="hsl(var(--destructive))"
+                    strokeDasharray="5 4"
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls
+                    isAnimationActive={false}
+                  />
+                ) : null}
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
           {itemKeys.length > 0 ? (
