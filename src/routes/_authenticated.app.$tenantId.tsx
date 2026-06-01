@@ -290,7 +290,7 @@ function ItemDetail({
   };
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <div className="mx-auto max-w-4xl p-6">
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
