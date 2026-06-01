@@ -117,18 +117,23 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     const cum = new Map<string, number>(ids.map((id) => [id, 0]));
     const cumA = new Map<string, number>(ids.map((id) => [id, 0]));
     let cumActual = 0;
-    const rows: Array<Record<string, number>> = months.map((tm) => {
-      const row: Record<string, number> = { t: tm };
+    const now = monthKey(new Date());
+    const rows: Array<Record<string, number | undefined>> = months.map((tm) => {
+      const row: Record<string, number | undefined> = { t: tm };
       for (const id of ids) {
         const add = perItemMonth.get(id)?.get(tm) ?? 0;
         cum.set(id, (cum.get(id) ?? 0) + add);
         row[id] = cum.get(id) ?? 0;
-        const addA = perItemMonthActual.get(id)?.get(tm) ?? 0;
-        cumA.set(id, (cumA.get(id) ?? 0) + addA);
-        row[`${id}__a`] = cumA.get(id) ?? 0;
+        if (tm <= now) {
+          const addA = perItemMonthActual.get(id)?.get(tm) ?? 0;
+          cumA.set(id, (cumA.get(id) ?? 0) + addA);
+          row[`${id}__a`] = cumA.get(id) ?? 0;
+        }
       }
-      cumActual += actualPerMonth.get(tm) ?? 0;
-      row.__actual = cumActual;
+      if (tm <= now) {
+        cumActual += actualPerMonth.get(tm) ?? 0;
+        row.__actual = cumActual;
+      }
       return row;
     });
 
