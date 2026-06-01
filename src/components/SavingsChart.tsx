@@ -233,13 +233,6 @@ export function SavingsChart({ items, tenantId }: { items: ItemRow[]; tenantId: 
                   }}
                 />
               ) : null}
-              {goal.amount ? (
-                <ReferenceLine
-                  y={goal.amount}
-                  stroke="hsl(var(--destructive))"
-                  strokeDasharray="2 4"
-                />
-              ) : null}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
