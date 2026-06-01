@@ -78,6 +78,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   const entries = entriesQ.data ?? [];
   const items = itemsQ.data ?? [];
   const total = useMemo(() => entries.reduce((s, e) => s + e.amount, 0), [entries]);
+  const actualTotal = useMemo(() => entries.reduce((s, e) => s + (e.actual ?? 0), 0), [entries]);
 
   // Build cumulative-per-item series across all months present in entries
   const { chartData, itemKeys } = useMemo(() => {
@@ -85,8 +86,9 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     for (const e of entries) monthsSet.add(monthKey(new Date(e.month)));
     const months = Array.from(monthsSet).sort((a, b) => a - b);
 
-    // per-item per-month sum
+    // per-item per-month sum (planned) and per-month total actual
     const perItemMonth = new Map<string, Map<number, number>>();
+    const actualPerMonth = new Map<number, number>();
     for (const e of entries) {
       const k = monthKey(new Date(e.month));
       let m = perItemMonth.get(e.itemId);
@@ -95,10 +97,12 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         perItemMonth.set(e.itemId, m);
       }
       m.set(k, (m.get(k) ?? 0) + e.amount);
+      actualPerMonth.set(k, (actualPerMonth.get(k) ?? 0) + (e.actual ?? 0));
     }
 
     const ids = Array.from(perItemMonth.keys());
     const cum = new Map<string, number>(ids.map((id) => [id, 0]));
+    let cumActual = 0;
     const rows: Array<Record<string, number>> = months.map((tm) => {
       const row: Record<string, number> = { t: tm };
       for (const id of ids) {
@@ -106,6 +110,8 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         cum.set(id, (cum.get(id) ?? 0) + add);
         row[id] = cum.get(id) ?? 0;
       }
+      cumActual += actualPerMonth.get(tm) ?? 0;
+      row.__actual = cumActual;
       return row;
     });
 
