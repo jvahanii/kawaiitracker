@@ -242,6 +242,7 @@ function ItemDetail({
     status?: ItemStatus;
     assigneeId?: string | null;
     notes?: string;
+    amount?: number | null;
   }) => Promise<void>;
   onDelete: () => void;
 }) {
@@ -250,6 +251,8 @@ function ItemDetail({
   const status = item.status;
   const [assigneeId, setAssigneeId] = useState<string | "">(item.assigneeId ?? "");
   const [notes, setNotes] = useState(item.notes);
+  const [amount, setAmount] = useState<string>(item.amount === null ? "" : String(item.amount));
+
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
