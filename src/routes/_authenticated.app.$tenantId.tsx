@@ -17,6 +17,13 @@ import {
   type ItemRow,
   type ItemStatus,
 } from "@/lib/api/items.functions";
+import {
+  deleteEntry,
+  listEntriesForItem,
+  upsertEntry,
+  type EntryRow,
+} from "@/lib/api/entries.functions";
+
 
 export const Route = createFileRoute("/_authenticated/app/$tenantId")({
   head: () => ({ meta: [{ title: "Workspace — Tracker" }] }),
@@ -213,14 +220,19 @@ function WorkspacePage() {
           {selected ? (
             <ItemDetail
               key={selected.id}
+              tenantId={tenantId}
               item={selected}
               members={membersQ.data ?? []}
               onSave={async (patch) => {
                 await updateFn({ data: { tenantId, id: selected.id, ...patch } });
                 invalidate();
               }}
+              onEntriesChanged={() =>
+                qc.invalidateQueries({ queryKey: ["entries", tenantId] })
+              }
               onDelete={() => deleteM.mutate(selected.id)}
             />
+
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               {t("workspace.selectOrCreate")}
@@ -234,11 +246,14 @@ function WorkspacePage() {
 
 
 function ItemDetail({
+  tenantId,
   item,
   members,
   onSave,
+  onEntriesChanged,
   onDelete,
 }: {
+  tenantId: string;
   item: ItemRow;
   members: { id: string; displayName: string }[];
   onSave: (patch: {
@@ -246,8 +261,8 @@ function ItemDetail({
     status?: ItemStatus;
     assigneeId?: string | null;
     notes?: string;
-    amount?: number | null;
   }) => Promise<void>;
+  onEntriesChanged: () => void;
   onDelete: () => void;
 }) {
   const { t } = useTranslation();
@@ -255,33 +270,21 @@ function ItemDetail({
   const status = item.status;
   const [assigneeId, setAssigneeId] = useState<string | "">(item.assigneeId ?? "");
   const [notes, setNotes] = useState(item.notes);
-  const [amount, setAmount] = useState<string>(item.amount === null ? "" : String(item.amount));
 
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
-
-  const parsedAmount = amount.trim() === "" ? null : Number(amount.replace(",", "."));
-  const amountValid = parsedAmount === null || Number.isFinite(parsedAmount);
-  const currentAmount = item.amount ?? null;
 
   const dirty =
     title !== item.title ||
     status !== item.status ||
     (assigneeId || null) !== item.assigneeId ||
-    notes !== item.notes ||
-    (amountValid && parsedAmount !== currentAmount);
+    notes !== item.notes;
 
   const save = async () => {
-    if (!dirty || !amountValid) return;
+    if (!dirty) return;
     setSaving(true);
     try {
-      await onSave({
-        title,
-        status,
-        assigneeId: assigneeId || null,
-        notes,
-        amount: parsedAmount,
-      });
+      await onSave({ title, status, assigneeId: assigneeId || null, notes });
       setSavedAt(Date.now());
     } finally {
       setSaving(false);
@@ -313,27 +316,20 @@ function ItemDetail({
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-2">
-          <span className="text-muted-foreground">{t("workspace.amount")}</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            onBlur={save}
-            placeholder={t("workspace.amountPlaceholder")}
-            className="input h-8 w-32 py-0"
-          />
-        </label>
       </div>
+
+      <MonthlyEntries
+        tenantId={tenantId}
+        itemId={item.id}
+        onChanged={onEntriesChanged}
+      />
 
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         onBlur={save}
         placeholder={t("workspace.notesPlaceholder")}
-        className="input mt-6 min-h-[260px] w-full resize-y leading-relaxed"
+        className="input mt-6 min-h-[180px] w-full resize-y leading-relaxed"
       />
       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
         <span>
@@ -357,3 +353,123 @@ function ItemDetail({
     </div>
   );
 }
+
+function currentMonthIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+function MonthlyEntries({
+  tenantId,
+  itemId,
+  onChanged,
+}: {
+  tenantId: string;
+  itemId: string;
+  onChanged: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const qc = useQueryClient();
+  const listFn = useServerFn(listEntriesForItem);
+  const upsertFn = useServerFn(upsertEntry);
+  const deleteFn = useServerFn(deleteEntry);
+
+  const entriesQ = useQuery({
+    queryKey: ["entries-item", tenantId, itemId],
+    queryFn: () => listFn({ data: { tenantId, itemId } }),
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["entries-item", tenantId, itemId] });
+    onChanged();
+  };
+
+  const upsertM = useMutation({
+    mutationFn: (v: { month: string; amount: number }) =>
+      upsertFn({ data: { tenantId, itemId, ...v } }),
+    onSuccess: invalidate,
+  });
+  const deleteM = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { tenantId, id } }),
+    onSuccess: invalidate,
+  });
+
+  const [month, setMonth] = useState(currentMonthIso().slice(0, 7));
+  const [amount, setAmount] = useState("");
+
+  const entries = entriesQ.data ?? [];
+  const total = entries.reduce((s, e) => s + e.amount, 0);
+  const fmt = (n: number) =>
+    new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
+  const monthFmt = new Intl.DateTimeFormat(i18n.language, { year: "numeric", month: "long" });
+
+  return (
+    <div className="mt-6 rounded-md border border-border p-3">
+      <div className="mb-2 flex items-baseline justify-between">
+        <h3 className="text-sm font-semibold">{t("workspace.monthlyEntries")}</h3>
+        <span className="text-xs text-muted-foreground">
+          {t("workspace.chartTotal")}:{" "}
+          <span className="font-mono font-semibold text-foreground">{fmt(total)}</span>
+        </span>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const parsed = Number(amount.replace(",", "."));
+          if (!month || !Number.isFinite(parsed)) return;
+          upsertM.mutate({ month, amount: parsed });
+          setAmount("");
+        }}
+        className="mb-3 flex flex-wrap gap-2"
+      >
+        <input
+          type="month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          className="input h-8 py-0 text-sm"
+        />
+        <input
+          type="number"
+          inputMode="decimal"
+          step="0.01"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder={t("workspace.amountPlaceholder")}
+          className="input h-8 w-32 py-0 text-sm"
+        />
+        <button
+          type="submit"
+          className="rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
+        >
+          {t("common.add")}
+        </button>
+      </form>
+
+      {entriesQ.isLoading ? (
+        <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
+      ) : entries.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{t("workspace.noEntries")}</p>
+      ) : (
+        <ul className="divide-y divide-border">
+          {entries.map((e: EntryRow) => (
+            <li key={e.id} className="flex items-center justify-between py-1.5 text-sm">
+              <span className="text-muted-foreground">{monthFmt.format(new Date(e.month))}</span>
+              <span className="flex items-center gap-3">
+                <span className="font-mono font-medium">{fmt(e.amount)}</span>
+                <button
+                  type="button"
+                  onClick={() => deleteM.mutate(e.id)}
+                  className="text-xs text-destructive hover:underline"
+                >
+                  {t("common.delete")}
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
