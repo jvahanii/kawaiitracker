@@ -4,8 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Area,
-  AreaChart,
   CartesianGrid,
+  ComposedChart,
+  Line,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -98,7 +99,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
 
     const ids = Array.from(perItemMonth.keys());
     const cum = new Map<string, number>(ids.map((id) => [id, 0]));
-    const rows = months.map((tm) => {
+    const rows: Array<Record<string, number>> = months.map((tm) => {
       const row: Record<string, number> = { t: tm };
       for (const id of ids) {
         const add = perItemMonth.get(id)?.get(tm) ?? 0;
@@ -107,8 +108,33 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
       }
       return row;
     });
+
+    // Target trajectory: linear from first month (0) to goal date (goal.amount)
+    const goalAmt = goal.amount;
+    const goalDate = goal.date ? new Date(goal.date) : null;
+    if (goalAmt && goalDate && !Number.isNaN(goalDate.getTime()) && rows.length > 0) {
+      const tStart = rows[0].t;
+      const tEnd = monthKey(goalDate);
+      if (tEnd > tStart) {
+        const span = tEnd - tStart;
+        for (const r of rows) {
+          if (r.t >= tStart && r.t <= tEnd) {
+            r.target = ((r.t - tStart) / span) * goalAmt;
+          }
+        }
+        // Extend to the goal date if it's beyond the last data row
+        const last = rows[rows.length - 1];
+        if (tEnd > last.t) {
+          const extra: Record<string, number> = { t: tEnd, target: goalAmt };
+          for (const id of ids) extra[id] = (last[id] as number) ?? 0;
+          rows.push(extra);
+        }
+      }
+    }
+
     return { chartData: rows, itemKeys: ids };
-  }, [entries]);
+  }, [entries, goal.amount, goal.date]);
+
 
   const itemTitle = (id: string) => items.find((i) => i.id === id)?.title ?? "—";
 
@@ -175,7 +201,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         <>
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+              <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis
                   dataKey="t"
@@ -244,7 +270,20 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     }}
                   />
                 ) : null}
-              </AreaChart>
+                {goal.amount && goal.date ? (
+                  <Line
+                    type="linear"
+                    dataKey="target"
+                    name="target"
+                    stroke="hsl(var(--destructive))"
+                    strokeDasharray="5 4"
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls
+                    isAnimationActive={false}
+                  />
+                ) : null}
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
           {itemKeys.length > 0 ? (
