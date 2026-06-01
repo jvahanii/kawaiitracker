@@ -3,10 +3,9 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Bar,
+  Area,
+  AreaChart,
   CartesianGrid,
-  ComposedChart,
-  Line,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -15,6 +14,7 @@ import {
 } from "recharts";
 
 import { listAllEntries } from "@/lib/api/entries.functions";
+import { listItems } from "@/lib/api/items.functions";
 
 type Goal = { amount: number | null; date: string | null };
 
@@ -32,6 +32,14 @@ function loadGoal(tenantId: string): Goal {
 
 function monthKey(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+}
+
+// Deterministic OKLCH color per item id
+function colorFor(id: string, idx: number): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360;
+  const hue = (h + idx * 47) % 360;
+  return `oklch(0.72 0.15 ${hue})`;
 }
 
 export function SavingsChart({ tenantId }: { tenantId: string }) {
@@ -52,9 +60,14 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   };
 
   const listFn = useServerFn(listAllEntries);
+  const itemsFn = useServerFn(listItems);
   const entriesQ = useQuery({
     queryKey: ["entries", tenantId],
     queryFn: () => listFn({ data: { tenantId } }),
+  });
+  const itemsQ = useQuery({
+    queryKey: ["items", tenantId],
+    queryFn: () => itemsFn({ data: { tenantId } }),
   });
 
   const fmt = (n: number) =>
@@ -62,61 +75,42 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short", year: "2-digit" });
 
   const entries = entriesQ.data ?? [];
+  const items = itemsQ.data ?? [];
   const total = useMemo(() => entries.reduce((s, e) => s + e.amount, 0), [entries]);
 
-  // Aggregate per month → cumulative across months
-  const series = useMemo(() => {
-    const byMonth = new Map<number, number>();
+  // Build cumulative-per-item series across all months present in entries
+  const { chartData, itemKeys } = useMemo(() => {
+    const monthsSet = new Set<number>();
+    for (const e of entries) monthsSet.add(monthKey(new Date(e.month)));
+    const months = Array.from(monthsSet).sort((a, b) => a - b);
+
+    // per-item per-month sum
+    const perItemMonth = new Map<string, Map<number, number>>();
     for (const e of entries) {
       const k = monthKey(new Date(e.month));
-      byMonth.set(k, (byMonth.get(k) ?? 0) + e.amount);
+      let m = perItemMonth.get(e.itemId);
+      if (!m) {
+        m = new Map();
+        perItemMonth.set(e.itemId, m);
+      }
+      m.set(k, (m.get(k) ?? 0) + e.amount);
     }
-    const months = Array.from(byMonth.entries()).sort((a, b) => a[0] - b[0]);
-    let cum = 0;
-    return months.map(([t, amount]) => {
-      cum += amount;
-      return { t, amount, cumulative: cum };
+
+    const ids = Array.from(perItemMonth.keys());
+    const cum = new Map<string, number>(ids.map((id) => [id, 0]));
+    const rows = months.map((tm) => {
+      const row: Record<string, number> = { t: tm };
+      for (const id of ids) {
+        const add = perItemMonth.get(id)?.get(tm) ?? 0;
+        cum.set(id, (cum.get(id) ?? 0) + add);
+        row[id] = cum.get(id) ?? 0;
+      }
+      return row;
     });
+    return { chartData: rows, itemKeys: ids };
   }, [entries]);
 
-  const targetLine = useMemo(() => {
-    if (!goal.amount || !goal.date) return null;
-    const tEnd = monthKey(new Date(goal.date));
-    if (Number.isNaN(tEnd)) return null;
-    const tStart = series.length > 0 ? series[0].t : monthKey(new Date());
-    if (tEnd <= tStart) return null;
-    return { tStart, tEnd, amount: goal.amount };
-  }, [goal, series]);
-
-  const chartData = useMemo(() => {
-    const map = new Map<
-      number,
-      { t: number; amount?: number; cumulative?: number; target?: number }
-    >();
-    for (const p of series)
-      map.set(p.t, { t: p.t, amount: p.amount, cumulative: p.cumulative });
-    if (targetLine) {
-      map.set(targetLine.tStart, {
-        ...(map.get(targetLine.tStart) ?? { t: targetLine.tStart }),
-        target: 0,
-      });
-      map.set(targetLine.tEnd, {
-        ...(map.get(targetLine.tEnd) ?? { t: targetLine.tEnd }),
-        target: targetLine.amount,
-      });
-    }
-    const rows = Array.from(map.values()).sort((a, b) => a.t - b.t);
-    if (targetLine) {
-      const { tStart, tEnd, amount } = targetLine;
-      const span = tEnd - tStart;
-      for (const r of rows) {
-        if (r.target === undefined && r.t >= tStart && r.t <= tEnd) {
-          r.target = ((r.t - tStart) / span) * amount;
-        }
-      }
-    }
-    return rows;
-  }, [series, targetLine]);
+  const itemTitle = (id: string) => items.find((i) => i.id === id)?.title ?? "—";
 
   const today = Date.now();
   const daysLeft =
@@ -178,81 +172,95 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
           {t("workspace.chartEmpty")}
         </p>
       ) : (
-        <div className="h-56 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis
-                dataKey="t"
-                type="number"
-                domain={["dataMin", "dataMax"]}
-                scale="time"
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickFormatter={(v) => monthFmt.format(new Date(Number(v)))}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickFormatter={(v) => fmt(Number(v))}
-                width={70}
-              />
-              <Tooltip
-                cursor={{ stroke: "hsl(var(--accent))" }}
-                contentStyle={{
-                  background: "hsl(var(--background))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-                labelFormatter={(v) => monthFmt.format(new Date(Number(v)))}
-                formatter={(v: number, name: string) => [
-                  fmt(Number(v)),
-                  name === "cumulative"
-                    ? t("workspace.chartTotal")
-                    : name === "amount"
-                    ? t("workspace.monthAmount")
-                    : t("workspace.goalAmount"),
-                ]}
-              />
-              <Bar
-                dataKey="amount"
-                fill="hsl(var(--primary))"
-                radius={[6, 6, 0, 0]}
-                barSize={18}
-              />
-              <Line
-                type="monotone"
-                dataKey="cumulative"
-                stroke="hsl(var(--primary))"
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="target"
-                stroke="hsl(var(--destructive))"
-                strokeDasharray="5 4"
-                strokeWidth={2}
-                dot={false}
-                connectNulls
-                isAnimationActive={false}
-              />
-              {goal.date && !Number.isNaN(new Date(goal.date).getTime()) ? (
-                <ReferenceLine
-                  x={monthKey(new Date(goal.date))}
-                  stroke="hsl(var(--destructive))"
-                  strokeDasharray="2 4"
-                  label={{
-                    value: t("workspace.goalDateShort"),
-                    fill: "hsl(var(--destructive))",
-                    fontSize: 11,
-                    position: "top",
-                  }}
+        <>
+          <div className="h-56 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis
+                  dataKey="t"
+                  type="number"
+                  domain={["dataMin", "dataMax"]}
+                  scale="time"
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tickFormatter={(v) => monthFmt.format(new Date(Number(v)))}
                 />
-              ) : null}
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+                <YAxis
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tickFormatter={(v) => fmt(Number(v))}
+                  width={70}
+                />
+                <Tooltip
+                  cursor={{ stroke: "hsl(var(--accent))" }}
+                  contentStyle={{
+                    background: "hsl(var(--background))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                  labelFormatter={(v) => monthFmt.format(new Date(Number(v)))}
+                  formatter={(v: number, name: string) => [fmt(Number(v)), itemTitle(String(name))]}
+                />
+                {itemKeys.map((id, idx) => {
+                  const c = colorFor(id, idx);
+                  return (
+                    <Area
+                      key={id}
+                      type="monotone"
+                      dataKey={id}
+                      name={id}
+                      stackId="cfd"
+                      stroke={c}
+                      fill={c}
+                      fillOpacity={0.55}
+                      strokeWidth={1.5}
+                      isAnimationActive={false}
+                    />
+                  );
+                })}
+                {goal.amount ? (
+                  <ReferenceLine
+                    y={goal.amount}
+                    stroke="hsl(var(--destructive))"
+                    strokeDasharray="5 4"
+                    label={{
+                      value: t("workspace.goalAmount"),
+                      fill: "hsl(var(--destructive))",
+                      fontSize: 11,
+                      position: "insideTopRight",
+                    }}
+                  />
+                ) : null}
+                {goal.date && !Number.isNaN(new Date(goal.date).getTime()) ? (
+                  <ReferenceLine
+                    x={monthKey(new Date(goal.date))}
+                    stroke="hsl(var(--destructive))"
+                    strokeDasharray="2 4"
+                    label={{
+                      value: t("workspace.goalDateShort"),
+                      fill: "hsl(var(--destructive))",
+                      fontSize: 11,
+                      position: "top",
+                    }}
+                  />
+                ) : null}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          {itemKeys.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+              {itemKeys.map((id, idx) => (
+                <span key={id} className="inline-flex items-center gap-1">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-sm"
+                    style={{ backgroundColor: colorFor(id, idx) }}
+                  />
+                  <span className="text-muted-foreground">{itemTitle(id)}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </>
       )}
     </section>
   );
