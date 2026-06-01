@@ -299,6 +299,12 @@ function ItemDetail({
         onBlur={save}
         className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none"
       />
+      <MonthlyEntries
+        tenantId={tenantId}
+        itemId={item.id}
+        onChanged={onEntriesChanged}
+      />
+
       <div className="mt-4 flex flex-wrap gap-3 text-sm">
         <label className="flex items-center gap-2">
           <span className="text-muted-foreground">{t("workspace.assignee")}</span>
@@ -318,11 +324,6 @@ function ItemDetail({
         </label>
       </div>
 
-      <MonthlyEntries
-        tenantId={tenantId}
-        itemId={item.id}
-        onChanged={onEntriesChanged}
-      />
 
       <textarea
         value={notes}
