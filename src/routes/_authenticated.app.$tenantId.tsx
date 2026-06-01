@@ -378,7 +378,7 @@ function MonthlyEntries({
   };
 
   const upsertM = useMutation({
-    mutationFn: (v: { month: string; amount: number }) =>
+    mutationFn: (v: { month: string; amount?: number; actual?: number }) =>
       upsertFn({ data: { tenantId, itemId, ...v } }),
     onSuccess: invalidate,
   });
