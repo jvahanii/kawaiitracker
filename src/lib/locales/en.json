@@ -77,6 +77,10 @@
     "chartTitle": "Savings breakdown",
     "chartEmpty": "Add savings amounts to see the chart.",
     "chartTotal": "Total",
+    "goalAmount": "Goal (€)",
+    "goalDate": "Target date",
+    "goalDateShort": "Target",
+    "daysLeft": "{{count}} days left",
     "updated": "Updated {{when}}",
     "confirmDelete": "Delete this entry?"
   }

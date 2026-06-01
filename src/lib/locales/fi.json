@@ -77,6 +77,10 @@
     "chartTitle": "Säästöjen jakauma",
     "chartEmpty": "Lisää säästöjen määriä nähdäksesi diagrammin.",
     "chartTotal": "Yhteensä",
+    "goalAmount": "Tavoite (€)",
+    "goalDate": "Tavoiteaika",
+    "goalDateShort": "Tavoite",
+    "daysLeft": "{{count}} päivää jäljellä",
     "updated": "Päivitetty {{when}}",
     "confirmDelete": "Poistetaanko tämä?"
   }
