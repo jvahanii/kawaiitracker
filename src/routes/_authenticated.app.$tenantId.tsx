@@ -432,10 +432,18 @@ function MonthlyEntries({
               ›
             </button>
           </div>
-          <span>
-            {t("workspace.chartTotal")}:{" "}
-            <span className="font-mono font-semibold text-foreground">{fmt(yearTotal)}</span>
-          </span>
+          <label className="flex items-center gap-1">
+            <span>{t("workspace.chartTotal")}:</span>
+            <TotalEditor
+              total={yearTotal}
+              onCommit={(newTotal) => {
+                const per = Math.round((newTotal / 12) * 100) / 100;
+                for (const m of months) {
+                  upsertM.mutate({ month: m.iso, amount: per });
+                }
+              }}
+            />
+          </label>
         </div>
       </div>
 
@@ -500,5 +508,40 @@ function MonthCell({
     </div>
   );
 }
+
+function TotalEditor({
+  total,
+  onCommit,
+}: {
+  total: number;
+  onCommit: (newTotal: number) => void;
+}) {
+  const [text, setText] = useState(String(total));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(String(total));
+  }, [total, focused]);
+
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      step="0.01"
+      value={text}
+      onFocus={() => setFocused(true)}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        setFocused(false);
+        const parsed = Number(text.trim().replace(",", "."));
+        if (!Number.isFinite(parsed)) return;
+        if (parsed === total) return;
+        onCommit(parsed);
+      }}
+      className="h-6 w-24 rounded border border-border bg-background px-1 text-right font-mono text-xs font-semibold text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+    />
+  );
+}
+
 
 
