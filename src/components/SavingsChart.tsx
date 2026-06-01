@@ -19,10 +19,10 @@ import { listItems } from "@/lib/api/items.functions";
 
 type Goal = { amount: number | null; date: string | null };
 
-function loadGoal(tenantId: string): Goal {
+function loadGoal(tenantId: string, year: number): Goal {
   if (typeof window === "undefined") return { amount: null, date: null };
   try {
-    const raw = localStorage.getItem(`savings-goal:${tenantId}`);
+    const raw = localStorage.getItem(`savings-goal:${tenantId}:${year}`);
     if (!raw) return { amount: null, date: null };
     const v = JSON.parse(raw) as Goal;
     return { amount: v.amount ?? null, date: v.date ?? null };
@@ -51,16 +51,17 @@ function darkColorFor(id: string, idx: number): string {
 
 export function SavingsChart({ tenantId }: { tenantId: string }) {
   const { t, i18n } = useTranslation();
+  const [year, setYear] = useState<number>(() => new Date().getFullYear());
   const [goal, setGoal] = useState<Goal>({ amount: null, date: null });
 
   useEffect(() => {
-    setGoal(loadGoal(tenantId));
-  }, [tenantId]);
+    setGoal(loadGoal(tenantId, year));
+  }, [tenantId, year]);
 
   const saveGoal = (g: Goal) => {
     setGoal(g);
     try {
-      localStorage.setItem(`savings-goal:${tenantId}`, JSON.stringify(g));
+      localStorage.setItem(`savings-goal:${tenantId}:${year}`, JSON.stringify(g));
     } catch {
       /* ignore */
     }
@@ -81,7 +82,11 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short", year: "2-digit" });
 
-  const entries = entriesQ.data ?? [];
+  const allEntries = entriesQ.data ?? [];
+  const entries = useMemo(
+    () => allEntries.filter((e) => new Date(e.month).getFullYear() === year),
+    [allEntries, year],
+  );
   const items = itemsQ.data ?? [];
   const total = useMemo(() => entries.reduce((s, e) => s + e.amount, 0), [entries]);
   const actualTotal = useMemo(() => entries.reduce((s, e) => s + (e.actual ?? 0), 0), [entries]);
@@ -198,7 +203,26 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         </span>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-3 text-xs">
+      <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setYear((y) => y - 1)}
+            className="rounded px-2 py-0.5 hover:bg-accent"
+            aria-label="Previous year"
+          >
+            ‹
+          </button>
+          <span className="font-mono font-semibold text-foreground">{year}</span>
+          <button
+            type="button"
+            onClick={() => setYear((y) => y + 1)}
+            className="rounded px-2 py-0.5 hover:bg-accent"
+            aria-label="Next year"
+          >
+            ›
+          </button>
+        </div>
         <label className="flex items-center gap-1">
           <span className="text-muted-foreground">{t("workspace.goalAmount")}</span>
           <input
@@ -219,6 +243,8 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
           <input
             type="date"
             value={goal.date ?? ""}
+            min={`${year}-01-01`}
+            max={`${year}-12-31`}
             onChange={(e) => saveGoal({ ...goal, date: e.target.value || null })}
             className="input h-7 py-0 text-xs"
           />
