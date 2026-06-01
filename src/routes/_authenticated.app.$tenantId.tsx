@@ -378,15 +378,15 @@ function MonthlyEntries({
   };
 
   const upsertM = useMutation({
-    mutationFn: (v: { month: string; amount: number }) =>
+    mutationFn: (v: { month: string; amount?: number; actual?: number }) =>
       upsertFn({ data: { tenantId, itemId, ...v } }),
     onSuccess: invalidate,
   });
 
   const entries = entriesQ.data ?? [];
   const byMonth = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const e of entries) m.set(e.month, e.amount);
+    const m = new Map<string, { amount: number; actual: number }>();
+    for (const e of entries) m.set(e.month, { amount: e.amount, actual: e.actual });
     return m;
   }, [entries]);
 
@@ -406,7 +406,8 @@ function MonthlyEntries({
   const fmt = (n: number) =>
     new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
 
-  const yearTotal = months.reduce((s, m) => s + (byMonth.get(m.iso) ?? 0), 0);
+  const yearTotal = months.reduce((s, m) => s + (byMonth.get(m.iso)?.amount ?? 0), 0);
+  const actualTotal = months.reduce((s, m) => s + (byMonth.get(m.iso)?.actual ?? 0), 0);
 
   return (
     <div className="mt-6 rounded-md border border-border p-3">
@@ -433,13 +434,25 @@ function MonthlyEntries({
             </button>
           </div>
           <label className="flex items-center gap-1">
-            <span>{t("workspace.chartTotal")}:</span>
+            <span>Suunniteltu:</span>
             <TotalEditor
               total={yearTotal}
               onCommit={(newTotal) => {
                 const per = Math.round((newTotal / 12) * 100) / 100;
                 for (const m of months) {
                   upsertM.mutate({ month: m.iso, amount: per });
+                }
+              }}
+            />
+          </label>
+          <label className="flex items-center gap-1">
+            <span>Toteuma:</span>
+            <TotalEditor
+              total={actualTotal}
+              onCommit={(newTotal) => {
+                const per = Math.round((newTotal / 12) * 100) / 100;
+                for (const m of months) {
+                  upsertM.mutate({ month: m.iso, actual: per });
                 }
               }}
             />
@@ -451,14 +464,19 @@ function MonthlyEntries({
         <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
       ) : (
         <div className="grid grid-cols-12 gap-1">
-          {months.map(({ iso, idx }) => (
-            <MonthCell
-              key={iso}
-              label={monthLabel.format(new Date(2000, idx, 1))}
-              value={byMonth.get(iso) ?? null}
-              onCommit={(amount) => upsertM.mutate({ month: iso, amount })}
-            />
-          ))}
+          {months.map(({ iso, idx }) => {
+            const cell = byMonth.get(iso);
+            return (
+              <MonthCell
+                key={iso}
+                label={monthLabel.format(new Date(2000, idx, 1))}
+                amount={cell?.amount ?? null}
+                actual={cell?.actual ?? null}
+                onCommitAmount={(amount) => upsertM.mutate({ month: iso, amount })}
+                onCommitActual={(actual) => upsertM.mutate({ month: iso, actual })}
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -467,12 +485,43 @@ function MonthlyEntries({
 
 function MonthCell({
   label,
-  value,
-  onCommit,
+  amount,
+  actual,
+  onCommitAmount,
+  onCommitActual,
 }: {
   label: string;
+  amount: number | null;
+  actual: number | null;
+  onCommitAmount: (amount: number) => void;
+  onCommitActual: (actual: number) => void;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col items-stretch gap-1 rounded-md border border-border bg-background px-1.5 py-1">
+      <span className="truncate text-center text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label.slice(0, 3)}
+      </span>
+      <NumberInput value={amount} onCommit={onCommitAmount} placeholder="plan" />
+      <NumberInput
+        value={actual}
+        onCommit={onCommitActual}
+        placeholder="toteuma"
+        className="text-primary"
+      />
+    </div>
+  );
+}
+
+function NumberInput({
+  value,
+  onCommit,
+  placeholder,
+  className = "",
+}: {
   value: number | null;
-  onCommit: (amount: number) => void;
+  onCommit: (n: number) => void;
+  placeholder?: string;
+  className?: string;
 }) {
   const [text, setText] = useState(value === null ? "" : String(value));
   const [focused, setFocused] = useState(false);
@@ -482,30 +531,25 @@ function MonthCell({
   }, [value, focused]);
 
   return (
-    <div className="flex min-w-0 flex-col items-stretch gap-1 rounded-md border border-border bg-background px-1.5 py-1">
-      <span className="truncate text-center text-[10px] uppercase tracking-wide text-muted-foreground">
-        {label.slice(0, 3)}
-      </span>
-      <input
-        type="number"
-        inputMode="decimal"
-        step="0.01"
-        value={text}
-        onFocus={() => setFocused(true)}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => {
-          setFocused(false);
-          const trimmed = text.trim();
-          if (trimmed === "" && value === null) return;
-          const parsed = Number(trimmed.replace(",", "."));
-          if (!Number.isFinite(parsed)) return;
-          if (parsed === (value ?? 0)) return;
-          onCommit(parsed);
-        }}
-        placeholder="0"
-        className="h-7 w-full min-w-0 bg-transparent text-center font-mono text-xs outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-      />
-    </div>
+    <input
+      type="number"
+      inputMode="decimal"
+      step="0.01"
+      value={text}
+      onFocus={() => setFocused(true)}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        setFocused(false);
+        const trimmed = text.trim();
+        if (trimmed === "" && value === null) return;
+        const parsed = Number(trimmed.replace(",", "."));
+        if (!Number.isFinite(parsed)) return;
+        if (parsed === (value ?? 0)) return;
+        onCommit(parsed);
+      }}
+      placeholder={placeholder ?? "0"}
+      className={`h-6 w-full min-w-0 bg-transparent text-center font-mono text-xs outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${className}`}
+    />
   );
 }
 

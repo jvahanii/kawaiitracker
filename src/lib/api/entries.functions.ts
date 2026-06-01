@@ -33,6 +33,7 @@ export type EntryRow = {
   itemId: string;
   month: string; // YYYY-MM-DD (first of month)
   amount: number;
+  actual: number;
 };
 
 // Normalize month input to first day of month (YYYY-MM-DD)
@@ -47,8 +48,8 @@ export const listEntriesForItem = createServerFn({ method: "GET" })
     const userId = await requireUserId();
     await requireMembership(userId, data.tenantId);
     await requireItemInTenant(data.itemId, data.tenantId);
-    const rows = await query<{ id: string; item_id: string; month: string; amount: string }>(
-      `select id, item_id, to_char(month, 'YYYY-MM-DD') as month, amount
+    const rows = await query<{ id: string; item_id: string; month: string; amount: string; actual_amount: string }>(
+      `select id, item_id, to_char(month, 'YYYY-MM-DD') as month, amount, actual_amount
          from item_entries
         where item_id = $1
         order by month desc`,
@@ -59,6 +60,7 @@ export const listEntriesForItem = createServerFn({ method: "GET" })
       itemId: r.item_id,
       month: r.month,
       amount: Number(r.amount),
+      actual: Number(r.actual_amount),
     }));
   });
 
@@ -67,8 +69,8 @@ export const listAllEntries = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const userId = await requireUserId();
     await requireMembership(userId, data.tenantId);
-    const rows = await query<{ id: string; item_id: string; month: string; amount: string }>(
-      `select e.id, e.item_id, to_char(e.month, 'YYYY-MM-DD') as month, e.amount
+    const rows = await query<{ id: string; item_id: string; month: string; amount: string; actual_amount: string }>(
+      `select e.id, e.item_id, to_char(e.month, 'YYYY-MM-DD') as month, e.amount, e.actual_amount
          from item_entries e
          join items i on i.id = e.item_id
         where i.tenant_id = $1
@@ -80,6 +82,7 @@ export const listAllEntries = createServerFn({ method: "GET" })
       itemId: r.item_id,
       month: r.month,
       amount: Number(r.amount),
+      actual: Number(r.actual_amount),
     }));
   });
 
@@ -89,22 +92,30 @@ export const upsertEntry = createServerFn({ method: "POST" })
       tenantId: z.string().uuid(),
       itemId: z.string().uuid(),
       month: monthSchema,
-      amount: z.number().min(-1_000_000_000).max(1_000_000_000),
+      amount: z.number().min(-1_000_000_000).max(1_000_000_000).optional(),
+      actual: z.number().min(-1_000_000_000).max(1_000_000_000).optional(),
     }),
   )
   .handler(async ({ data }) => {
     const userId = await requireUserId();
     await requireMembership(userId, data.tenantId);
     await requireItemInTenant(data.itemId, data.tenantId);
+    const amount = data.amount ?? 0;
+    const actual = data.actual ?? 0;
+    // Build dynamic update so we only overwrite fields that were provided
+    const setParts: string[] = ["updated_at = now()"];
+    if (data.amount !== undefined) setParts.push("amount = excluded.amount");
+    if (data.actual !== undefined) setParts.push("actual_amount = excluded.actual_amount");
     const row = await queryOne<{ id: string }>(
-      `insert into item_entries (item_id, month, amount)
-       values ($1, $2, $3)
-       on conflict (item_id, month) do update set amount = excluded.amount, updated_at = now()
+      `insert into item_entries (item_id, month, amount, actual_amount)
+       values ($1, $2, $3, $4)
+       on conflict (item_id, month) do update set ${setParts.join(", ")}
        returning id`,
-      [data.itemId, data.month, data.amount],
+      [data.itemId, data.month, amount, actual],
     );
     return { id: row!.id };
   });
+
 
 export const deleteEntry = createServerFn({ method: "POST" })
   .inputValidator(z.object({ tenantId: z.string().uuid(), id: z.string().uuid() }))
