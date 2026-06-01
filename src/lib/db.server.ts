@@ -18,7 +18,8 @@ export function getPool(): Pool {
     database: u.pathname.replace(/^\//, ""),
     ssl: { rejectUnauthorized: false },
     max: 3,
-    idleTimeoutMillis: 10_000,
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 8_000,
   });
   // Prevent idle-connection terminations from crashing the worker, and
   // drop the cached pool so the next query rebuilds fresh connections.
