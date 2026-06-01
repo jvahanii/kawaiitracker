@@ -80,7 +80,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
 
   const fmt = (n: number) =>
     new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
-  const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short", year: "2-digit" });
+  const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short" });
 
   const allEntries = entriesQ.data ?? [];
   const entries = useMemo(
