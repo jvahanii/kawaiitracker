@@ -442,7 +442,7 @@ function MonthlyEntries({
       {entriesQ.isLoading ? (
         <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-12 gap-1">
           {months.map(({ iso, idx }) => (
             <MonthCell
               key={iso}
@@ -474,8 +474,10 @@ function MonthCell({
   }, [value, focused]);
 
   return (
-    <label className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5">
-      <span className="w-20 shrink-0 text-xs capitalize text-muted-foreground">{label}</span>
+    <div className="flex min-w-0 flex-col items-stretch gap-1 rounded-md border border-border bg-background px-1.5 py-1">
+      <span className="truncate text-center text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label.slice(0, 3)}
+      </span>
       <input
         type="number"
         inputMode="decimal"
@@ -492,10 +494,10 @@ function MonthCell({
           if (parsed === (value ?? 0)) return;
           onCommit(parsed);
         }}
-        placeholder="0,00"
-        className="h-7 w-full bg-transparent text-right font-mono text-sm outline-none"
+        placeholder="0"
+        className="h-7 w-full min-w-0 bg-transparent text-center font-mono text-xs outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
-    </label>
+    </div>
   );
 }
 
