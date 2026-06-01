@@ -152,6 +152,7 @@ function WorkspacePage() {
       </header>
 
       <SavingsChart tenantId={tenantId} />
+      <SavingsTable tenantId={tenantId} />
 
       <div className="flex min-h-0 flex-1">
 
