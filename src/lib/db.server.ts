@@ -18,7 +18,8 @@ export function getPool(): Pool {
     database: u.pathname.replace(/^\//, ""),
     ssl: { rejectUnauthorized: false },
     max: 3,
-    idleTimeoutMillis: 10_000,
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 8_000,
   });
   // Prevent idle-connection terminations from crashing the worker, and
   // drop the cached pool so the next query rebuilds fresh connections.
@@ -41,30 +42,49 @@ function isConnectionError(err: unknown): boolean {
   );
 }
 
+const MAX_ATTEMPTS = 4;
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export async function query<T = unknown>(text: string, params: unknown[] = []) {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const pool = getPool();
+    let client;
     try {
-      const res = await pool.query<T extends Record<string, unknown> ? T : never>(
+      // Acquire a dedicated client so a stale idle socket fails here
+      // (recoverable) rather than mid-query.
+      client = await pool.connect();
+      const res = await client.query<T extends Record<string, unknown> ? T : never>(
         text,
         params as unknown[],
       );
       return res.rows as T[];
     } catch (err) {
-      if (attempt === 0 && isConnectionError(err)) {
-        // Drop the stale pool and retry once with a fresh one.
+      lastErr = err;
+      if (isConnectionError(err) && attempt < MAX_ATTEMPTS - 1) {
+        // Drop the stale pool and retry with a fresh one.
         if (_pool === pool) _pool = undefined;
         try {
           await pool.end();
         } catch {
           // ignore
         }
+        await sleep(100 * (attempt + 1));
         continue;
       }
       throw err;
+    } finally {
+      try {
+        client?.release();
+      } catch {
+        // ignore
+      }
     }
   }
-  throw new Error("unreachable");
+  throw lastErr instanceof Error ? lastErr : new Error("Database unavailable");
 }
 
 export async function queryOne<T = unknown>(text: string, params: unknown[] = []) {
