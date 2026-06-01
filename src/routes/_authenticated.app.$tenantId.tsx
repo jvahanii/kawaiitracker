@@ -256,14 +256,19 @@ function ItemDetail({
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
+  const parsedAmount = amount.trim() === "" ? null : Number(amount.replace(",", "."));
+  const amountValid = parsedAmount === null || Number.isFinite(parsedAmount);
+  const currentAmount = item.amount ?? null;
+
   const dirty =
     title !== item.title ||
     status !== item.status ||
     (assigneeId || null) !== item.assigneeId ||
-    notes !== item.notes;
+    notes !== item.notes ||
+    (amountValid && parsedAmount !== currentAmount);
 
   const save = async () => {
-    if (!dirty) return;
+    if (!dirty || !amountValid) return;
     setSaving(true);
     try {
       await onSave({
@@ -271,6 +276,7 @@ function ItemDetail({
         status,
         assigneeId: assigneeId || null,
         notes,
+        amount: parsedAmount,
       });
       setSavedAt(Date.now());
     } finally {
@@ -303,7 +309,21 @@ function ItemDetail({
             ))}
           </select>
         </label>
+        <label className="flex items-center gap-2">
+          <span className="text-muted-foreground">{t("workspace.amount")}</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            onBlur={save}
+            placeholder={t("workspace.amountPlaceholder")}
+            className="input h-8 w-32 py-0"
+          />
+        </label>
       </div>
+
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
