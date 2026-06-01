@@ -19,10 +19,10 @@ import { listItems } from "@/lib/api/items.functions";
 
 type Goal = { amount: number | null; date: string | null };
 
-function loadGoal(tenantId: string): Goal {
+function loadGoal(tenantId: string, year: number): Goal {
   if (typeof window === "undefined") return { amount: null, date: null };
   try {
-    const raw = localStorage.getItem(`savings-goal:${tenantId}`);
+    const raw = localStorage.getItem(`savings-goal:${tenantId}:${year}`);
     if (!raw) return { amount: null, date: null };
     const v = JSON.parse(raw) as Goal;
     return { amount: v.amount ?? null, date: v.date ?? null };
@@ -51,16 +51,17 @@ function darkColorFor(id: string, idx: number): string {
 
 export function SavingsChart({ tenantId }: { tenantId: string }) {
   const { t, i18n } = useTranslation();
+  const [year, setYear] = useState<number>(() => new Date().getFullYear());
   const [goal, setGoal] = useState<Goal>({ amount: null, date: null });
 
   useEffect(() => {
-    setGoal(loadGoal(tenantId));
-  }, [tenantId]);
+    setGoal(loadGoal(tenantId, year));
+  }, [tenantId, year]);
 
   const saveGoal = (g: Goal) => {
     setGoal(g);
     try {
-      localStorage.setItem(`savings-goal:${tenantId}`, JSON.stringify(g));
+      localStorage.setItem(`savings-goal:${tenantId}:${year}`, JSON.stringify(g));
     } catch {
       /* ignore */
     }
