@@ -235,7 +235,12 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     fontSize: 12,
                   }}
                   labelFormatter={(v) => monthFmt.format(new Date(Number(v)))}
-                  formatter={(v: number, name: string) => [fmt(Number(v)), itemTitle(String(name))]}
+                  formatter={(v: number, name: string) => {
+                    const key = String(name);
+                    if (key === "__actual") return [fmt(Number(v)), "Toteuma (yht.)"];
+                    if (key === "target") return [fmt(Number(v)), t("workspace.goalAmount")];
+                    return [fmt(Number(v)), itemTitle(key)];
+                  }}
                 />
                 {itemKeys.map((id, idx) => {
                   const c = colorFor(id, idx);
