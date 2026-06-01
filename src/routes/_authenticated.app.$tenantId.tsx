@@ -432,10 +432,18 @@ function MonthlyEntries({
               ›
             </button>
           </div>
-          <span>
-            {t("workspace.chartTotal")}:{" "}
-            <span className="font-mono font-semibold text-foreground">{fmt(yearTotal)}</span>
-          </span>
+          <label className="flex items-center gap-1">
+            <span>{t("workspace.chartTotal")}:</span>
+            <TotalEditor
+              total={yearTotal}
+              onCommit={(newTotal) => {
+                const per = Math.round((newTotal / 12) * 100) / 100;
+                for (const m of months) {
+                  upsertM.mutate({ month: m.iso, amount: per });
+                }
+              }}
+            />
+          </label>
         </div>
       </div>
 
