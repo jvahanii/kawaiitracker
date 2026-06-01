@@ -325,7 +325,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                 </span>
               ))}
             </div>
-          ) : null}
+
         </>
       )}
     </section>
