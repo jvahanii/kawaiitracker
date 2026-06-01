@@ -95,6 +95,7 @@ const updateInput = z.object({
   status: z.enum(["todo", "in_progress", "done"]).optional(),
   assigneeId: z.string().uuid().nullable().optional(),
   notes: z.string().max(20_000).optional(),
+  amount: z.number().min(-1_000_000_000).max(1_000_000_000).nullable().optional(),
 });
 
 export const updateItem = createServerFn({ method: "POST" })
@@ -116,6 +117,8 @@ export const updateItem = createServerFn({ method: "POST" })
     if (data.status !== undefined) { sets.push(`status = $${p++}`); params.push(data.status); }
     if (data.assigneeId !== undefined) { sets.push(`assignee_id = $${p++}`); params.push(data.assigneeId); }
     if (data.notes !== undefined) { sets.push(`notes = $${p++}`); params.push(data.notes); }
+    if (data.amount !== undefined) { sets.push(`amount = $${p++}`); params.push(data.amount); }
+
     if (sets.length === 0) return { ok: true };
     sets.push(`updated_at = now()`);
     params.push(data.id, data.tenantId);
