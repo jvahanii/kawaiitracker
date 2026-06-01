@@ -165,7 +165,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     }
 
     return { chartData: rows, itemKeys: ids };
-  }, [entries, goal.amount, goal.date]);
+  }, [entries, goal.amount, goal.date, year]);
 
 
   const itemTitle = (id: string) => items.find((i) => i.id === id)?.title ?? "—";
