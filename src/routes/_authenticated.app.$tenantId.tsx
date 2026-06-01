@@ -485,12 +485,43 @@ function MonthlyEntries({
 
 function MonthCell({
   label,
-  value,
-  onCommit,
+  amount,
+  actual,
+  onCommitAmount,
+  onCommitActual,
 }: {
   label: string;
+  amount: number | null;
+  actual: number | null;
+  onCommitAmount: (amount: number) => void;
+  onCommitActual: (actual: number) => void;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col items-stretch gap-1 rounded-md border border-border bg-background px-1.5 py-1">
+      <span className="truncate text-center text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label.slice(0, 3)}
+      </span>
+      <NumberInput value={amount} onCommit={onCommitAmount} placeholder="plan" />
+      <NumberInput
+        value={actual}
+        onCommit={onCommitActual}
+        placeholder="toteuma"
+        className="text-primary"
+      />
+    </div>
+  );
+}
+
+function NumberInput({
+  value,
+  onCommit,
+  placeholder,
+  className = "",
+}: {
   value: number | null;
-  onCommit: (amount: number) => void;
+  onCommit: (n: number) => void;
+  placeholder?: string;
+  className?: string;
 }) {
   const [text, setText] = useState(value === null ? "" : String(value));
   const [focused, setFocused] = useState(false);
@@ -500,30 +531,25 @@ function MonthCell({
   }, [value, focused]);
 
   return (
-    <div className="flex min-w-0 flex-col items-stretch gap-1 rounded-md border border-border bg-background px-1.5 py-1">
-      <span className="truncate text-center text-[10px] uppercase tracking-wide text-muted-foreground">
-        {label.slice(0, 3)}
-      </span>
-      <input
-        type="number"
-        inputMode="decimal"
-        step="0.01"
-        value={text}
-        onFocus={() => setFocused(true)}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => {
-          setFocused(false);
-          const trimmed = text.trim();
-          if (trimmed === "" && value === null) return;
-          const parsed = Number(trimmed.replace(",", "."));
-          if (!Number.isFinite(parsed)) return;
-          if (parsed === (value ?? 0)) return;
-          onCommit(parsed);
-        }}
-        placeholder="0"
-        className="h-7 w-full min-w-0 bg-transparent text-center font-mono text-xs outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-      />
-    </div>
+    <input
+      type="number"
+      inputMode="decimal"
+      step="0.01"
+      value={text}
+      onFocus={() => setFocused(true)}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        setFocused(false);
+        const trimmed = text.trim();
+        if (trimmed === "" && value === null) return;
+        const parsed = Number(trimmed.replace(",", "."));
+        if (!Number.isFinite(parsed)) return;
+        if (parsed === (value ?? 0)) return;
+        onCommit(parsed);
+      }}
+      placeholder={placeholder ?? "0"}
+      className={`h-6 w-full min-w-0 bg-transparent text-center font-mono text-xs outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${className}`}
+    />
   );
 }
 
