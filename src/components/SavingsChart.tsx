@@ -203,7 +203,26 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         </span>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-3 text-xs">
+      <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setYear((y) => y - 1)}
+            className="rounded px-2 py-0.5 hover:bg-accent"
+            aria-label="Previous year"
+          >
+            ‹
+          </button>
+          <span className="font-mono font-semibold text-foreground">{year}</span>
+          <button
+            type="button"
+            onClick={() => setYear((y) => y + 1)}
+            className="rounded px-2 py-0.5 hover:bg-accent"
+            aria-label="Next year"
+          >
+            ›
+          </button>
+        </div>
         <label className="flex items-center gap-1">
           <span className="text-muted-foreground">{t("workspace.goalAmount")}</span>
           <input
@@ -224,6 +243,8 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
           <input
             type="date"
             value={goal.date ?? ""}
+            min={`${year}-01-01`}
+            max={`${year}-12-31`}
             onChange={(e) => saveGoal({ ...goal, date: e.target.value || null })}
             className="input h-7 py-0 text-xs"
           />
