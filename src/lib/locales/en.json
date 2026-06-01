@@ -80,6 +80,8 @@
     "monthAmount": "Month",
     "monthlyEntries": "Monthly entries",
     "noEntries": "No monthly entries yet.",
+    "savingsTableTitle": "Savings table",
+    "addMonth": "Add month",
     "goalAmount": "Goal (€)",
     "goalDate": "Target date",
     "goalDateShort": "Target",

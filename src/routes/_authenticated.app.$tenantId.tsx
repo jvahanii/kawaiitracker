@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SavingsChart } from "@/components/SavingsChart";
+import { SavingsTable } from "@/components/SavingsTable";
 
 import { logout } from "@/lib/api/auth.functions";
 import { listMyTenants, listTenantMembers } from "@/lib/api/tenants.functions";
