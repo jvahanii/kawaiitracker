@@ -352,11 +352,6 @@ function ItemDetail({
   );
 }
 
-function currentMonthIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-}
-
 function MonthlyEntries({
   tenantId,
   itemId,
@@ -370,7 +365,6 @@ function MonthlyEntries({
   const qc = useQueryClient();
   const listFn = useServerFn(listEntriesForItem);
   const upsertFn = useServerFn(upsertEntry);
-  const deleteFn = useServerFn(deleteEntry);
 
   const entriesQ = useQuery({
     queryKey: ["entries-item", tenantId, itemId],
@@ -379,6 +373,7 @@ function MonthlyEntries({
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["entries-item", tenantId, itemId] });
+    qc.invalidateQueries({ queryKey: ["entries", tenantId] });
     onChanged();
   };
 
@@ -387,87 +382,121 @@ function MonthlyEntries({
       upsertFn({ data: { tenantId, itemId, ...v } }),
     onSuccess: invalidate,
   });
-  const deleteM = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { tenantId, id } }),
-    onSuccess: invalidate,
-  });
-
-  const [month, setMonth] = useState(currentMonthIso().slice(0, 7));
-  const [amount, setAmount] = useState("");
 
   const entries = entriesQ.data ?? [];
-  const total = entries.reduce((s, e) => s + e.amount, 0);
+  const byMonth = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of entries) m.set(e.month, e.amount);
+    return m;
+  }, [entries]);
+
+  const [year, setYear] = useState(new Date().getFullYear());
+
+  const months = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => ({
+      iso: `${year}-${String(i + 1).padStart(2, "0")}-01`,
+      idx: i,
+    }));
+  }, [year]);
+
+  const monthLabel = useMemo(
+    () => new Intl.DateTimeFormat(i18n.language, { month: "long" }),
+    [i18n.language],
+  );
   const fmt = (n: number) =>
     new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
-  const monthFmt = new Intl.DateTimeFormat(i18n.language, { year: "numeric", month: "long" });
+
+  const yearTotal = months.reduce((s, m) => s + (byMonth.get(m.iso) ?? 0), 0);
 
   return (
     <div className="mt-6 rounded-md border border-border p-3">
-      <div className="mb-2 flex items-baseline justify-between">
+      <div className="mb-3 flex items-baseline justify-between">
         <h3 className="text-sm font-semibold">{t("workspace.monthlyEntries")}</h3>
-        <span className="text-xs text-muted-foreground">
-          {t("workspace.chartTotal")}:{" "}
-          <span className="font-mono font-semibold text-foreground">{fmt(total)}</span>
-        </span>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setYear((y) => y - 1)}
+              className="rounded px-2 py-0.5 hover:bg-accent"
+              aria-label="Previous year"
+            >
+              ‹
+            </button>
+            <span className="font-mono font-semibold text-foreground">{year}</span>
+            <button
+              type="button"
+              onClick={() => setYear((y) => y + 1)}
+              className="rounded px-2 py-0.5 hover:bg-accent"
+              aria-label="Next year"
+            >
+              ›
+            </button>
+          </div>
+          <span>
+            {t("workspace.chartTotal")}:{" "}
+            <span className="font-mono font-semibold text-foreground">{fmt(yearTotal)}</span>
+          </span>
+        </div>
       </div>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const parsed = Number(amount.replace(",", "."));
-          if (!month || !Number.isFinite(parsed)) return;
-          upsertM.mutate({ month, amount: parsed });
-          setAmount("");
-        }}
-        className="mb-3 flex flex-wrap gap-2"
-      >
-        <input
-          type="month"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-          className="input h-8 py-0 text-sm"
-        />
-        <input
-          type="number"
-          inputMode="decimal"
-          step="0.01"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder={t("workspace.amountPlaceholder")}
-          className="input h-8 w-32 py-0 text-sm"
-        />
-        <button
-          type="submit"
-          className="rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
-        >
-          {t("common.add")}
-        </button>
-      </form>
 
       {entriesQ.isLoading ? (
         <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
-      ) : entries.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{t("workspace.noEntries")}</p>
       ) : (
-        <ul className="divide-y divide-border">
-          {entries.map((e: EntryRow) => (
-            <li key={e.id} className="flex items-center justify-between py-1.5 text-sm">
-              <span className="text-muted-foreground">{monthFmt.format(new Date(e.month))}</span>
-              <span className="flex items-center gap-3">
-                <span className="font-mono font-medium">{fmt(e.amount)}</span>
-                <button
-                  type="button"
-                  onClick={() => deleteM.mutate(e.id)}
-                  className="text-xs text-destructive hover:underline"
-                >
-                  {t("common.delete")}
-                </button>
-              </span>
-            </li>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {months.map(({ iso, idx }) => (
+            <MonthCell
+              key={iso}
+              label={monthLabel.format(new Date(2000, idx, 1))}
+              value={byMonth.get(iso) ?? null}
+              onCommit={(amount) => upsertM.mutate({ month: iso, amount })}
+            />
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
 }
+
+function MonthCell({
+  label,
+  value,
+  onCommit,
+}: {
+  label: string;
+  value: number | null;
+  onCommit: (amount: number) => void;
+}) {
+  const [text, setText] = useState(value === null ? "" : String(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(value === null ? "" : String(value));
+  }, [value, focused]);
+
+  return (
+    <label className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5">
+      <span className="w-20 shrink-0 text-xs capitalize text-muted-foreground">{label}</span>
+      <input
+        type="number"
+        inputMode="decimal"
+        step="0.01"
+        value={text}
+        onFocus={() => setFocused(true)}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => {
+          setFocused(false);
+          const trimmed = text.trim();
+          if (trimmed === "" && value === null) return;
+          const parsed = Number(trimmed.replace(",", "."));
+          if (!Number.isFinite(parsed)) return;
+          if (parsed === (value ?? 0)) return;
+          onCommit(parsed);
+        }}
+        placeholder="0,00"
+        className="h-7 w-full bg-transparent text-right font-mono text-sm outline-none"
+      />
+    </label>
+  );
+}
+
 
