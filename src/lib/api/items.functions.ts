@@ -30,6 +30,7 @@ export type ItemRow = {
   assigneeId: string | null;
   assigneeName: string | null;
   notes: string;
+  amount: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -46,11 +47,12 @@ export const listItems = createServerFn({ method: "GET" })
       assignee_id: string | null;
       assignee_name: string | null;
       notes: string;
+      amount: string | null;
       created_at: string;
       updated_at: string;
     }>(
       `select i.id, i.title, i.status, i.assignee_id, u.display_name as assignee_name,
-              i.notes, i.created_at, i.updated_at
+              i.notes, i.amount, i.created_at, i.updated_at
          from items i
          left join app_users u on u.id = i.assignee_id
         where i.tenant_id = $1
@@ -64,10 +66,12 @@ export const listItems = createServerFn({ method: "GET" })
       assigneeId: r.assignee_id,
       assigneeName: r.assignee_name,
       notes: r.notes,
+      amount: r.amount === null ? null : Number(r.amount),
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     }));
   });
+
 
 export const createItem = createServerFn({ method: "POST" })
   .inputValidator(z.object({ tenantId: z.string().uuid(), title: z.string().min(1).max(200) }))
@@ -91,6 +95,7 @@ const updateInput = z.object({
   status: z.enum(["todo", "in_progress", "done"]).optional(),
   assigneeId: z.string().uuid().nullable().optional(),
   notes: z.string().max(20_000).optional(),
+  amount: z.number().min(-1_000_000_000).max(1_000_000_000).nullable().optional(),
 });
 
 export const updateItem = createServerFn({ method: "POST" })
@@ -112,6 +117,8 @@ export const updateItem = createServerFn({ method: "POST" })
     if (data.status !== undefined) { sets.push(`status = $${p++}`); params.push(data.status); }
     if (data.assigneeId !== undefined) { sets.push(`assignee_id = $${p++}`); params.push(data.assigneeId); }
     if (data.notes !== undefined) { sets.push(`notes = $${p++}`); params.push(data.notes); }
+    if (data.amount !== undefined) { sets.push(`amount = $${p++}`); params.push(data.amount); }
+
     if (sets.length === 0) return { ok: true };
     sets.push(`updated_at = now()`);
     params.push(data.id, data.tenantId);

@@ -72,6 +72,9 @@
     "assignee": "Assignee",
     "unassigned": "Unassigned",
     "notesPlaceholder": "Notes…",
+    "amount": "Savings amount (€)",
+    "amountPlaceholder": "0.00",
+
     "updated": "Updated {{when}}",
     "confirmDelete": "Delete this entry?"
   }

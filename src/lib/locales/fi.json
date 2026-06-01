@@ -72,6 +72,9 @@
     "assignee": "Vastuuhenkilö",
     "unassigned": "Ei vastuuhenkilöä",
     "notesPlaceholder": "Muistiinpanot…",
+    "amount": "Säästöjen määrä (€)",
+    "amountPlaceholder": "0,00",
+
     "updated": "Päivitetty {{when}}",
     "confirmDelete": "Poistetaanko tämä?"
   }
