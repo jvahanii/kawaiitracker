@@ -76,28 +76,37 @@ export function SavingsChart({ items, tenantId }: { items: ItemRow[]; tenantId: 
     return data;
   }, [items, goal.date]);
 
-  // Projection line: from first point to (goal.date, goal.amount)
-  const projection = useMemo(() => {
-    if (!goal.amount || !goal.date) return [];
+  // Target line: linear from (tStart, 0) to (goal.date, goal.amount)
+  const targetLine = useMemo(() => {
+    if (!goal.amount || !goal.date) return null;
     const tEnd = new Date(goal.date).getTime();
-    if (Number.isNaN(tEnd)) return [];
+    if (Number.isNaN(tEnd)) return null;
     const tStart = series.length > 0 ? series[0].t : Date.now();
-    if (tEnd <= tStart) return [];
-    return [
-      { t: tStart, target: 0 },
-      { t: tEnd, target: goal.amount },
-    ];
+    if (tEnd <= tStart) return null;
+    return { tStart, tEnd, amount: goal.amount };
   }, [goal, series]);
 
   const chartData = useMemo(() => {
     const map = new Map<number, { t: number; cumulative?: number; target?: number }>();
     for (const p of series) map.set(p.t, { t: p.t, cumulative: p.cumulative });
-    for (const p of projection) {
-      const existing = map.get(p.t) ?? { t: p.t };
-      map.set(p.t, { ...existing, target: p.target });
+    if (targetLine) {
+      map.set(targetLine.tStart, { ...(map.get(targetLine.tStart) ?? { t: targetLine.tStart }), target: 0 });
+      map.set(targetLine.tEnd, { ...(map.get(targetLine.tEnd) ?? { t: targetLine.tEnd }), target: targetLine.amount });
     }
-    return Array.from(map.values()).sort((a, b) => a.t - b.t);
-  }, [series, projection]);
+    const rows = Array.from(map.values()).sort((a, b) => a.t - b.t);
+    // Interpolate target across every point so the line draws continuously
+    if (targetLine) {
+      const { tStart, tEnd, amount } = targetLine;
+      const span = tEnd - tStart;
+      for (const r of rows) {
+        if (r.target === undefined && r.t >= tStart && r.t <= tEnd) {
+          r.target = ((r.t - tStart) / span) * amount;
+        }
+      }
+    }
+    return rows;
+  }, [series, targetLine]);
+
 
   const dateFmt = new Intl.DateTimeFormat(i18n.language, {
     month: "short",
@@ -222,13 +231,6 @@ export function SavingsChart({ items, tenantId }: { items: ItemRow[]; tenantId: 
                     fontSize: 11,
                     position: "top",
                   }}
-                />
-              ) : null}
-              {goal.amount ? (
-                <ReferenceLine
-                  y={goal.amount}
-                  stroke="hsl(var(--destructive))"
-                  strokeDasharray="2 4"
                 />
               ) : null}
             </ComposedChart>
