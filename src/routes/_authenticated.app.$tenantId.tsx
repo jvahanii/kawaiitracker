@@ -434,13 +434,25 @@ function MonthlyEntries({
             </button>
           </div>
           <label className="flex items-center gap-1">
-            <span>{t("workspace.chartTotal")}:</span>
+            <span>Suunniteltu:</span>
             <TotalEditor
               total={yearTotal}
               onCommit={(newTotal) => {
                 const per = Math.round((newTotal / 12) * 100) / 100;
                 for (const m of months) {
                   upsertM.mutate({ month: m.iso, amount: per });
+                }
+              }}
+            />
+          </label>
+          <label className="flex items-center gap-1">
+            <span>Toteuma:</span>
+            <TotalEditor
+              total={actualTotal}
+              onCommit={(newTotal) => {
+                const per = Math.round((newTotal / 12) * 100) / 100;
+                for (const m of months) {
+                  upsertM.mutate({ month: m.iso, actual: per });
                 }
               }}
             />
@@ -452,14 +464,19 @@ function MonthlyEntries({
         <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
       ) : (
         <div className="grid grid-cols-12 gap-1">
-          {months.map(({ iso, idx }) => (
-            <MonthCell
-              key={iso}
-              label={monthLabel.format(new Date(2000, idx, 1))}
-              value={byMonth.get(iso) ?? null}
-              onCommit={(amount) => upsertM.mutate({ month: iso, amount })}
-            />
-          ))}
+          {months.map(({ iso, idx }) => {
+            const cell = byMonth.get(iso);
+            return (
+              <MonthCell
+                key={iso}
+                label={monthLabel.format(new Date(2000, idx, 1))}
+                amount={cell?.amount ?? null}
+                actual={cell?.actual ?? null}
+                onCommitAmount={(amount) => upsertM.mutate({ month: iso, amount })}
+                onCommitActual={(actual) => upsertM.mutate({ month: iso, actual })}
+              />
+            );
+          })}
         </div>
       )}
     </div>
