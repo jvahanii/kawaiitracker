@@ -275,7 +275,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     type="linear"
                     dataKey="target"
                     name="target"
-                    stroke="hsl(var(--destructive))"
+                    stroke="#ef4444"
                     strokeDasharray="5 4"
                     strokeWidth={2}
                     dot={false}
