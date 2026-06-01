@@ -93,9 +93,8 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
 
   // Build cumulative-per-item series across all months present in entries
   const { chartData, itemKeys } = useMemo(() => {
-    const monthsSet = new Set<number>();
-    for (const e of entries) monthsSet.add(monthKey(new Date(e.month)));
-    const months = Array.from(monthsSet).sort((a, b) => a - b);
+    const months: number[] = [];
+    for (let m = 0; m < 12; m++) months.push(monthKey(new Date(year, m, 1)));
 
     // per-item per-month sum (planned + actual) and per-month total actual
     const perItemMonth = new Map<string, Map<number, number>>();
