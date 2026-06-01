@@ -30,6 +30,7 @@ export type ItemRow = {
   assigneeId: string | null;
   assigneeName: string | null;
   notes: string;
+  amount: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -46,11 +47,12 @@ export const listItems = createServerFn({ method: "GET" })
       assignee_id: string | null;
       assignee_name: string | null;
       notes: string;
+      amount: string | null;
       created_at: string;
       updated_at: string;
     }>(
       `select i.id, i.title, i.status, i.assignee_id, u.display_name as assignee_name,
-              i.notes, i.created_at, i.updated_at
+              i.notes, i.amount, i.created_at, i.updated_at
          from items i
          left join app_users u on u.id = i.assignee_id
         where i.tenant_id = $1
@@ -64,10 +66,12 @@ export const listItems = createServerFn({ method: "GET" })
       assigneeId: r.assignee_id,
       assigneeName: r.assignee_name,
       notes: r.notes,
+      amount: r.amount === null ? null : Number(r.amount),
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     }));
   });
+
 
 export const createItem = createServerFn({ method: "POST" })
   .inputValidator(z.object({ tenantId: z.string().uuid(), title: z.string().min(1).max(200) }))
