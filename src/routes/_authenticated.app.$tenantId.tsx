@@ -148,9 +148,8 @@ function WorkspacePage() {
         </div>
       </header>
 
-      <SavingsChart tenantId={tenantId} />
-
       <div className="flex min-h-0 flex-1">
+
 
         {/* Left pane */}
         <aside className="flex w-96 flex-col border-r border-border">
@@ -214,29 +213,32 @@ function WorkspacePage() {
         </aside>
 
         {/* Right pane */}
-        <main className="min-h-0 flex-1 overflow-y-auto">
-          {selected ? (
-            <ItemDetail
-              key={selected.id}
-              tenantId={tenantId}
-              item={selected}
-              members={membersQ.data ?? []}
-              onSave={async (patch) => {
-                await updateFn({ data: { tenantId, id: selected.id, ...patch } });
-                invalidate();
-              }}
-              onEntriesChanged={() =>
-                qc.invalidateQueries({ queryKey: ["entries", tenantId] })
-              }
-              onDelete={() => deleteM.mutate(selected.id)}
-            />
-
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              {t("workspace.selectOrCreate")}
-            </div>
-          )}
+        <main className="flex min-h-0 flex-1 flex-col">
+          <SavingsChart tenantId={tenantId} />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {selected ? (
+              <ItemDetail
+                key={selected.id}
+                tenantId={tenantId}
+                item={selected}
+                members={membersQ.data ?? []}
+                onSave={async (patch) => {
+                  await updateFn({ data: { tenantId, id: selected.id, ...patch } });
+                  invalidate();
+                }}
+                onEntriesChanged={() =>
+                  qc.invalidateQueries({ queryKey: ["entries", tenantId] })
+                }
+                onDelete={() => deleteM.mutate(selected.id)}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                {t("workspace.selectOrCreate")}
+              </div>
+            )}
+          </div>
         </main>
+
       </div>
     </div>
   );
