@@ -78,6 +78,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   const entries = entriesQ.data ?? [];
   const items = itemsQ.data ?? [];
   const total = useMemo(() => entries.reduce((s, e) => s + e.amount, 0), [entries]);
+  const actualTotal = useMemo(() => entries.reduce((s, e) => s + (e.actual ?? 0), 0), [entries]);
 
   // Build cumulative-per-item series across all months present in entries
   const { chartData, itemKeys } = useMemo(() => {
@@ -85,8 +86,9 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     for (const e of entries) monthsSet.add(monthKey(new Date(e.month)));
     const months = Array.from(monthsSet).sort((a, b) => a - b);
 
-    // per-item per-month sum
+    // per-item per-month sum (planned) and per-month total actual
     const perItemMonth = new Map<string, Map<number, number>>();
+    const actualPerMonth = new Map<number, number>();
     for (const e of entries) {
       const k = monthKey(new Date(e.month));
       let m = perItemMonth.get(e.itemId);
@@ -95,10 +97,12 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         perItemMonth.set(e.itemId, m);
       }
       m.set(k, (m.get(k) ?? 0) + e.amount);
+      actualPerMonth.set(k, (actualPerMonth.get(k) ?? 0) + (e.actual ?? 0));
     }
 
     const ids = Array.from(perItemMonth.keys());
     const cum = new Map<string, number>(ids.map((id) => [id, 0]));
+    let cumActual = 0;
     const rows: Array<Record<string, number>> = months.map((tm) => {
       const row: Record<string, number> = { t: tm };
       for (const id of ids) {
@@ -106,6 +110,8 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         cum.set(id, (cum.get(id) ?? 0) + add);
         row[id] = cum.get(id) ?? 0;
       }
+      cumActual += actualPerMonth.get(tm) ?? 0;
+      row.__actual = cumActual;
       return row;
     });
 
@@ -155,6 +161,10 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         <span className="text-xs text-muted-foreground">
           {t("workspace.chartTotal")}:{" "}
           <span className="font-mono font-semibold text-foreground">{fmt(total)}</span>
+          <span className="ml-2">
+            · Toteuma:{" "}
+            <span className="font-mono font-semibold text-foreground">{fmt(actualTotal)}</span>
+          </span>
           {pct !== null ? (
             <span className="ml-2">
               ({pct}% / {fmt(goal.amount ?? 0)})
@@ -225,7 +235,12 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     fontSize: 12,
                   }}
                   labelFormatter={(v) => monthFmt.format(new Date(Number(v)))}
-                  formatter={(v: number, name: string) => [fmt(Number(v)), itemTitle(String(name))]}
+                  formatter={(v: number, name: string) => {
+                    const key = String(name);
+                    if (key === "__actual") return [fmt(Number(v)), "Toteuma (yht.)"];
+                    if (key === "target") return [fmt(Number(v)), t("workspace.goalAmount")];
+                    return [fmt(Number(v)), itemTitle(key)];
+                  }}
                 />
                 {itemKeys.map((id, idx) => {
                   const c = colorFor(id, idx);
@@ -283,11 +298,23 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     isAnimationActive={false}
                   />
                 ) : null}
+                <Line
+                  type="monotone"
+                  dataKey="__actual"
+                  name="__actual"
+                  stroke="hsl(var(--foreground))"
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: "hsl(var(--foreground))" }}
+                  isAnimationActive={false}
+                />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-          {itemKeys.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block h-0.5 w-4 bg-foreground" />
+              <span className="text-muted-foreground">Toteuma (yht.)</span>
+            </span>
               {itemKeys.map((id, idx) => (
                 <span key={id} className="inline-flex items-center gap-1">
                   <span
@@ -298,7 +325,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                 </span>
               ))}
             </div>
-          ) : null}
+
         </>
       )}
     </section>
