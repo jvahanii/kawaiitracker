@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SavingsChart } from "@/components/SavingsChart";
-import { SavingsTable } from "@/components/SavingsTable";
 
 import { logout } from "@/lib/api/auth.functions";
 import { listMyTenants, listTenantMembers } from "@/lib/api/tenants.functions";
@@ -19,10 +18,8 @@ import {
   type ItemStatus,
 } from "@/lib/api/items.functions";
 import {
-  deleteEntry,
   listEntriesForItem,
   upsertEntry,
-  type EntryRow,
 } from "@/lib/api/entries.functions";
 
 
@@ -152,7 +149,6 @@ function WorkspacePage() {
       </header>
 
       <SavingsChart tenantId={tenantId} />
-      <SavingsTable tenantId={tenantId} />
 
       <div className="flex min-h-0 flex-1">
 
