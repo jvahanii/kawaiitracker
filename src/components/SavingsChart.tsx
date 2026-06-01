@@ -82,7 +82,11 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short", year: "2-digit" });
 
-  const entries = entriesQ.data ?? [];
+  const allEntries = entriesQ.data ?? [];
+  const entries = useMemo(
+    () => allEntries.filter((e) => new Date(e.month).getFullYear() === year),
+    [allEntries, year],
+  );
   const items = itemsQ.data ?? [];
   const total = useMemo(() => entries.reduce((s, e) => s + e.amount, 0), [entries]);
   const actualTotal = useMemo(() => entries.reduce((s, e) => s + (e.actual ?? 0), 0), [entries]);
