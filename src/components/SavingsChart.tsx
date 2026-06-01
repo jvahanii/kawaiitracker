@@ -298,11 +298,23 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     isAnimationActive={false}
                   />
                 ) : null}
+                <Line
+                  type="monotone"
+                  dataKey="__actual"
+                  name="__actual"
+                  stroke="hsl(var(--foreground))"
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: "hsl(var(--foreground))" }}
+                  isAnimationActive={false}
+                />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-          {itemKeys.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block h-0.5 w-4 bg-foreground" />
+              <span className="text-muted-foreground">Toteuma (yht.)</span>
+            </span>
               {itemKeys.map((id, idx) => (
                 <span key={id} className="inline-flex items-center gap-1">
                   <span
