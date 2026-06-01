@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Bar,
   CartesianGrid,
@@ -12,7 +14,7 @@ import {
   YAxis,
 } from "recharts";
 
-import type { ItemRow } from "@/lib/api/items.functions";
+import { listAllEntries } from "@/lib/api/entries.functions";
 
 type Goal = { amount: number | null; date: string | null };
 
@@ -28,7 +30,11 @@ function loadGoal(tenantId: string): Goal {
   }
 }
 
-export function SavingsChart({ items, tenantId }: { items: ItemRow[]; tenantId: string }) {
+function monthKey(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+}
+
+export function SavingsChart({ tenantId }: { tenantId: string }) {
   const { t, i18n } = useTranslation();
   const [goal, setGoal] = useState<Goal>({ amount: null, date: null });
 
@@ -45,56 +51,61 @@ export function SavingsChart({ items, tenantId }: { items: ItemRow[]; tenantId: 
     }
   };
 
+  const listFn = useServerFn(listAllEntries);
+  const entriesQ = useQuery({
+    queryKey: ["entries", tenantId],
+    queryFn: () => listFn({ data: { tenantId } }),
+  });
+
   const fmt = (n: number) =>
     new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
+  const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short", year: "2-digit" });
 
-  const total = useMemo(
-    () => items.reduce((s, i) => s + (i.amount ?? 0), 0),
-    [items],
-  );
+  const entries = entriesQ.data ?? [];
+  const total = useMemo(() => entries.reduce((s, e) => s + e.amount, 0), [entries]);
 
-  // Build cumulative time series from item createdAt + amount
+  // Aggregate per month → cumulative across months
   const series = useMemo(() => {
-    const points = items
-      .filter((i) => i.amount !== null && i.amount !== 0)
-      .map((i) => ({ t: new Date(i.createdAt).getTime(), amount: Number(i.amount) }))
-      .sort((a, b) => a.t - b.t);
-
-    let cum = 0;
-    const data = points.map((p) => {
-      cum += p.amount;
-      return { t: p.t, cumulative: cum };
-    });
-
-    // Add target endpoint if goal date set
-    if (goal.date) {
-      const tEnd = new Date(goal.date).getTime();
-      if (!Number.isNaN(tEnd) && (data.length === 0 || tEnd > data[data.length - 1].t)) {
-        data.push({ t: tEnd, cumulative: cum });
-      }
+    const byMonth = new Map<number, number>();
+    for (const e of entries) {
+      const k = monthKey(new Date(e.month));
+      byMonth.set(k, (byMonth.get(k) ?? 0) + e.amount);
     }
-    return data;
-  }, [items, goal.date]);
+    const months = Array.from(byMonth.entries()).sort((a, b) => a[0] - b[0]);
+    let cum = 0;
+    return months.map(([t, amount]) => {
+      cum += amount;
+      return { t, amount, cumulative: cum };
+    });
+  }, [entries]);
 
-  // Target line: linear from (tStart, 0) to (goal.date, goal.amount)
   const targetLine = useMemo(() => {
     if (!goal.amount || !goal.date) return null;
-    const tEnd = new Date(goal.date).getTime();
+    const tEnd = monthKey(new Date(goal.date));
     if (Number.isNaN(tEnd)) return null;
-    const tStart = series.length > 0 ? series[0].t : Date.now();
+    const tStart = series.length > 0 ? series[0].t : monthKey(new Date());
     if (tEnd <= tStart) return null;
     return { tStart, tEnd, amount: goal.amount };
   }, [goal, series]);
 
   const chartData = useMemo(() => {
-    const map = new Map<number, { t: number; cumulative?: number; target?: number }>();
-    for (const p of series) map.set(p.t, { t: p.t, cumulative: p.cumulative });
+    const map = new Map<
+      number,
+      { t: number; amount?: number; cumulative?: number; target?: number }
+    >();
+    for (const p of series)
+      map.set(p.t, { t: p.t, amount: p.amount, cumulative: p.cumulative });
     if (targetLine) {
-      map.set(targetLine.tStart, { ...(map.get(targetLine.tStart) ?? { t: targetLine.tStart }), target: 0 });
-      map.set(targetLine.tEnd, { ...(map.get(targetLine.tEnd) ?? { t: targetLine.tEnd }), target: targetLine.amount });
+      map.set(targetLine.tStart, {
+        ...(map.get(targetLine.tStart) ?? { t: targetLine.tStart }),
+        target: 0,
+      });
+      map.set(targetLine.tEnd, {
+        ...(map.get(targetLine.tEnd) ?? { t: targetLine.tEnd }),
+        target: targetLine.amount,
+      });
     }
     const rows = Array.from(map.values()).sort((a, b) => a.t - b.t);
-    // Interpolate target across every point so the line draws continuously
     if (targetLine) {
       const { tStart, tEnd, amount } = targetLine;
       const span = tEnd - tStart;
@@ -106,12 +117,6 @@ export function SavingsChart({ items, tenantId }: { items: ItemRow[]; tenantId: 
     }
     return rows;
   }, [series, targetLine]);
-
-
-  const dateFmt = new Intl.DateTimeFormat(i18n.language, {
-    month: "short",
-    day: "numeric",
-  });
 
   const today = Date.now();
   const daysLeft =
@@ -183,7 +188,7 @@ export function SavingsChart({ items, tenantId }: { items: ItemRow[]; tenantId: 
                 domain={["dataMin", "dataMax"]}
                 scale="time"
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickFormatter={(v) => dateFmt.format(new Date(Number(v)))}
+                tickFormatter={(v) => monthFmt.format(new Date(Number(v)))}
               />
               <YAxis
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
@@ -198,17 +203,29 @@ export function SavingsChart({ items, tenantId }: { items: ItemRow[]; tenantId: 
                   borderRadius: 8,
                   fontSize: 12,
                 }}
-                labelFormatter={(v) => dateFmt.format(new Date(Number(v)))}
+                labelFormatter={(v) => monthFmt.format(new Date(Number(v)))}
                 formatter={(v: number, name: string) => [
                   fmt(Number(v)),
-                  name === "cumulative" ? t("workspace.chartTotal") : t("workspace.goalAmount"),
+                  name === "cumulative"
+                    ? t("workspace.chartTotal")
+                    : name === "amount"
+                    ? t("workspace.monthAmount")
+                    : t("workspace.goalAmount"),
                 ]}
               />
               <Bar
-                dataKey="cumulative"
+                dataKey="amount"
                 fill="hsl(var(--primary))"
                 radius={[6, 6, 0, 0]}
                 barSize={18}
+              />
+              <Line
+                type="monotone"
+                dataKey="cumulative"
+                stroke="hsl(var(--primary))"
+                strokeWidth={2}
+                dot={false}
+                isAnimationActive={false}
               />
               <Line
                 type="monotone"
@@ -222,7 +239,7 @@ export function SavingsChart({ items, tenantId }: { items: ItemRow[]; tenantId: 
               />
               {goal.date && !Number.isNaN(new Date(goal.date).getTime()) ? (
                 <ReferenceLine
-                  x={new Date(goal.date).getTime()}
+                  x={monthKey(new Date(goal.date))}
                   stroke="hsl(var(--destructive))"
                   strokeDasharray="2 4"
                   label={{
