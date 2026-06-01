@@ -161,6 +161,10 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         <span className="text-xs text-muted-foreground">
           {t("workspace.chartTotal")}:{" "}
           <span className="font-mono font-semibold text-foreground">{fmt(total)}</span>
+          <span className="ml-2">
+            · Toteuma:{" "}
+            <span className="font-mono font-semibold text-foreground">{fmt(actualTotal)}</span>
+          </span>
           {pct !== null ? (
             <span className="ml-2">
               ({pct}% / {fmt(goal.amount ?? 0)})
