@@ -42,6 +42,12 @@ function colorFor(id: string, idx: number): string {
   const hue = (h + idx * 47) % 360;
   return `oklch(0.72 0.15 ${hue})`;
 }
+function darkColorFor(id: string, idx: number): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360;
+  const hue = (h + idx * 47) % 360;
+  return `oklch(0.42 0.17 ${hue})`;
+}
 
 export function SavingsChart({ tenantId }: { tenantId: string }) {
   const { t, i18n } = useTranslation();
@@ -86,8 +92,9 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     for (const e of entries) monthsSet.add(monthKey(new Date(e.month)));
     const months = Array.from(monthsSet).sort((a, b) => a - b);
 
-    // per-item per-month sum (planned) and per-month total actual
+    // per-item per-month sum (planned + actual) and per-month total actual
     const perItemMonth = new Map<string, Map<number, number>>();
+    const perItemMonthActual = new Map<string, Map<number, number>>();
     const actualPerMonth = new Map<number, number>();
     for (const e of entries) {
       const k = monthKey(new Date(e.month));
@@ -97,11 +104,18 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         perItemMonth.set(e.itemId, m);
       }
       m.set(k, (m.get(k) ?? 0) + e.amount);
+      let ma = perItemMonthActual.get(e.itemId);
+      if (!ma) {
+        ma = new Map();
+        perItemMonthActual.set(e.itemId, ma);
+      }
+      ma.set(k, (ma.get(k) ?? 0) + (e.actual ?? 0));
       actualPerMonth.set(k, (actualPerMonth.get(k) ?? 0) + (e.actual ?? 0));
     }
 
     const ids = Array.from(perItemMonth.keys());
     const cum = new Map<string, number>(ids.map((id) => [id, 0]));
+    const cumA = new Map<string, number>(ids.map((id) => [id, 0]));
     let cumActual = 0;
     const rows: Array<Record<string, number>> = months.map((tm) => {
       const row: Record<string, number> = { t: tm };
@@ -109,6 +123,9 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         const add = perItemMonth.get(id)?.get(tm) ?? 0;
         cum.set(id, (cum.get(id) ?? 0) + add);
         row[id] = cum.get(id) ?? 0;
+        const addA = perItemMonthActual.get(id)?.get(tm) ?? 0;
+        cumA.set(id, (cumA.get(id) ?? 0) + addA);
+        row[`${id}__a`] = cumA.get(id) ?? 0;
       }
       cumActual += actualPerMonth.get(tm) ?? 0;
       row.__actual = cumActual;
@@ -239,7 +256,9 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     const key = String(name);
                     if (key === "__actual") return [fmt(Number(v)), "Toteuma (yht.)"];
                     if (key === "target") return [fmt(Number(v)), t("workspace.goalAmount")];
-                    return [fmt(Number(v)), itemTitle(key)];
+                    if (key.endsWith("__a"))
+                      return [fmt(Number(v)), `${itemTitle(key.slice(0, -3))} (toteuma)`];
+                    return [fmt(Number(v)), `${itemTitle(key)} (suunn.)`];
                   }}
                 />
                 {itemKeys.map((id, idx) => {
@@ -250,10 +269,28 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                       type="monotone"
                       dataKey={id}
                       name={id}
-                      stackId="cfd"
+                      stackId="plan"
                       stroke={c}
                       fill={c}
-                      fillOpacity={0.55}
+                      fillOpacity={0.35}
+                      strokeWidth={1}
+                      strokeDasharray="3 3"
+                      isAnimationActive={false}
+                    />
+                  );
+                })}
+                {itemKeys.map((id, idx) => {
+                  const c = darkColorFor(id, idx);
+                  return (
+                    <Area
+                      key={`${id}__a`}
+                      type="monotone"
+                      dataKey={`${id}__a`}
+                      name={`${id}__a`}
+                      stackId="actual"
+                      stroke={c}
+                      fill={c}
+                      fillOpacity={0.85}
                       strokeWidth={1.5}
                       isAnimationActive={false}
                     />
