@@ -406,7 +406,8 @@ function MonthlyEntries({
   const fmt = (n: number) =>
     new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
 
-  const yearTotal = months.reduce((s, m) => s + (byMonth.get(m.iso) ?? 0), 0);
+  const yearTotal = months.reduce((s, m) => s + (byMonth.get(m.iso)?.amount ?? 0), 0);
+  const actualTotal = months.reduce((s, m) => s + (byMonth.get(m.iso)?.actual ?? 0), 0);
 
   return (
     <div className="mt-6 rounded-md border border-border p-3">
