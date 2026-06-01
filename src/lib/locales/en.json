@@ -74,7 +74,9 @@
     "notesPlaceholder": "Notes…",
     "amount": "Savings amount (€)",
     "amountPlaceholder": "0.00",
-
+    "chartTitle": "Savings breakdown",
+    "chartEmpty": "Add savings amounts to see the chart.",
+    "chartTotal": "Total",
     "updated": "Updated {{when}}",
     "confirmDelete": "Delete this entry?"
   }

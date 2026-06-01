@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { SavingsChart } from "@/components/SavingsChart";
 
 import { logout } from "@/lib/api/auth.functions";
 import { listMyTenants, listTenantMembers } from "@/lib/api/tenants.functions";

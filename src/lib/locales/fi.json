@@ -74,7 +74,9 @@
     "notesPlaceholder": "Muistiinpanot…",
     "amount": "Säästöjen määrä (€)",
     "amountPlaceholder": "0,00",
-
+    "chartTitle": "Säästöjen jakauma",
+    "chartEmpty": "Lisää säästöjen määriä nähdäksesi diagrammin.",
+    "chartTotal": "Yhteensä",
     "updated": "Päivitetty {{when}}",
     "confirmDelete": "Poistetaanko tämä?"
   }
