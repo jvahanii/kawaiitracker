@@ -42,6 +42,12 @@ function colorFor(id: string, idx: number): string {
   const hue = (h + idx * 47) % 360;
   return `oklch(0.72 0.15 ${hue})`;
 }
+function darkColorFor(id: string, idx: number): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360;
+  const hue = (h + idx * 47) % 360;
+  return `oklch(0.42 0.17 ${hue})`;
+}
 
 export function SavingsChart({ tenantId }: { tenantId: string }) {
   const { t, i18n } = useTranslation();
