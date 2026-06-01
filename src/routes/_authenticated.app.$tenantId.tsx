@@ -385,8 +385,8 @@ function MonthlyEntries({
 
   const entries = entriesQ.data ?? [];
   const byMonth = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const e of entries) m.set(e.month, e.amount);
+    const m = new Map<string, { amount: number; actual: number }>();
+    for (const e of entries) m.set(e.month, { amount: e.amount, actual: e.actual });
     return m;
   }, [entries]);
 
