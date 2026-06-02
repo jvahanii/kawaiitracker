@@ -84,6 +84,10 @@ export async function query<T = unknown>(text: string, params: unknown[] = []) {
         await sleep(100 * (attempt + 1));
         continue;
       }
+      if (isConnectionError(err)) {
+        console.error("[db] connection error after retries:", err);
+        throw new DatabaseUnavailableError(err);
+      }
       throw err;
     } finally {
       try {
@@ -93,7 +97,8 @@ export async function query<T = unknown>(text: string, params: unknown[] = []) {
       }
     }
   }
-  throw lastErr instanceof Error ? lastErr : new Error("Database unavailable");
+  console.error("[db] exhausted retries:", lastErr);
+  throw new DatabaseUnavailableError(lastErr);
 }
 
 export async function queryOne<T = unknown>(text: string, params: unknown[] = []) {
