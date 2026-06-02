@@ -94,6 +94,16 @@
     "goalDateShort": "Target",
     "daysLeft": "{{count}} days left",
     "updated": "Updated {{when}}",
-    "confirmDelete": "Delete this entry?"
+    "confirmDelete": "Delete this entry?",
+    "manageUsers": "Users"
+  },
+  "members": {
+    "title": "Users",
+    "empty": "No users.",
+    "admin": "Admin",
+    "member": "Member",
+    "remove": "Remove",
+    "confirmRemove": "Remove {{name}} from this workspace?",
+    "lastAdmin": "A workspace must have at least one admin."
   }
 }
