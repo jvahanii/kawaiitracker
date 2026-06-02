@@ -31,15 +31,24 @@ export function getPool(): Pool {
   return pool;
 }
 
-function isConnectionError(err: unknown): boolean {
+export function isConnectionError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return (
     /Connection terminated/i.test(msg) ||
     /timeout/i.test(msg) ||
     /ECONNRESET/i.test(msg) ||
     /ENOTFOUND/i.test(msg) ||
-    /server closed the connection/i.test(msg)
+    /server closed the connection/i.test(msg) ||
+    /Client has encountered a connection error/i.test(msg)
   );
+}
+
+export class DatabaseUnavailableError extends Error {
+  constructor(cause?: unknown) {
+    super("Database temporarily unavailable");
+    this.name = "DatabaseUnavailableError";
+    if (cause) (this as { cause?: unknown }).cause = cause;
+  }
 }
 
 const MAX_ATTEMPTS = 4;
