@@ -1,67 +1,65 @@
 ## Goal
+Replace the Aiven Postgres + iron-session + bcrypt stack with an external Supabase project. Use the secrets you just saved (`EXT_SUPABASE_URL`, `EXT_SUPABASE_PUBLISHABLE_KEY`, `EXT_SUPABASE_SERVICE_ROLE_KEY`). The `VITE_*` prefix is reserved by Lovable, so the browser supabase client is initialised at runtime from values exposed by a root-loader server fn (publishable key + URL are public; safe to ship).
 
-Drop Aiven + custom session-cookie auth. Connect to **your existing external Supabase project** (not Lovable Cloud) and use Supabase Auth + Postgres via the JS SDK. This fixes production (Supabase TLS uses a publicly-trusted cert, so Cloudflare Workers can reach it) and removes all `pg`/iron-session code.
+## What I'll build
 
-## What you'll need to provide
+### 1. Supabase wiring (new files)
+- `src/lib/supabase/admin.server.ts` — service-role client (server-only).
+- `src/lib/supabase/client.ts` — browser client. Lazy-initialised via `initSupabase({url, publishableKey})`; throws if used before init.
+- `src/lib/supabase/auth-middleware.ts` — `requireSupabaseAuth` server-fn middleware. Reads `Authorization: Bearer`, validates with `auth.getUser`, exposes `{ supabase, userId }`.
+- `src/lib/supabase/auth-attacher.ts` — client server-fn middleware that attaches the current bearer token.
+- `src/lib/supabase/config.functions.ts` — `getSupabaseConfig` server fn returning `{ url, publishableKey }` from `process.env.EXT_*`.
 
-Three values from your Supabase project (Settings → API):
-- `SUPABASE_URL` (e.g. `https://xxxx.supabase.co`)
-- `SUPABASE_PUBLISHABLE_KEY` (anon/publishable key — safe in browser)
-- `SUPABASE_SERVICE_ROLE_KEY` (server-only; used only if needed)
+### 2. Schema (SQL the user runs in Supabase SQL editor)
+```
+profiles(id uuid pk → auth.users, display_name text, created_at timestamptz)
+tenants(id uuid pk, name text, join_code text unique, created_by uuid, created_at)
+tenant_members(tenant_id, user_id, role text check in ('admin','member'), pk(tenant_id,user_id))
+items(id, tenant_id, name, created_by, created_at)
+item_entries(id, item_id, month date, amount numeric, actual_amount numeric)
+```
+- Trigger to create profile on `auth.users` insert.
+- `SECURITY DEFINER` helpers: `is_tenant_member(uuid)`, `is_tenant_admin(uuid)`.
+- RPCs: `create_tenant(name)`, `join_tenant_by_code(code)`, `get_tenant_members(tenant_id)`.
+- RLS on every table scoped via helpers; explicit `GRANT`s to `authenticated` + `service_role`.
 
-I'll add them via the secrets tool. I'll also mirror the public ones to `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` for the browser client.
+I'll write this SQL to `supabase-schema.sql` at repo root for you to paste into your Supabase project's SQL editor. **No data migration** — Aiven data is abandoned.
 
-## What changes
+### 3. Boot / shell changes
+- `src/start.ts` — add `attachSupabaseAuth` to `functionMiddleware`.
+- `src/router.tsx` — add `supabaseConfig` to router context (initially `null`, populated by root loader).
+- `src/routes/__root.tsx` — `loader` calls `getSupabaseConfig`, returns `{ url, publishableKey }`; `RootComponent` calls `initSupabase(...)` synchronously on first render and registers `supabase.auth.onAuthStateChange` to invalidate router + queries.
+- `src/routes/_authenticated.tsx` — change to `ssr: false`; `beforeLoad` calls `supabase.auth.getUser()` and redirects to `/login` if missing.
 
-### 1. Supabase client wiring (manual, since we're not enabling Lovable Cloud)
-Create:
-- `src/integrations/supabase/client.ts` — browser client (publishable key, localStorage session).
-- `src/integrations/supabase/client.server.ts` — admin client (service role, server-only).
-- `src/integrations/supabase/auth-middleware.ts` — `requireSupabaseAuth` server-fn middleware that verifies the bearer token via `supabase.auth.getUser()` and injects an authed client + `userId`.
-- `src/integrations/supabase/auth-attacher.ts` — client middleware that attaches `Authorization: Bearer <token>` to every server-fn call.
-- Wire `attachSupabaseAuth` into `src/start.ts` `functionMiddleware`.
+### 4. Auth routes (rewrite)
+- `signup.tsx` → `supabase.auth.signUp({ email, password, options: { emailRedirectTo: origin, data: { display_name } } })`.
+- `login.tsx` → `signInWithPassword`.
+- `forgot-password.tsx` → `resetPasswordForEmail(email, { redirectTo: origin + '/reset-password' })`.
+- `reset-password.tsx` → on mount, parse recovery URL; on submit, `supabase.auth.updateUser({ password })`.
+- Recommend: turn **Confirm email = OFF** in Supabase Auth settings for smooth dev.
 
-### 2. Schema (you run the SQL in your Supabase SQL editor)
-I'll generate a single SQL script for you to paste:
-- `profiles` (id uuid PK → auth.users, display_name, created_at) + `handle_new_user` trigger pulling `display_name` from signup metadata.
-- `tenants`, `tenant_members` (role enum admin/member), `items`, `item_entries`.
-- RLS on every table. SECURITY DEFINER helpers `is_tenant_member(uuid)` / `is_tenant_admin(uuid)` to avoid recursive RLS.
-- SECURITY DEFINER RPCs: `create_tenant(name)`, `join_tenant_by_code(code)`, `get_tenant_members(tenant_id)`.
-- Explicit `GRANT`s to `authenticated` / `service_role`.
+### 5. Data server fns (rewrite under `requireSupabaseAuth`)
+- `src/lib/api/tenants.functions.ts` — `listMyTenants`, `createTenant` (RPC), `joinTenant` (RPC), `getTenantMembers` (RPC).
+- `src/lib/api/items.functions.ts` — `listItems`, `createItem`, `deleteItem` (all `supabase.from('items')`, RLS enforces tenant scoping).
+- `src/lib/api/entries.functions.ts` — `listEntriesForItem`, `upsertEntry`, `deleteEntry`.
+- Delete `src/lib/api/auth.functions.ts` (auth moves fully client-side via supabase-js).
+- Delete `src/lib/db.server.ts`, `src/lib/auth.server.ts`, `src/lib/config.server.ts` (if only used for session secret).
 
-### 3. Auth — Supabase Auth replaces iron-session + bcrypt
-- `/signup`: `supabase.auth.signUp({ email, password, options: { data: { display_name } } })`.
-- `/login`: `supabase.auth.signInWithPassword`.
-- `/forgot-password`: `supabase.auth.resetPasswordForEmail(email, { redirectTo: origin + '/reset-password' })`.
-- `/reset-password`: detects recovery token from URL hash, calls `supabase.auth.updateUser({ password })`.
-- Root `__root.tsx`: subscribe to `onAuthStateChange` → `router.invalidate()` + `queryClient.invalidateQueries()`.
-- `_authenticated` layout becomes `ssr: false` + `beforeLoad` calling `supabase.auth.getUser()` → redirect to `/login`.
+### 6. Dependencies
+- `bun add @supabase/supabase-js`
+- `bun remove pg iron-session bcryptjs @types/pg @types/bcryptjs` (whichever are present)
 
-### 4. Server functions rewrite
-Every `query/queryOne` call in `src/lib/api/{tenants,items,entries}.functions.ts` becomes a Supabase query under `requireSupabaseAuth`. RLS enforces membership/admin, so manual `requireMembership` helpers go away. `create_tenant`, `joinTenant`, and member listing call the RPCs.
+### 7. Out of scope
+- Google / Apple sign-in (can add later via `signInWithOAuth`).
+- Migrating existing Aiven users/data.
+- Email templates / SMTP customisation (Supabase defaults).
 
-`src/lib/api/auth.functions.ts` is deleted (auth is fully client-side).
+## What you do
+1. Approve this plan.
+2. After I finish, open `supabase-schema.sql`, paste it into Supabase → SQL Editor → Run.
+3. In Supabase → Authentication → Providers → Email, turn off "Confirm email" (or keep it on if you want email confirmation).
+4. Test signup → login → create tenant → add item.
 
-### 5. Delete
-- `src/lib/db.server.ts`
-- `src/lib/auth.server.ts`
-- `pg`, `iron-session`, `bcryptjs` deps
-- Aiven secrets remain in env but unused — you can remove them later.
-
-## Email confirmation
-
-By default Supabase requires email confirmation on signup. For the smoothest dev flow I recommend you turn **"Confirm email" OFF** in Supabase Dashboard → Authentication → Providers → Email (you can re-enable later). Otherwise users need to click an email link before the first login works.
-
-## Data migration
-
-**None.** Aiven data is not copied. Users re-sign-up and re-create tenants/items. (You said don't migrate earlier — confirm still OK now that we're moving providers entirely.)
-
-## What I need from you before I start building
-
-1. Confirm: provide Supabase URL + anon + service-role keys via the secrets prompt I'll send.
-2. Confirm: you'll run the schema SQL I generate in your Supabase SQL editor (or want me to attempt it via your DB connection if you give me `DATABASE_URL`).
-3. Confirm: no data migration.
-
-## Out of scope
-
-Google/Apple sign-in (add later if you want).
+## Risks
+- Until you run the SQL, every protected page errors. The UI will still load; the data queries fail.
+- Email confirmation on = signup returns a session-less user; you'll need to confirm via the email link before login works.
