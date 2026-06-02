@@ -126,6 +126,9 @@ function WorkspacePage() {
           </Link>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          {user ? (
+            <span className="font-medium text-foreground">{user.displayName}</span>
+          ) : null}
           <LanguageSwitcher />
           {currentTenant.role === "admin" ? (
             <button
