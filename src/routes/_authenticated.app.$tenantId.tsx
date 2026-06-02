@@ -143,19 +143,26 @@ function WorkspacePage() {
           ) : null}
           <LanguageSwitcher />
           {currentTenant.role === "admin" ? (
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard?.writeText(currentTenant.joinCode);
-              }}
-              title={t("workspace.joinCodeTitle")}
-              className="rounded bg-accent px-2 py-1 hover:bg-accent/80"
-            >
-              <span className="mr-1">{t("workspace.joinCode")}</span>
-              <span className="font-mono font-semibold text-foreground">
-                {currentTenant.joinCode}
-              </span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setInviteOpen(true)}
+                className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                {t("workspace.addUser")}
+              </button>
+              <button
+                type="button"
+                onClick={copyJoinCode}
+                title={t("workspace.joinCodeTitle")}
+                className="rounded bg-accent px-2 py-1 hover:bg-accent/80"
+              >
+                <span className="mr-1">{t("workspace.joinCode")}</span>
+                <span className="font-mono font-semibold text-foreground">
+                  {currentTenant.joinCode}
+                </span>
+              </button>
+            </>
           ) : null}
           <button
             onClick={() => logoutM.mutate()}
