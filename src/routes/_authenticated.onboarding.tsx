@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
@@ -37,6 +37,12 @@ function Onboarding() {
       <div className="mx-auto max-w-xl">
         <div className="flex items-start justify-between">
           <div>
+            <Link
+              to="/"
+              className="text-sm font-semibold tracking-tight hover:underline"
+            >
+              {t("common.back")}
+            </Link>
             <h1 className="text-2xl font-semibold tracking-tight">{t("onboarding.heading")}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{t("onboarding.sub")}</p>
           </div>
