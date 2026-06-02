@@ -1,26 +1,43 @@
-Havainto tuotantolokeista:
-- Julkaisun jälkeen `POST /_serverFn/...login → 0` — Worker kaatuu kokonaan ennen vastausta. Tämä tarkoittaa, että `postgres.js`-paketti (postgres@3) ei käynnisty siististi Cloudflare Workersin ajossa.
-- Preview toimii, koska siellä koodi pyörii Node-sandboxissa, jossa Workers-rajoituksia ei ole.
-- Aiempi `pg`-virhe oli `Connection terminated unexpectedly`, joka on tunnettu Cloudflare Workers ↔ Aiven TLS-ongelma, ei ajurin kaatuminen.
+Production is still failing because the published serverless runtime cannot reliably open a direct TLS connection to the current Aiven Postgres database. Preview works because it runs in a Node-based environment where the self-signed certificate chain can be bypassed; production masks the same TLS problem as `Connection terminated unexpectedly`.
 
-Suunnitelma:
+Plan:
 
-1. Palauta `pg`-ajuri (`Client` per pyyntö)
-   - `postgres.js` kaataa Workerin → emme voi käyttää sitä tuotannossa.
-   - Otetaan käyttöön takaisin vanha pg-pohjainen `query()`/`queryOne()` (yksi Client per kysely, retry, DatabaseUnavailableError) — sama rajapinta kuin nyt, joten muu sovellus ei muutu.
+1. Replace the fragile direct Aiven connection for production
+   - Stop relying on the current `pg` direct TCP/TLS connection from production server functions.
+   - Move the app database to Lovable Cloud, which is designed for this serverless production runtime.
+   - Keep secrets out of client code.
 
-2. Lisää tarkka virhediagnostiikka
-   - Lokitan tuotannossa virhekoodin (`err.code`), virhetyypin ja koko viestin, jotta erottuvat:
-     - TLS-virhe (sertifikaatti, CA)
-     - TCP-katkos (verkko, Aiven palomuuri)
-     - Autentikaatiovirhe (käyttäjätunnukset)
-   - Käyttäjälle näkyvä viesti pysyy ystävällisenä.
+2. Recreate the existing app schema in Lovable Cloud
+   - Create equivalent tables for:
+     - users/accounts
+     - tenants/workspaces
+     - tenant members
+     - items
+     - monthly entries
+     - password reset tokens
+   - Add the required grants and access rules so app server code can read/write safely.
 
-3. Selvitä juurisyy ennen seuraavaa korjausta
-   - Julkaisun jälkeen tehdään yksi kirjautumisyritys ja katsotaan tuotantolokeista tarkka virheviesti.
-   - Sen pohjalta valitaan oikea pitkän aikavälin ratkaisu (esim. Aivenin CA:n hyväksyntä, sertifikaatin tarkistuksen kierto Workersissa, tai siirtymä Lovable Cloudiin / Supabaseen, joka on suunniteltu serverless-käyttöön).
+3. Move server-side data access to the new database path
+   - Update `src/lib/db.server.ts` so `query()` and `queryOne()` use the production-safe database client.
+   - Keep the existing API shape so `auth.functions.ts`, `tenants.functions.ts`, `items.functions.ts`, and `entries.functions.ts` need minimal or no functional changes.
+   - Remove Aiven-specific SSL/runtime branching once production no longer depends on it.
 
-Tekniset tiedot:
-- Muokattava: `src/lib/db.server.ts` (palautus + parempi logitus).
-- Ei muutoksia auth.functions.ts:ään tai käyttöliittymään.
-- Tämä ei vielä lopullisesti korjaa tuotantoa, vaan palauttaa Workerin toimintakuntoiseksi ja kertoo tarkan virheen, jolla pääsemme eteenpäin.
+4. Preserve current data where possible
+   - Use the working preview/Node connection to export current Aiven data from the existing tables.
+   - Import that data into the new Lovable Cloud tables.
+   - Preserve user IDs, workspace IDs, item IDs, entries, roles, and password hashes so existing logins keep working.
+
+5. Fix the remaining hydration warning
+   - Ensure i18n always renders English for SSR and first client render.
+   - Apply the stored/browser language only after hydration so Finnish text no longer mismatches server-rendered English.
+
+6. Verify end-to-end
+   - Test preview login with the existing Pete account.
+   - Check that workspace data, members, items, and entries load after login.
+   - After publishing, test production login and confirm the production logs no longer show DB connection errors.
+
+Technical notes:
+- Root cause is not the login form; it is the production database transport layer.
+- `ssl: { rejectUnauthorized: false }` fixes preview but is not supported by the production runtime’s socket/TLS layer.
+- `ssl: true` is production-safe in shape, but the Aiven self-signed chain still fails the runtime handshake, producing `Connection terminated unexpectedly`.
+- The stable fix is to use a backend/database path compatible with the published runtime instead of continuing to tune TLS flags.
