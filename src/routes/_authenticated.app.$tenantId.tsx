@@ -99,7 +99,6 @@ function WorkspacePage() {
   });
 
   const [newTitle, setNewTitle] = useState("");
-  const [inviteOpen, setInviteOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const copyJoinCode = async () => {
