@@ -149,11 +149,17 @@ function SupabaseAuthSync() {
     import("@/lib/supabase/client").then(({ tryGetSupabase }) => {
       const supabase = tryGetSupabase();
       if (!supabase) return;
-      const { data } = supabase.auth.onAuthStateChange(() => {
-        queryClient.invalidateQueries();
+      const { data } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "SIGNED_OUT") {
+          // Drop cached data without refetching — there's no token, so
+          // refetches would all 401. The _authenticated gate handles redirect.
+          queryClient.cancelQueries();
+          queryClient.clear();
+        } else {
+          queryClient.invalidateQueries();
+        }
         router.invalidate();
       });
-      // Return unsub via closure side effect below
       (SupabaseAuthSync as unknown as { _unsub?: () => void })._unsub = () =>
         data.subscription.unsubscribe();
     });
