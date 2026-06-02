@@ -13,7 +13,7 @@ export type TenantSummary = {
 export const listMyTenants = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await (context.supabase.rpc as (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)("list_my_tenants");
+    const { data, error } = (await context.supabase.rpc("list_my_tenants")) as { data: { id: string; name: string; join_code: string; role: string }[] | null; error: { message: string } | null };
     if (error) throw new Error(error.message);
     return (data ?? []).map<TenantSummary>((r: { id: string; name: string; join_code: string; role: string }) => ({
       id: r.id,
