@@ -15,6 +15,13 @@ if (!i18n.isInitialized) {
   });
 }
 
+// The server-rendered HTML is English. Force the client singleton back to the
+// same initial language before React hydrates; stored/user language is applied
+// later from RootComponent after hydration.
+if (i18n.language !== "en") {
+  i18n.changeLanguage("en");
+}
+
 // Detect the preferred language after the first browser paint. React can
 // hydrate lazy route segments after parent effects, so delay the language
 // change one tick to keep server-rendered English matching first client text.
