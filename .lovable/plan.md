@@ -1,46 +1,31 @@
+Production logs confirm this is no longer a login-form bug: published login reaches the server function, then every database attempt fails with `Connection terminated unexpectedly`, while preview succeeds. The current production runtime is rejecting/closing the direct PostgreSQL TLS socket to Aiven; patching `pg` TLS options and adding `AIVEN_CA_CERT` is not enough there.
+
 ## Plan
 
-The production login failure is coming from the server-side database connection, not the login form. Preview/dev can bypass or tolerate the certificate chain, but production cannot reliably connect to the external Aiven Postgres over the current `pg` setup, which is why the published app keeps failing while iframe preview works.
+1. **Stop relying on direct Aiven `pg` sockets in production**
+   - Treat `src/lib/db.server.ts` as the failing boundary.
+   - Remove the fragile production path that tries to make `pg` + custom CA work in the published runtime.
 
-### Fix approach
+2. **Move the app database to Lovable Cloud**
+   - Enable Lovable Cloud for the project.
+   - Create the existing app tables there: `app_users`, `tenants`, `tenant_members`, `items`, `item_entries`, and `password_resets`.
+   - Add the needed grants/RLS-safe policies for the app’s server-side access.
 
-1. **Stop patching TLS flags for production**
-   - Remove the fragile environment-specific `ssl` switching in `src/lib/db.server.ts`.
-   - Treat the current Aiven connection path as incompatible with the production runtime unless a proper trusted CA is supplied.
+3. **Switch server functions to the Cloud database**
+   - Update the database helper so auth, tenants, items, and entries use Lovable Cloud from server code instead of external Aiven TCP.
+   - Keep the public server function API unchanged so the UI does not need a rewrite.
 
-2. **Use the Aiven CA certificate explicitly**
-   - Add support for an `AIVEN_CA_CERT` secret/env value.
-   - Configure `pg` with:
-     - `ssl: { ca: AIVEN_CA_CERT, rejectUnauthorized: true }` when the CA is available.
-     - keep a dev-only fallback only for local/preview if needed.
-   - This resolves the `self-signed certificate in certificate chain` error correctly instead of disabling verification.
+4. **Preserve user-safe error handling**
+   - Keep login returning a friendly “Service is temporarily unavailable” message for real backend outages.
+   - Avoid blank production pages on server errors.
 
-3. **Make failures user-safe**
-   - Ensure TLS/connection errors are always converted into the existing friendly “Service is temporarily unavailable” response instead of crashing into a blank page.
-   - Keep detailed server logs for diagnosis without leaking credentials or full email addresses.
+5. **Verify production behavior**
+   - Re-test the login server function after the change.
+   - Check production server logs for successful login or normal invalid-password responses instead of database connection failures.
+   - You’ll still need to click **Publish / Update** so the frontend uses the new server function bundle on the live site.
 
-4. **Fix the unrelated hydration mismatch while here**
-   - The current runtime errors also show Finnish/English text mismatch during hydration.
-   - Adjust i18n initialization so SSR and first client render use the same language, then apply browser-selected language after hydration.
+## Technical notes
 
-5. **Verify**
-   - Test the login server function in preview/dev.
-   - After you add the Aiven CA certificate as a secret and publish, test the published login again and check production server logs.
-
-### Required secret
-
-You’ll need to add the Aiven PostgreSQL CA certificate as a secret named:
-
-```text
-AIVEN_CA_CERT
-```
-
-Use the full PEM certificate from Aiven, including:
-
-```text
------BEGIN CERTIFICATE-----
-...
------END CERTIFICATE-----
-```
-
-Without that certificate, production will continue to reject the self-signed chain or terminate the connection.
+- The important finding is from production logs: `Connection terminated unexpectedly` on every `pg` connection attempt, while sandbox logs show successful login.
+- This points to the published server runtime’s outbound PostgreSQL/TLS socket compatibility, not bad credentials or wrong login code.
+- The durable fix is to use the platform-native database path instead of an external Aiven raw PostgreSQL socket from production.
