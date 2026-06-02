@@ -35,7 +35,10 @@ export function LanguageSwitcher({ className = "" }: { className?: string }) {
   return (
     <button
       type="button"
-      onClick={() => i18n.changeLanguage(next)}
+      onClick={() => {
+        try { window.localStorage.setItem("lang", next); } catch {}
+        i18n.changeLanguage(next);
+      }}
       aria-label={t("common.language")}
       title={t("common.language")}
       className={`inline-flex h-8 w-10 items-center justify-center overflow-hidden rounded-md border border-border bg-background ${className}`}
