@@ -15,25 +15,21 @@ if (!i18n.isInitialized) {
   });
 }
 
-// Defer language detection to after hydration to avoid SSR/client mismatch.
-if (typeof window !== "undefined") {
-  const apply = () => {
-    try {
-      const stored = window.localStorage.getItem("lang");
-      const nav = window.navigator.language?.toLowerCase() ?? "";
-      const detected = stored || (nav.startsWith("fi") ? "fi" : "en");
-      const lang = detected.startsWith("fi") ? "fi" : "en";
-      if (i18n.language !== lang) {
-        i18n.changeLanguage(lang);
-      }
-    } catch {
-      // ignore
+// Detect the preferred language. Caller is responsible for invoking this
+// AFTER React hydration completes (e.g. from a useEffect in the root) so
+// the server-rendered HTML (always English) matches the first client render.
+export function applyDetectedLanguage() {
+  if (typeof window === "undefined") return;
+  try {
+    const stored = window.localStorage.getItem("lang");
+    const nav = window.navigator.language?.toLowerCase() ?? "";
+    const detected = stored || (nav.startsWith("fi") ? "fi" : "en");
+    const lang = detected.startsWith("fi") ? "fi" : "en";
+    if (i18n.language !== lang) {
+      i18n.changeLanguage(lang);
     }
-  };
-  if (document.readyState === "complete") {
-    setTimeout(apply, 0);
-  } else {
-    window.addEventListener("load", apply, { once: true });
+  } catch {
+    // ignore
   }
 }
 
