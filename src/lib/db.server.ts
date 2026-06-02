@@ -1,8 +1,8 @@
 import { Client } from "pg";
 
-// Cloudflare Workers don't keep TCP sockets alive reliably between requests,
-// and pg.Pool's idle connections cause "Connection terminated unexpectedly"
-// errors. Open a fresh Client per call instead.
+// The production runtime manages TLS for outbound Postgres sockets itself.
+// Keep the pg client configuration minimal: use a fresh Client per call and
+// request SSL with `true` rather than Node-only certificate options.
 
 export function isConnectionError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
@@ -58,7 +58,7 @@ function makeClient(): Client {
     user: decodeURIComponent(u.username),
     password: decodeURIComponent(u.password),
     database: u.pathname.replace(/^\//, ""),
-    ssl: { rejectUnauthorized: false },
+    ssl: true,
     connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
   });
 }

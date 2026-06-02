@@ -15,9 +15,9 @@ if (!i18n.isInitialized) {
   });
 }
 
-// Detect the preferred language. Caller is responsible for invoking this
-// AFTER React hydration completes (e.g. from a useEffect in the root) so
-// the server-rendered HTML (always English) matches the first client render.
+// Detect the preferred language after the first browser paint. React can
+// hydrate lazy route segments after parent effects, so delay the language
+// change one tick to keep server-rendered English matching first client text.
 export function applyDetectedLanguage() {
   if (typeof window === "undefined") return;
   try {
@@ -26,7 +26,9 @@ export function applyDetectedLanguage() {
     const detected = stored || (nav.startsWith("fi") ? "fi" : "en");
     const lang = detected.startsWith("fi") ? "fi" : "en";
     if (i18n.language !== lang) {
-      i18n.changeLanguage(lang);
+      window.setTimeout(() => {
+        i18n.changeLanguage(lang);
+      }, 0);
     }
   } catch {
     // ignore
