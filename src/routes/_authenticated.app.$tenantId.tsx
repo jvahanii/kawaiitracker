@@ -99,6 +99,18 @@ function WorkspacePage() {
   });
 
   const [newTitle, setNewTitle] = useState("");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copyJoinCode = async () => {
+    try {
+      await navigator.clipboard?.writeText(currentTenant.joinCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
