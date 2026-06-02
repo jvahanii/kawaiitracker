@@ -1,132 +1,123 @@
 import { createServerFn } from "@tanstack/react-start";
-import { useSession } from "@tanstack/react-start/server";
 import { z } from "zod";
 
-import { query, queryOne } from "../db.server";
-import { getSessionConfig, type SessionData } from "../auth.server";
-
-async function requireUserId(): Promise<string> {
-  const session = await useSession<SessionData>(getSessionConfig());
-  const userId = session.data.userId;
-  if (!userId) throw new Error("Not authenticated");
-  return userId;
-}
-
-async function requireMembership(userId: string, tenantId: string) {
-  const m = await queryOne<{ role: "admin" | "member" }>(
-    "select role from tenant_members where tenant_id = $1 and user_id = $2",
-    [tenantId, userId],
-  );
-  if (!m) throw new Error("Not a member of this tenant");
-}
-
-async function requireItemInTenant(itemId: string, tenantId: string) {
-  const r = await queryOne(
-    "select 1 from items where id = $1 and tenant_id = $2",
-    [itemId, tenantId],
-  );
-  if (!r) throw new Error("Item not found");
-}
+import { requireSupabaseAuth } from "@/lib/supabase/auth-middleware";
 
 export type EntryRow = {
   id: string;
   itemId: string;
-  month: string; // YYYY-MM-DD (first of month)
+  month: string; // YYYY-MM-DD
   amount: number;
   actual: number;
 };
 
-// Normalize month input to first day of month (YYYY-MM-DD)
 const monthSchema = z
   .string()
   .regex(/^\d{4}-\d{2}(-\d{2})?$/)
   .transform((v) => `${v.slice(0, 7)}-01`);
 
+type RawEntry = {
+  id: string;
+  item_id: string;
+  month: string;
+  amount: number | string;
+  actual_amount: number | string;
+};
+
+function mapEntry(r: RawEntry): EntryRow {
+  return {
+    id: r.id,
+    itemId: r.item_id,
+    month: r.month.slice(0, 10),
+    amount: Number(r.amount),
+    actual: Number(r.actual_amount),
+  };
+}
+
 export const listEntriesForItem = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ tenantId: z.string().uuid(), itemId: z.string().uuid() }))
-  .handler(async ({ data }) => {
-    const userId = await requireUserId();
-    await requireMembership(userId, data.tenantId);
-    await requireItemInTenant(data.itemId, data.tenantId);
-    const rows = await query<{ id: string; item_id: string; month: string; amount: string; actual_amount: string }>(
-      `select id, item_id, to_char(month, 'YYYY-MM-DD') as month, amount, actual_amount
-         from item_entries
-        where item_id = $1
-        order by month desc`,
-      [data.itemId],
-    );
-    return rows.map<EntryRow>((r) => ({
-      id: r.id,
-      itemId: r.item_id,
-      month: r.month,
-      amount: Number(r.amount),
-      actual: Number(r.actual_amount),
-    }));
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ tenantId: z.string().uuid(), itemId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { data: rows, error } = await context.supabase
+      .from("item_entries")
+      .select("id, item_id, month, amount, actual_amount")
+      .eq("item_id", data.itemId)
+      .order("month", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (rows as RawEntry[]).map(mapEntry);
   });
 
 export const listAllEntries = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ tenantId: z.string().uuid() }))
-  .handler(async ({ data }) => {
-    const userId = await requireUserId();
-    await requireMembership(userId, data.tenantId);
-    const rows = await query<{ id: string; item_id: string; month: string; amount: string; actual_amount: string }>(
-      `select e.id, e.item_id, to_char(e.month, 'YYYY-MM-DD') as month, e.amount, e.actual_amount
-         from item_entries e
-         join items i on i.id = e.item_id
-        where i.tenant_id = $1
-        order by e.month asc`,
-      [data.tenantId],
-    );
-    return rows.map<EntryRow>((r) => ({
-      id: r.id,
-      itemId: r.item_id,
-      month: r.month,
-      amount: Number(r.amount),
-      actual: Number(r.actual_amount),
-    }));
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ tenantId: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    // Filter via items join: select entries whose item belongs to tenant.
+    const { data: items, error: itemsErr } = await context.supabase
+      .from("items")
+      .select("id")
+      .eq("tenant_id", data.tenantId);
+    if (itemsErr) throw new Error(itemsErr.message);
+    const ids = (items ?? []).map((i) => i.id);
+    if (ids.length === 0) return [];
+    const { data: rows, error } = await context.supabase
+      .from("item_entries")
+      .select("id, item_id, month, amount, actual_amount")
+      .in("item_id", ids)
+      .order("month", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (rows as RawEntry[]).map(mapEntry);
   });
 
 export const upsertEntry = createServerFn({ method: "POST" })
-  .inputValidator(
-    z.object({
-      tenantId: z.string().uuid(),
-      itemId: z.string().uuid(),
-      month: monthSchema,
-      amount: z.number().min(-1_000_000_000).max(1_000_000_000).optional(),
-      actual: z.number().min(-1_000_000_000).max(1_000_000_000).optional(),
-    }),
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        tenantId: z.string().uuid(),
+        itemId: z.string().uuid(),
+        month: monthSchema,
+        amount: z.number().min(-1_000_000_000).max(1_000_000_000).optional(),
+        actual: z.number().min(-1_000_000_000).max(1_000_000_000).optional(),
+      })
+      .parse(d),
   )
-  .handler(async ({ data }) => {
-    const userId = await requireUserId();
-    await requireMembership(userId, data.tenantId);
-    await requireItemInTenant(data.itemId, data.tenantId);
-    const amount = data.amount ?? 0;
-    const actual = data.actual ?? 0;
-    // Build dynamic update so we only overwrite fields that were provided
-    const setParts: string[] = ["updated_at = now()"];
-    if (data.amount !== undefined) setParts.push("amount = excluded.amount");
-    if (data.actual !== undefined) setParts.push("actual_amount = excluded.actual_amount");
-    const row = await queryOne<{ id: string }>(
-      `insert into item_entries (item_id, month, amount, actual_amount)
-       values ($1, $2, $3, $4)
-       on conflict (item_id, month) do update set ${setParts.join(", ")}
-       returning id`,
-      [data.itemId, data.month, amount, actual],
-    );
-    return { id: row!.id };
+  .handler(async ({ context, data }) => {
+    // Fetch existing then upsert preserving fields not provided
+    const { data: existing } = await context.supabase
+      .from("item_entries")
+      .select("id, amount, actual_amount")
+      .eq("item_id", data.itemId)
+      .eq("month", data.month)
+      .maybeSingle();
+
+    const amount = data.amount !== undefined ? data.amount : Number(existing?.amount ?? 0);
+    const actual = data.actual !== undefined ? data.actual : Number(existing?.actual_amount ?? 0);
+
+    const { data: row, error } = await context.supabase
+      .from("item_entries")
+      .upsert(
+        {
+          item_id: data.itemId,
+          month: data.month,
+          amount,
+          actual_amount: actual,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "item_id,month" },
+      )
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id as string };
   });
 
-
 export const deleteEntry = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ tenantId: z.string().uuid(), id: z.string().uuid() }))
-  .handler(async ({ data }) => {
-    const userId = await requireUserId();
-    await requireMembership(userId, data.tenantId);
-    await query(
-      `delete from item_entries
-        where id = $1
-          and item_id in (select id from items where tenant_id = $2)`,
-      [data.id, data.tenantId],
-    );
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ tenantId: z.string().uuid(), id: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase.from("item_entries").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
     return { ok: true };
   });

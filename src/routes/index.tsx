@@ -1,7 +1,8 @@
-import { createFileRoute, isRedirect, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getMe } from "@/lib/api/auth.functions";
+import { tryGetSupabase } from "@/lib/supabase/client";
 import { listMyTenants } from "@/lib/api/tenants.functions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -12,24 +13,37 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Track items across teams. Create or join a workspace with a code." },
     ],
   }),
-  beforeLoad: async () => {
-    try {
-      const me = await getMe();
-      if (!me) return;
-      const tenants = await listMyTenants();
-      if (tenants.length === 0) throw redirect({ to: "/onboarding" });
-      throw redirect({ to: "/app/$tenantId", params: { tenantId: tenants[0].id } });
-    } catch (err) {
-      // Re-throw redirects; swallow transient DB errors so the landing page renders.
-      if (isRedirect(err)) throw err;
-      console.error("[index beforeLoad] non-fatal:", err);
-    }
-  },
   component: Landing,
 });
 
+function useRedirectIfSignedIn() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const supabase = tryGetSupabase();
+    if (!supabase) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (cancelled || !data.user) return;
+      try {
+        const tenants = await listMyTenants();
+        if (cancelled) return;
+        if (tenants.length === 0) navigate({ to: "/onboarding" });
+        else navigate({ to: "/app/$tenantId", params: { tenantId: tenants[0].id } });
+      } catch (err) {
+        console.error("[index] listMyTenants failed:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
+}
+
+
 function Landing() {
   const { t } = useTranslation();
+  useRedirectIfSignedIn();
   return (
     <div className="min-h-screen text-foreground">
       <header>

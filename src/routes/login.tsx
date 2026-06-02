@@ -1,10 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { login } from "@/lib/api/auth.functions";
+import { getSupabase } from "@/lib/supabase/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const Route = createFileRoute("/login")({
@@ -15,22 +14,23 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const loginFn = useServerFn(login);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const m = useMutation({
-    mutationFn: (data: { email: string; password: string }) => loginFn({ data }),
-    onSuccess: (res) => {
-      if (res.ok) navigate({ to: "/" });
+    mutationFn: async (data: { email: string; password: string }) => {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+      });
+      if (error) throw new Error(error.message);
+      return { ok: true as const };
     },
+    onSuccess: () => navigate({ to: "/" }),
   });
 
-  const errorMessage = m.error
-    ? (m.error as Error).message
-    : m.data && !m.data.ok
-      ? m.data.error
-      : null;
+  const errorMessage = m.error ? (m.error as Error).message : null;
 
   return (
     <AuthShell title={t("login.title")} subtitle={t("login.subtitle")}>
@@ -61,9 +61,7 @@ function LoginPage() {
             autoComplete="current-password"
           />
         </Field>
-        {errorMessage ? (
-          <p className="text-sm text-destructive">{errorMessage}</p>
-        ) : null}
+        {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
         <button
           type="submit"
           disabled={m.isPending}
