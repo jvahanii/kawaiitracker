@@ -17,27 +17,35 @@ export const signup = createServerFn({ method: "POST" })
   .inputValidator(signupInput)
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase().trim();
-    const existing = await queryOne<UserRow>(
-      "select id from app_users where email = $1",
-      [email],
-    );
-    if (existing) {
-      return { ok: false as const, error: "An account with this email already exists" };
+    try {
+      const existing = await queryOne<UserRow>(
+        "select id from app_users where email = $1",
+        [email],
+      );
+      if (existing) {
+        return { ok: false as const, error: "An account with this email already exists" };
+      }
+      const passwordHash = await hashPassword(data.password);
+      const user = await queryOne<UserRow>(
+        `insert into app_users (email, password_hash, display_name)
+         values ($1, $2, $3)
+         returning id, email, display_name`,
+        [email, passwordHash, data.displayName.trim()],
+      );
+      if (!user) return { ok: false as const, error: "Failed to create account" };
+      const session = await useSession<SessionData>(getSessionConfig());
+      await session.update({ userId: user.id });
+      return {
+        ok: true as const,
+        user: { id: user.id, email: user.email, displayName: user.display_name },
+      };
+    } catch (err) {
+      if (err instanceof DatabaseUnavailableError) {
+        console.error("[auth] signup db unavailable");
+        return { ok: false as const, error: "Service is temporarily unavailable, please try again in a moment." };
+      }
+      throw err;
     }
-    const passwordHash = await hashPassword(data.password);
-    const user = await queryOne<UserRow>(
-      `insert into app_users (email, password_hash, display_name)
-       values ($1, $2, $3)
-       returning id, email, display_name`,
-      [email, passwordHash, data.displayName.trim()],
-    );
-    if (!user) return { ok: false as const, error: "Failed to create account" };
-    const session = await useSession<SessionData>(getSessionConfig());
-    await session.update({ userId: user.id });
-    return {
-      ok: true as const,
-      user: { id: user.id, email: user.email, displayName: user.display_name },
-    };
   });
 
 const loginInput = z.object({
