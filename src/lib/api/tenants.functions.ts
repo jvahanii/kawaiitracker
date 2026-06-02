@@ -113,4 +113,57 @@ export const listTenantMembers = createServerFn({ method: "GET" })
       email: r.email,
       role: r.role,
     }));
+});
+
+async function requireAdmin(tenantId: string, userId: string): Promise<void> {
+  const me = await queryOne<{ role: "admin" | "member" }>(
+    "select role from tenant_members where tenant_id = $1 and user_id = $2",
+    [tenantId, userId],
+  );
+  if (!me) throw new Error("Not a member of this tenant");
+  if (me.role !== "admin") throw new Error("Only admins can perform this action");
+}
+
+export const updateMemberRole = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      tenantId: z.string().uuid(),
+      userId: z.string().uuid(),
+      role: z.enum(["admin", "member"]),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const me = await requireUserId();
+    await requireAdmin(data.tenantId, me);
+    if (data.role === "member" && data.userId === me) {
+      const admins = await queryOne<{ count: string }>(
+        "select count(*)::text as count from tenant_members where tenant_id = $1 and role = 'admin'",
+        [data.tenantId],
+      );
+      if (admins && Number(admins.count) <= 1) {
+        throw new Error("Cannot remove the last admin");
+      }
+    }
+    await query(
+      "update tenant_members set role = $1 where tenant_id = $2 and user_id = $3",
+      [data.role, data.tenantId, data.userId],
+    );
+    return { ok: true as const };
+  });
+
+export const removeMember = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({ tenantId: z.string().uuid(), userId: z.string().uuid() }),
+  )
+  .handler(async ({ data }) => {
+    const me = await requireUserId();
+    await requireAdmin(data.tenantId, me);
+    if (data.userId === me) {
+      throw new Error("You cannot remove yourself");
+    }
+    await query(
+      "delete from tenant_members where tenant_id = $1 and user_id = $2",
+      [data.tenantId, data.userId],
+    );
+    return { ok: true as const };
   });

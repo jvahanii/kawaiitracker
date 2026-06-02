@@ -94,6 +94,16 @@
     "goalDateShort": "Tavoite",
     "daysLeft": "{{count}} päivää jäljellä",
     "updated": "Päivitetty {{when}}",
-    "confirmDelete": "Poistetaanko tämä?"
+    "confirmDelete": "Poistetaanko tämä?",
+    "manageUsers": "Käyttäjät"
+  },
+  "members": {
+    "title": "Käyttäjät",
+    "empty": "Ei käyttäjiä.",
+    "admin": "Ylläpitäjä",
+    "member": "Jäsen",
+    "remove": "Poista",
+    "confirmRemove": "Poistetaanko käyttäjä {{name}} työtilasta?",
+    "lastAdmin": "Työtilassa on oltava vähintään yksi ylläpitäjä."
   }
 }
