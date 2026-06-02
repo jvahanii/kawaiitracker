@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { useSession, getRequestHost } from "@tanstack/react-start/server";
 import { z } from "zod";
 
-import { query, queryOne } from "../db.server";
+import { query, queryOne, DatabaseUnavailableError } from "../db.server";
 import { getSessionConfig, hashPassword, verifyPassword, type SessionData } from "../auth.server";
 
 type UserRow = { id: string; email: string; display_name: string };
