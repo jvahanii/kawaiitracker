@@ -116,7 +116,12 @@ function WorkspacePage() {
     <div className="flex h-screen flex-col bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold tracking-tight">{t("common.appName")}</span>
+          <Link
+            to="/"
+            className="text-sm font-semibold tracking-tight hover:underline"
+          >
+            {t("common.back")}
+          </Link>
           <select
             value={tenantId}
             onChange={(e) =>
