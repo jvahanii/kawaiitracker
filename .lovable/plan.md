@@ -1,31 +1,67 @@
-Production logs confirm this is no longer a login-form bug: published login reaches the server function, then every database attempt fails with `Connection terminated unexpectedly`, while preview succeeds. The current production runtime is rejecting/closing the direct PostgreSQL TLS socket to Aiven; patching `pg` TLS options and adding `AIVEN_CA_CERT` is not enough there.
+## Goal
 
-## Plan
+Drop Aiven + custom session-cookie auth. Connect to **your existing external Supabase project** (not Lovable Cloud) and use Supabase Auth + Postgres via the JS SDK. This fixes production (Supabase TLS uses a publicly-trusted cert, so Cloudflare Workers can reach it) and removes all `pg`/iron-session code.
 
-1. **Stop relying on direct Aiven `pg` sockets in production**
-   - Treat `src/lib/db.server.ts` as the failing boundary.
-   - Remove the fragile production path that tries to make `pg` + custom CA work in the published runtime.
+## What you'll need to provide
 
-2. **Move the app database to Lovable Cloud**
-   - Enable Lovable Cloud for the project.
-   - Create the existing app tables there: `app_users`, `tenants`, `tenant_members`, `items`, `item_entries`, and `password_resets`.
-   - Add the needed grants/RLS-safe policies for the app’s server-side access.
+Three values from your Supabase project (Settings → API):
+- `SUPABASE_URL` (e.g. `https://xxxx.supabase.co`)
+- `SUPABASE_PUBLISHABLE_KEY` (anon/publishable key — safe in browser)
+- `SUPABASE_SERVICE_ROLE_KEY` (server-only; used only if needed)
 
-3. **Switch server functions to the Cloud database**
-   - Update the database helper so auth, tenants, items, and entries use Lovable Cloud from server code instead of external Aiven TCP.
-   - Keep the public server function API unchanged so the UI does not need a rewrite.
+I'll add them via the secrets tool. I'll also mirror the public ones to `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` for the browser client.
 
-4. **Preserve user-safe error handling**
-   - Keep login returning a friendly “Service is temporarily unavailable” message for real backend outages.
-   - Avoid blank production pages on server errors.
+## What changes
 
-5. **Verify production behavior**
-   - Re-test the login server function after the change.
-   - Check production server logs for successful login or normal invalid-password responses instead of database connection failures.
-   - You’ll still need to click **Publish / Update** so the frontend uses the new server function bundle on the live site.
+### 1. Supabase client wiring (manual, since we're not enabling Lovable Cloud)
+Create:
+- `src/integrations/supabase/client.ts` — browser client (publishable key, localStorage session).
+- `src/integrations/supabase/client.server.ts` — admin client (service role, server-only).
+- `src/integrations/supabase/auth-middleware.ts` — `requireSupabaseAuth` server-fn middleware that verifies the bearer token via `supabase.auth.getUser()` and injects an authed client + `userId`.
+- `src/integrations/supabase/auth-attacher.ts` — client middleware that attaches `Authorization: Bearer <token>` to every server-fn call.
+- Wire `attachSupabaseAuth` into `src/start.ts` `functionMiddleware`.
 
-## Technical notes
+### 2. Schema (you run the SQL in your Supabase SQL editor)
+I'll generate a single SQL script for you to paste:
+- `profiles` (id uuid PK → auth.users, display_name, created_at) + `handle_new_user` trigger pulling `display_name` from signup metadata.
+- `tenants`, `tenant_members` (role enum admin/member), `items`, `item_entries`.
+- RLS on every table. SECURITY DEFINER helpers `is_tenant_member(uuid)` / `is_tenant_admin(uuid)` to avoid recursive RLS.
+- SECURITY DEFINER RPCs: `create_tenant(name)`, `join_tenant_by_code(code)`, `get_tenant_members(tenant_id)`.
+- Explicit `GRANT`s to `authenticated` / `service_role`.
 
-- The important finding is from production logs: `Connection terminated unexpectedly` on every `pg` connection attempt, while sandbox logs show successful login.
-- This points to the published server runtime’s outbound PostgreSQL/TLS socket compatibility, not bad credentials or wrong login code.
-- The durable fix is to use the platform-native database path instead of an external Aiven raw PostgreSQL socket from production.
+### 3. Auth — Supabase Auth replaces iron-session + bcrypt
+- `/signup`: `supabase.auth.signUp({ email, password, options: { data: { display_name } } })`.
+- `/login`: `supabase.auth.signInWithPassword`.
+- `/forgot-password`: `supabase.auth.resetPasswordForEmail(email, { redirectTo: origin + '/reset-password' })`.
+- `/reset-password`: detects recovery token from URL hash, calls `supabase.auth.updateUser({ password })`.
+- Root `__root.tsx`: subscribe to `onAuthStateChange` → `router.invalidate()` + `queryClient.invalidateQueries()`.
+- `_authenticated` layout becomes `ssr: false` + `beforeLoad` calling `supabase.auth.getUser()` → redirect to `/login`.
+
+### 4. Server functions rewrite
+Every `query/queryOne` call in `src/lib/api/{tenants,items,entries}.functions.ts` becomes a Supabase query under `requireSupabaseAuth`. RLS enforces membership/admin, so manual `requireMembership` helpers go away. `create_tenant`, `joinTenant`, and member listing call the RPCs.
+
+`src/lib/api/auth.functions.ts` is deleted (auth is fully client-side).
+
+### 5. Delete
+- `src/lib/db.server.ts`
+- `src/lib/auth.server.ts`
+- `pg`, `iron-session`, `bcryptjs` deps
+- Aiven secrets remain in env but unused — you can remove them later.
+
+## Email confirmation
+
+By default Supabase requires email confirmation on signup. For the smoothest dev flow I recommend you turn **"Confirm email" OFF** in Supabase Dashboard → Authentication → Providers → Email (you can re-enable later). Otherwise users need to click an email link before the first login works.
+
+## Data migration
+
+**None.** Aiven data is not copied. Users re-sign-up and re-create tenants/items. (You said don't migrate earlier — confirm still OK now that we're moving providers entirely.)
+
+## What I need from you before I start building
+
+1. Confirm: provide Supabase URL + anon + service-role keys via the secrets prompt I'll send.
+2. Confirm: you'll run the schema SQL I generate in your Supabase SQL editor (or want me to attempt it via your DB connection if you give me `DATABASE_URL`).
+3. Confirm: no data migration.
+
+## Out of scope
+
+Google/Apple sign-in (add later if you want).
