@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -12,6 +12,8 @@ import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import "@/lib/i18n";
 import { applyDetectedLanguage } from "@/lib/i18n";
+import { getSupabaseConfig } from "@/lib/supabase/config.functions";
+import { initSupabase } from "@/lib/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -71,6 +73,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  loader: () => getSupabaseConfig(),
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -120,15 +123,45 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const config = Route.useLoaderData();
+
+  // Initialise the Supabase browser client synchronously (safe to call repeatedly).
+  initSupabase(config);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SupabaseAuthSync />
+      <Outlet />
+    </QueryClientProvider>
+  );
+}
+
+function SupabaseAuthSync() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     applyDetectedLanguage();
   }, []);
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-    </QueryClientProvider>
-  );
+  useEffect(() => {
+    // Lazy import to avoid SSR window access
+    import("@/lib/supabase/client").then(({ tryGetSupabase }) => {
+      const supabase = tryGetSupabase();
+      if (!supabase) return;
+      const { data } = supabase.auth.onAuthStateChange(() => {
+        queryClient.invalidateQueries();
+        router.invalidate();
+      });
+      // Return unsub via closure side effect below
+      (SupabaseAuthSync as unknown as { _unsub?: () => void })._unsub = () =>
+        data.subscription.unsubscribe();
+    });
+    return () => {
+      const ref = SupabaseAuthSync as unknown as { _unsub?: () => void };
+      ref._unsub?.();
+    };
+  }, [router, queryClient]);
+
+  return null;
 }
