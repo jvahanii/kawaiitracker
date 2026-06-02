@@ -1,25 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import { useSession } from "@tanstack/react-start/server";
 import { z } from "zod";
 
-import { query, queryOne } from "../db.server";
-import { getSessionConfig, type SessionData } from "../auth.server";
-
-async function requireUserId(): Promise<string> {
-  const session = await useSession<SessionData>(getSessionConfig());
-  const userId = session.data.userId;
-  if (!userId) throw new Error("Not authenticated");
-  return userId;
-}
-
-async function requireMembership(userId: string, tenantId: string) {
-  const m = await queryOne<{ role: "admin" | "member" }>(
-    "select role from tenant_members where tenant_id = $1 and user_id = $2",
-    [tenantId, userId],
-  );
-  if (!m) throw new Error("Not a member of this tenant");
-  return m.role;
-}
+import { requireSupabaseAuth } from "@/lib/supabase/auth-middleware";
 
 export type ItemStatus = "todo" | "in_progress" | "done";
 
@@ -35,57 +17,56 @@ export type ItemRow = {
   updatedAt: string;
 };
 
+type RawItem = {
+  id: string;
+  title: string;
+  status: ItemStatus;
+  assignee_id: string | null;
+  notes: string;
+  amount: number | string | null;
+  created_at: string;
+  updated_at: string;
+  profiles?: { display_name: string | null } | null;
+};
+
 export const listItems = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ tenantId: z.string().uuid() }))
-  .handler(async ({ data }) => {
-    const userId = await requireUserId();
-    await requireMembership(userId, data.tenantId);
-    const rows = await query<{
-      id: string;
-      title: string;
-      status: ItemStatus;
-      assignee_id: string | null;
-      assignee_name: string | null;
-      notes: string;
-      amount: string | null;
-      created_at: string;
-      updated_at: string;
-    }>(
-      `select i.id, i.title, i.status, i.assignee_id, u.display_name as assignee_name,
-              i.notes, i.amount, i.created_at, i.updated_at
-         from items i
-         left join app_users u on u.id = i.assignee_id
-        where i.tenant_id = $1
-        order by i.updated_at desc`,
-      [data.tenantId],
-    );
-    return rows.map<ItemRow>((r) => ({
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ tenantId: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { data: rows, error } = await context.supabase
+      .from("items")
+      .select(
+        "id, title, status, assignee_id, notes, amount, created_at, updated_at, profiles:assignee_id(display_name)",
+      )
+      .eq("tenant_id", data.tenantId)
+      .order("updated_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (rows as unknown as RawItem[]).map<ItemRow>((r) => ({
       id: r.id,
       title: r.title,
       status: r.status,
       assigneeId: r.assignee_id,
-      assigneeName: r.assignee_name,
-      notes: r.notes,
+      assigneeName: r.profiles?.display_name ?? null,
+      notes: r.notes ?? "",
       amount: r.amount === null ? null : Number(r.amount),
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     }));
   });
 
-
 export const createItem = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ tenantId: z.string().uuid(), title: z.string().min(1).max(200) }))
-  .handler(async ({ data }) => {
-    const userId = await requireUserId();
-    await requireMembership(userId, data.tenantId);
-    const row = await queryOne<{ id: string }>(
-      `insert into items (tenant_id, title, created_by)
-       values ($1, $2, $3)
-       returning id`,
-      [data.tenantId, data.title.trim(), userId],
-    );
-    if (!row) throw new Error("Failed to create item");
-    return { id: row.id };
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ tenantId: z.string().uuid(), title: z.string().min(1).max(200) }).parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { data: row, error } = await context.supabase
+      .from("items")
+      .insert({ tenant_id: data.tenantId, title: data.title.trim(), created_by: context.userId })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id as string };
   });
 
 const updateInput = z.object({
@@ -99,41 +80,34 @@ const updateInput = z.object({
 });
 
 export const updateItem = createServerFn({ method: "POST" })
-  .inputValidator(updateInput)
-  .handler(async ({ data }) => {
-    const userId = await requireUserId();
-    await requireMembership(userId, data.tenantId);
-    if (data.assigneeId) {
-      const ok = await queryOne(
-        "select 1 from tenant_members where tenant_id = $1 and user_id = $2",
-        [data.tenantId, data.assigneeId],
-      );
-      if (!ok) throw new Error("Assignee is not a tenant member");
-    }
-    const sets: string[] = [];
-    const params: unknown[] = [];
-    let p = 1;
-    if (data.title !== undefined) { sets.push(`title = $${p++}`); params.push(data.title.trim()); }
-    if (data.status !== undefined) { sets.push(`status = $${p++}`); params.push(data.status); }
-    if (data.assigneeId !== undefined) { sets.push(`assignee_id = $${p++}`); params.push(data.assigneeId); }
-    if (data.notes !== undefined) { sets.push(`notes = $${p++}`); params.push(data.notes); }
-    if (data.amount !== undefined) { sets.push(`amount = $${p++}`); params.push(data.amount); }
-
-    if (sets.length === 0) return { ok: true };
-    sets.push(`updated_at = now()`);
-    params.push(data.id, data.tenantId);
-    await query(
-      `update items set ${sets.join(", ")} where id = $${p++} and tenant_id = $${p}`,
-      params,
-    );
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => updateInput.parse(d))
+  .handler(async ({ context, data }) => {
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (data.title !== undefined) patch.title = data.title.trim();
+    if (data.status !== undefined) patch.status = data.status;
+    if (data.assigneeId !== undefined) patch.assignee_id = data.assigneeId;
+    if (data.notes !== undefined) patch.notes = data.notes;
+    if (data.amount !== undefined) patch.amount = data.amount;
+    if (Object.keys(patch).length === 1) return { ok: true };
+    const { error } = await context.supabase
+      .from("items")
+      .update(patch)
+      .eq("id", data.id)
+      .eq("tenant_id", data.tenantId);
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 export const deleteItem = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ tenantId: z.string().uuid(), id: z.string().uuid() }))
-  .handler(async ({ data }) => {
-    const userId = await requireUserId();
-    await requireMembership(userId, data.tenantId);
-    await query("delete from items where id = $1 and tenant_id = $2", [data.id, data.tenantId]);
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ tenantId: z.string().uuid(), id: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase
+      .from("items")
+      .delete()
+      .eq("id", data.id)
+      .eq("tenant_id", data.tenantId);
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
