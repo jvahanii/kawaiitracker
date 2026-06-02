@@ -1,48 +1,33 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { z } from "zod";
 
-import { resetPassword } from "@/lib/api/auth.functions";
+import { getSupabase } from "@/lib/supabase/client";
 import { AuthShell, Field } from "./login";
 
 export const Route = createFileRoute("/reset-password")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Set new password — Tracker" }] }),
-  validateSearch: z.object({ token: z.string().optional() }),
   component: ResetPasswordPage,
 });
 
 function ResetPasswordPage() {
   const { t } = useTranslation();
-  const { token } = Route.useSearch();
   const navigate = useNavigate();
-  const resetFn = useServerFn(resetPassword);
   const [password, setPassword] = useState("");
 
   const m = useMutation({
-    mutationFn: (data: { token: string; password: string }) => resetFn({ data }),
-    onSuccess: (res) => {
-      if (res.ok) setTimeout(() => navigate({ to: "/login" }), 1500);
+    mutationFn: async (data: { password: string }) => {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.updateUser({ password: data.password });
+      if (error) throw new Error(error.message);
+      return { ok: true as const };
+    },
+    onSuccess: () => {
+      setTimeout(() => navigate({ to: "/login" }), 1500);
     },
   });
-
-  const errorMessage = m.error
-    ? (m.error as Error).message
-    : m.data && !m.data.ok
-      ? m.data.error
-      : null;
-
-  if (!token) {
-    return (
-      <AuthShell title={t("reset.invalidTitle")} subtitle={t("reset.invalidSubtitle")}>
-        <Link to="/forgot-password" className="kawaii-button block w-full text-center">
-          {t("forgot.submit")} ✨
-        </Link>
-      </AuthShell>
-    );
-  }
 
   if (m.data?.ok) {
     return (
@@ -59,7 +44,7 @@ function ResetPasswordPage() {
       <form
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
-          m.mutate({ token, password });
+          m.mutate({ password });
         }}
         className="space-y-4"
       >
@@ -74,7 +59,9 @@ function ResetPasswordPage() {
             autoComplete="new-password"
           />
         </Field>
-        {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+        {m.error ? (
+          <p className="text-sm text-destructive">{(m.error as Error).message}</p>
+        ) : null}
         <button
           type="submit"
           disabled={m.isPending}
