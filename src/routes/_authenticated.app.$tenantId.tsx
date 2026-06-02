@@ -152,13 +152,6 @@ function WorkspacePage() {
               </Link>
               <button
                 type="button"
-                onClick={() => setInviteOpen(true)}
-                className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                {t("workspace.addUser")}
-              </button>
-              <button
-                type="button"
                 onClick={copyJoinCode}
                 title={t("workspace.joinCodeTitle")}
                 className="rounded bg-accent px-2 py-1 hover:bg-accent/80"
