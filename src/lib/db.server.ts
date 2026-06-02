@@ -1,8 +1,8 @@
 import { Client } from "pg";
 
-// The production runtime manages TLS for outbound Postgres sockets itself.
-// Keep the pg client configuration minimal: use a fresh Client per call and
-// request SSL with `true` rather than Node-only certificate options.
+// Use a fresh Client per call. In the production Worker runtime TLS is managed
+// by the socket layer, while the Node-based preview needs the Aiven self-signed
+// chain bypass that Workers do not support.
 
 export function isConnectionError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
@@ -15,7 +15,9 @@ export function isConnectionError(err: unknown): boolean {
     /Client has encountered a connection error/i.test(msg) ||
     /Client was closed/i.test(msg) ||
     /socket hang up/i.test(msg) ||
-    /TLS/i.test(msg)
+    /TLS/i.test(msg) ||
+    /self-signed certificate/i.test(msg) ||
+    /SELF_SIGNED_CERT_IN_CHAIN/i.test(msg)
   );
 }
 
@@ -48,6 +50,19 @@ function describeError(err: unknown): string {
   return String(err);
 }
 
+function isCloudflareWorkerRuntime(): boolean {
+  return (
+    typeof navigator === "object" &&
+    navigator !== null &&
+    typeof navigator.userAgent === "string" &&
+    navigator.userAgent === "Cloudflare-Workers"
+  );
+}
+
+function getSslConfig(): true | { rejectUnauthorized: false } {
+  return isCloudflareWorkerRuntime() ? true : { rejectUnauthorized: false };
+}
+
 function makeClient(): Client {
   const raw = process.env.AIVEN_DATABASE_URL;
   if (!raw) throw new Error("AIVEN_DATABASE_URL is not configured");
@@ -58,7 +73,7 @@ function makeClient(): Client {
     user: decodeURIComponent(u.username),
     password: decodeURIComponent(u.password),
     database: u.pathname.replace(/^\//, ""),
-    ssl: true,
+    ssl: getSslConfig(),
     connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
   });
 }
