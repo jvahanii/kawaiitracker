@@ -36,10 +36,13 @@ export const Route = createFileRoute("/_authenticated/app/$tenantId")({
 });
 
 
+const authenticatedRoute = getRouteApi("/_authenticated");
+
 function WorkspacePage() {
   const { t } = useTranslation();
   const { tenantId } = Route.useParams();
   const { tenants, currentTenant } = Route.useRouteContext();
+  const { user } = authenticatedRoute.useRouteContext();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
