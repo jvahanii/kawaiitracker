@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SavingsChart } from "@/components/SavingsChart";
 
-import { logout } from "@/lib/api/auth.functions";
+import { getSupabase } from "@/lib/supabase/client";
 import { listMyTenants, listTenantMembers } from "@/lib/api/tenants.functions";
 import {
   createItem,
@@ -51,7 +51,7 @@ function WorkspacePage() {
   const createFn = useServerFn(createItem);
   const updateFn = useServerFn(updateItem);
   const deleteFn = useServerFn(deleteItem);
-  const logoutFn = useServerFn(logout);
+  
 
   const itemsQ = useQuery({
     queryKey: ["items", tenantId],
@@ -94,7 +94,9 @@ function WorkspacePage() {
     onSuccess: () => invalidate(),
   });
   const logoutM = useMutation({
-    mutationFn: () => logoutFn(),
+    mutationFn: async () => {
+      await getSupabase().auth.signOut();
+    },
     onSuccess: () => navigate({ to: "/" }),
   });
 
