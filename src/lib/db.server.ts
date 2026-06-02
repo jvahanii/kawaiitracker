@@ -1,35 +1,9 @@
-import { Pool } from "pg";
+import { Client } from "pg";
 
-// Single pool per Worker isolate. Aiven requires TLS.
-let _pool: Pool | undefined;
-
-export function getPool(): Pool {
-  if (_pool) return _pool;
-  const raw = process.env.AIVEN_DATABASE_URL;
-  if (!raw) {
-    throw new Error("AIVEN_DATABASE_URL is not configured");
-  }
-  const u = new URL(raw);
-  const pool = new Pool({
-    host: u.hostname,
-    port: u.port ? Number(u.port) : 5432,
-    user: decodeURIComponent(u.username),
-    password: decodeURIComponent(u.password),
-    database: u.pathname.replace(/^\//, ""),
-    ssl: { rejectUnauthorized: false },
-    max: 3,
-    idleTimeoutMillis: 5_000,
-    connectionTimeoutMillis: 8_000,
-  });
-  // Prevent idle-connection terminations from crashing the worker, and
-  // drop the cached pool so the next query rebuilds fresh connections.
-  pool.on("error", (err) => {
-    console.error("pg pool error:", err);
-    if (_pool === pool) _pool = undefined;
-  });
-  _pool = pool;
-  return pool;
-}
+// Cloudflare Workers don't keep TCP sockets alive reliably between requests,
+// so pg.Pool's idle connections get killed and "Connection terminated"
+// errors surface on the next query. Open a fresh Client per call instead —
+// Aiven handshake is ~100ms which is acceptable for this app.
 
 export function isConnectionError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
@@ -39,7 +13,8 @@ export function isConnectionError(err: unknown): boolean {
     /ECONNRESET/i.test(msg) ||
     /ENOTFOUND/i.test(msg) ||
     /server closed the connection/i.test(msg) ||
-    /Client has encountered a connection error/i.test(msg)
+    /Client has encountered a connection error/i.test(msg) ||
+    /Client was closed/i.test(msg)
   );
 }
 
@@ -51,21 +26,38 @@ export class DatabaseUnavailableError extends Error {
   }
 }
 
-const MAX_ATTEMPTS = 4;
+const MAX_ATTEMPTS = 3;
+const CONNECT_TIMEOUT_MS = 15_000;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function makeClient(): Client {
+  const raw = process.env.AIVEN_DATABASE_URL;
+  if (!raw) throw new Error("AIVEN_DATABASE_URL is not configured");
+  const u = new URL(raw);
+  return new Client({
+    host: u.hostname,
+    port: u.port ? Number(u.port) : 5432,
+    user: decodeURIComponent(u.username),
+    password: decodeURIComponent(u.password),
+    database: u.pathname.replace(/^\//, ""),
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
+  });
+}
+
 export async function query<T = unknown>(text: string, params: unknown[] = []) {
   let lastErr: unknown;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const pool = getPool();
-    let client;
+    const client = makeClient();
+    // Swallow async client errors so they don't crash the worker.
+    client.on("error", (err) => {
+      console.error("[db] client error:", err instanceof Error ? err.message : err);
+    });
     try {
-      // Acquire a dedicated client so a stale idle socket fails here
-      // (recoverable) rather than mid-query.
-      client = await pool.connect();
+      await client.connect();
       const res = await client.query<T extends Record<string, unknown> ? T : never>(
         text,
         params as unknown[],
@@ -74,30 +66,29 @@ export async function query<T = unknown>(text: string, params: unknown[] = []) {
     } catch (err) {
       lastErr = err;
       if (isConnectionError(err) && attempt < MAX_ATTEMPTS - 1) {
-        // Drop the stale pool and retry with a fresh one.
-        if (_pool === pool) _pool = undefined;
-        try {
-          await pool.end();
-        } catch {
-          // ignore
-        }
-        await sleep(100 * (attempt + 1));
+        await sleep(150 * (attempt + 1));
         continue;
       }
       if (isConnectionError(err)) {
-        console.error("[db] connection error after retries:", err);
+        console.error(
+          "[db] connection error after retries:",
+          err instanceof Error ? err.message : err,
+        );
         throw new DatabaseUnavailableError(err);
       }
       throw err;
     } finally {
       try {
-        client?.release();
+        await client.end();
       } catch {
         // ignore
       }
     }
   }
-  console.error("[db] exhausted retries:", lastErr);
+  console.error(
+    "[db] exhausted retries:",
+    lastErr instanceof Error ? lastErr.message : lastErr,
+  );
   throw new DatabaseUnavailableError(lastErr);
 }
 

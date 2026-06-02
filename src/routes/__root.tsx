@@ -7,9 +7,11 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import "@/lib/i18n";
+import { applyDetectedLanguage } from "@/lib/i18n";
 
 function NotFoundComponent() {
   return (
@@ -118,6 +120,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    applyDetectedLanguage();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

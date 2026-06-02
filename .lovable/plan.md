@@ -1,34 +1,27 @@
-Syy näyttää olevan tämä: eilinen korjaus paransi vain tietokantayhteyden uudelleenyrityksiä, mutta kirjautumisvirta on edelleen täysin riippuvainen tietokannasta jokaisessa vaiheessa.
+Toteutan korjauksen näin:
 
-Teknisesti login tekee näin:
-1. `login()` hakee käyttäjän `app_users`-taulusta.
-2. Onnistuneen kirjautumisen jälkeen sivu ohjataan `/`-reitille.
-3. `/`-reitin `beforeLoad` kutsuu heti `getMe()` ja `listMyTenants()`.
-4. Myös `_authenticated`-reitit kutsuvat `getMe()` ennen kuin sivu näytetään.
+1. **Lisään turvallisen kirjautumisen diagnostiikan**
+   - Kirjaan palvelinpuolella, osuuko kirjautumisessa `app_users`-riviin vai epäonnistuuko salasanan hash-verifiointi.
+   - Lokit eivät sisällä salasanaa tai koko sähköpostia; käytän vain rajattua tunnistetta, jotta ongelma voidaan todentaa ilman arkaluonteista dataa.
 
-Jos tietokantayhteys pätkii missä tahansa näistä kohdista, kirjautuminen voi näyttää epäonnistuneelta, vaikka salasana olisi oikein. Eilinen muutos ei vielä estänyt tätä, koska virheet pääsevät edelleen kaatamaan reitin tai palautumaan geneerisenä palvelinvirheenä.
+2. **Tarkistan tuotantotietokannan tilanteen**
+   - Varmistan löytyykö `pete.skeittari@gmail.com` tuotannon `app_users`-taulusta.
+   - Tarkistan onko `password_hash` PBKDF2-muodossa (`pbkdf2$...`) ja onko käyttäjällä tenant-jäsenyys.
+   - En muuta tietoja tässä vaiheessa, ellei tarkistus osoita selvästi rikkoutunutta dataa tai pyydät salasanan nollausta.
 
-Toteutussuunnitelma:
+3. **Korjaan mahdollisen hash-/salasanayhteensopivuuden ongelman**
+   - Jos hash-formaatti on vanha tai rikkoutunut, lisään hallitun migraatiopolun tai nollauslogiikan.
+   - Jos hash on kunnossa mutta kaikkien tilien kirjautuminen hylätään, keskityn Web Crypto / base64 -verifioinnin tuotantoympäristöeroihin.
 
-1. Tee tietokantavirheistä hallittuja auth-virheitä
-   - Lisää auth-funktioihin yhteinen virheenkäsittely tietokantaongelmille.
-   - `login()` ei enää saa kaatua geneeriseen 500-virheeseen, vaan palauttaa selkeän viestin kuten “Palvelu on hetkellisesti ruuhkautunut, yritä uudelleen.”
-   - Väärä salasana pysyy edelleen normaalina “Invalid email or password” -virheenä.
+4. **Korjaan hydration-virheen kielivalinnasta**
+   - Nykyinen SSR renderöi englanniksi ja selain vaihtaa suomeksi liian aikaisin, mikä aiheuttaa `Back` vs `Takaisin` mismatchin.
+   - Teen kielestä SSR/client-yhteensopivan: ensirenderi pysyy samana, ja kieli vaihtuu vasta hydraation jälkeen ilman React-mismatchia.
 
-2. Estä etusivun reittivahti rikkomasta kirjautumista
-   - Päivitä `/`-reitin `beforeLoad`, jotta `getMe()` / `listMyTenants()` -tietokantavirhe ei kaada koko sivua.
-   - Jos istuntoa ei voida varmistaa tietokantaongelman takia, näytetään kirjautumis-/etusivu eikä virhesivua.
-   - Jos käyttäjä on oikeasti kirjautunut ja tietokanta toimii, nykyinen ohjaus workspaceen säilyy.
+5. **Parannan login-jälkeisen ohjauksen luotettavuutta**
+   - Varmistan, että onnistunut login ei näytä virheellisesti etusivua tai login-sivua, vaan odottaa istunnon tallennuksen ja ohjaa oikein.
+   - Tarvittaessa lisään selkeämmän virheilmoituksen tilanteisiin, joissa tili löytyy mutta salasana ei täsmää.
 
-3. Tee suojattu reitti vikasietoisemmaksi
-   - Päivitä `_authenticated`-reitin auth-tarkistus käsittelemään tietokantakatkos hallitusti.
-   - Katkos ohjaa käyttäjän takaisin login-sivulle tai näyttää hallitun virhetilan sen sijaan, että sovellus hajoaa.
-
-4. Lisää parempi lokitus ilman arkaluonteisia tietoja
-   - Kirjaa palvelinpuolella, missä auth-vaiheessa tietokanta epäonnistui.
-   - Älä lokita salasanoja, sessioita tai käyttäjän arkaluonteista dataa.
-
-5. Vahvista korjaus
-   - Testaa selaimessa, että virheellinen salasana palauttaa normaalin virheen.
-   - Testaa, ettei login-sivu tai etusivu kaadu, vaikka auth-funktio palauttaa tietokantaongelman.
-   - Tarkista server function -lokit, ettei 500/HTTPError enää synny kirjautumisvirrassa.
+6. **Vahvistan korjauksen**
+   - Tarkistan palvelinlokit ja login-serverifunktion vasteen.
+   - Varmistan, ettei hydration mismatch toistu login-sivulla.
+   - Raportoin, löytyikö Peten tili ja mikä kirjautumisen varsinainen syy oli.
