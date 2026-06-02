@@ -1,51 +1,34 @@
-## Multi-Tenant Item Tracker
+Syy näyttää olevan tämä: eilinen korjaus paransi vain tietokantayhteyden uudelleenyrityksiä, mutta kirjautumisvirta on edelleen täysin riippuvainen tietokannasta jokaisessa vaiheessa.
 
-A workspace app where each tenant has its own items and members. Users sign in, create or join a tenant via a shareable code, and manage items in a two-pane layout.
+Teknisesti login tekee näin:
+1. `login()` hakee käyttäjän `app_users`-taulusta.
+2. Onnistuneen kirjautumisen jälkeen sivu ohjataan `/`-reitille.
+3. `/`-reitin `beforeLoad` kutsuu heti `getMe()` ja `listMyTenants()`.
+4. Myös `_authenticated`-reitit kutsuvat `getMe()` ennen kuin sivu näytetään.
 
-### Auth & tenancy
-- Lovable Cloud auth: email/password + Google.
-- On first sign-in, user lands on a "Create or join tenant" screen.
-  - **Create tenant**: name + auto-generated 8-char code; creator becomes `admin`.
-  - **Join tenant**: enter code → added as `member`.
-- Users can belong to multiple tenants; active tenant stored in URL/local state with a switcher in the header.
+Jos tietokantayhteys pätkii missä tahansa näistä kohdista, kirjautuminen voi näyttää epäonnistuneelta, vaikka salasana olisi oikein. Eilinen muutos ei vielä estänyt tätä, koska virheet pääsevät edelleen kaatamaan reitin tai palautumaan geneerisenä palvelinvirheenä.
 
-### Roles
-- `admin`: manage tenant settings, view/rotate join code, manage members (remove, promote), CRUD all items.
-- `member`: CRUD items, view members.
-- Roles stored in a separate `tenant_members` table (never on profiles), enforced via a `has_tenant_role` security-definer function to avoid RLS recursion.
+Toteutussuunnitelma:
 
-### Item model
-- `title` (required), `status` (todo / in_progress / done), `assignee_id` (nullable, must be tenant member), `notes` (rich text / markdown textarea), timestamps, `created_by`.
+1. Tee tietokantavirheistä hallittuja auth-virheitä
+   - Lisää auth-funktioihin yhteinen virheenkäsittely tietokantaongelmille.
+   - `login()` ei enää saa kaatua geneeriseen 500-virheeseen, vaan palauttaa selkeän viestin kuten “Palvelu on hetkellisesti ruuhkautunut, yritä uudelleen.”
+   - Väärä salasana pysyy edelleen normaalina “Invalid email or password” -virheenä.
 
-### UI layout
-- Top bar: app name, tenant switcher, user menu.
-- Main: split pane.
-  - **Left**: items list (filter by status/assignee, search, "+ New item" button). Selecting an item highlights it.
-  - **Right**: selected item detail — editable title, status dropdown, assignee picker (tenant members), notes editor, delete button. Empty state when nothing selected.
-- Separate `/members` page for admins (invite code display + member list).
+2. Estä etusivun reittivahti rikkomasta kirjautumista
+   - Päivitä `/`-reitin `beforeLoad`, jotta `getMe()` / `listMyTenants()` -tietokantavirhe ei kaada koko sivua.
+   - Jos istuntoa ei voida varmistaa tietokantaongelman takia, näytetään kirjautumis-/etusivu eikä virhesivua.
+   - Jos käyttäjä on oikeasti kirjautunut ja tietokanta toimii, nykyinen ohjaus workspaceen säilyy.
 
-### Routes
-```
-/                       → redirects to /app or /login
-/login                  → email/password + Google
-/onboarding             → create or join tenant (no active tenant)
-/_authenticated/
-  app/$tenantId/        → split-pane items view
-  app/$tenantId/members → members + join code (admin-gated)
-```
+3. Tee suojattu reitti vikasietoisemmaksi
+   - Päivitä `_authenticated`-reitin auth-tarkistus käsittelemään tietokantakatkos hallitusti.
+   - Katkos ohjaa käyttäjän takaisin login-sivulle tai näyttää hallitun virhetilan sen sijaan, että sovellus hajoaa.
 
-### Technical details
-- TanStack Start file-based routes; `_authenticated` layout gates with `beforeLoad` + `supabase.auth.getUser()`.
-- Data fetched via `createServerFn` + `requireSupabaseAuth`, wrapped in TanStack Query (`ensureQueryData` in loader, `useSuspenseQuery` in component).
-- Tables (Supabase, all with explicit GRANTs + RLS):
-  - `tenants(id, name, join_code unique, created_at)`
-  - `tenant_members(id, tenant_id, user_id, role app_role, unique(tenant_id, user_id))`
-  - `items(id, tenant_id, title, status, assignee_id, notes, created_by, created_at, updated_at)`
-- Security-definer fn `has_tenant_role(_user, _tenant, _role)` and `is_tenant_member(_user, _tenant)` for policies.
-- RLS: members can read/write items in their tenants; only admins mutate `tenants` row and view full member list management actions.
-- Realtime subscription on `items` for live list updates (nice-to-have, low cost).
-- Zod validation on all server-fn inputs.
-- Design: clean, minimal workspace aesthetic (Linear-inspired); semantic tokens in `src/styles.css`.
+4. Lisää parempi lokitus ilman arkaluonteisia tietoja
+   - Kirjaa palvelinpuolella, missä auth-vaiheessa tietokanta epäonnistui.
+   - Älä lokita salasanoja, sessioita tai käyttäjän arkaluonteista dataa.
 
-### Out of scope (can add later)
-- Email invites, attachments, comments, activity log, item ordering/drag.
+5. Vahvista korjaus
+   - Testaa selaimessa, että virheellinen salasana palauttaa normaalin virheen.
+   - Testaa, ettei login-sivu tai etusivu kaadu, vaikka auth-funktio palauttaa tietokantaongelman.
+   - Tarkista server function -lokit, ettei 500/HTTPError enää synny kirjautumisvirrassa.

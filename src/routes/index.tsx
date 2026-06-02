@@ -13,11 +13,17 @@ export const Route = createFileRoute("/")({
     ],
   }),
   beforeLoad: async () => {
-    const me = await getMe();
-    if (!me) return;
-    const tenants = await listMyTenants();
-    if (tenants.length === 0) throw redirect({ to: "/onboarding" });
-    throw redirect({ to: "/app/$tenantId", params: { tenantId: tenants[0].id } });
+    try {
+      const me = await getMe();
+      if (!me) return;
+      const tenants = await listMyTenants();
+      if (tenants.length === 0) throw redirect({ to: "/onboarding" });
+      throw redirect({ to: "/app/$tenantId", params: { tenantId: tenants[0].id } });
+    } catch (err) {
+      // Re-throw redirects; swallow transient DB errors so the landing page renders.
+      if (err && typeof err === "object" && ("isRedirect" in err || "to" in err)) throw err;
+      console.error("[index beforeLoad] non-fatal:", err);
+    }
   },
   component: Landing,
 });
