@@ -90,7 +90,25 @@ function makeClient(): Client {
   });
 }
 
+function isUnsupportedRuntime(): boolean {
+  // Cloudflare Workers identifies itself via navigator.userAgent. The Aiven
+  // Postgres self-signed CA cannot be trusted by the Worker TLS layer, so
+  // direct `pg` connections always fail in production.
+  try {
+    const ua = (globalThis as { navigator?: { userAgent?: string } }).navigator?.userAgent;
+    return ua === "Cloudflare-Workers";
+  } catch {
+    return false;
+  }
+}
+
 export async function query<T = unknown>(text: string, params: unknown[] = []) {
+  if (isUnsupportedRuntime()) {
+    console.error("[db] direct Postgres connections are not supported in this runtime");
+    throw new DatabaseUnavailableError(
+      new Error("Database is not reachable from the production runtime"),
+    );
+  }
   let lastErr: unknown;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const client = makeClient();
