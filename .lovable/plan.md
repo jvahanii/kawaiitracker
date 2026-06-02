@@ -1,26 +1,46 @@
-Havainto tuotantolokeista:
-- Julkaisun jälkeen `POST /_serverFn/...login → 0` — Worker kaatuu kokonaan ennen vastausta. Tämä tarkoittaa, että `postgres.js`-paketti (postgres@3) ei käynnisty siististi Cloudflare Workersin ajossa.
-- Preview toimii, koska siellä koodi pyörii Node-sandboxissa, jossa Workers-rajoituksia ei ole.
-- Aiempi `pg`-virhe oli `Connection terminated unexpectedly`, joka on tunnettu Cloudflare Workers ↔ Aiven TLS-ongelma, ei ajurin kaatuminen.
+## Plan
 
-Suunnitelma:
+The production login failure is coming from the server-side database connection, not the login form. Preview/dev can bypass or tolerate the certificate chain, but production cannot reliably connect to the external Aiven Postgres over the current `pg` setup, which is why the published app keeps failing while iframe preview works.
 
-1. Palauta `pg`-ajuri (`Client` per pyyntö)
-   - `postgres.js` kaataa Workerin → emme voi käyttää sitä tuotannossa.
-   - Otetaan käyttöön takaisin vanha pg-pohjainen `query()`/`queryOne()` (yksi Client per kysely, retry, DatabaseUnavailableError) — sama rajapinta kuin nyt, joten muu sovellus ei muutu.
+### Fix approach
 
-2. Lisää tarkka virhediagnostiikka
-   - Lokitan tuotannossa virhekoodin (`err.code`), virhetyypin ja koko viestin, jotta erottuvat:
-     - TLS-virhe (sertifikaatti, CA)
-     - TCP-katkos (verkko, Aiven palomuuri)
-     - Autentikaatiovirhe (käyttäjätunnukset)
-   - Käyttäjälle näkyvä viesti pysyy ystävällisenä.
+1. **Stop patching TLS flags for production**
+   - Remove the fragile environment-specific `ssl` switching in `src/lib/db.server.ts`.
+   - Treat the current Aiven connection path as incompatible with the production runtime unless a proper trusted CA is supplied.
 
-3. Selvitä juurisyy ennen seuraavaa korjausta
-   - Julkaisun jälkeen tehdään yksi kirjautumisyritys ja katsotaan tuotantolokeista tarkka virheviesti.
-   - Sen pohjalta valitaan oikea pitkän aikavälin ratkaisu (esim. Aivenin CA:n hyväksyntä, sertifikaatin tarkistuksen kierto Workersissa, tai siirtymä Lovable Cloudiin / Supabaseen, joka on suunniteltu serverless-käyttöön).
+2. **Use the Aiven CA certificate explicitly**
+   - Add support for an `AIVEN_CA_CERT` secret/env value.
+   - Configure `pg` with:
+     - `ssl: { ca: AIVEN_CA_CERT, rejectUnauthorized: true }` when the CA is available.
+     - keep a dev-only fallback only for local/preview if needed.
+   - This resolves the `self-signed certificate in certificate chain` error correctly instead of disabling verification.
 
-Tekniset tiedot:
-- Muokattava: `src/lib/db.server.ts` (palautus + parempi logitus).
-- Ei muutoksia auth.functions.ts:ään tai käyttöliittymään.
-- Tämä ei vielä lopullisesti korjaa tuotantoa, vaan palauttaa Workerin toimintakuntoiseksi ja kertoo tarkan virheen, jolla pääsemme eteenpäin.
+3. **Make failures user-safe**
+   - Ensure TLS/connection errors are always converted into the existing friendly “Service is temporarily unavailable” response instead of crashing into a blank page.
+   - Keep detailed server logs for diagnosis without leaking credentials or full email addresses.
+
+4. **Fix the unrelated hydration mismatch while here**
+   - The current runtime errors also show Finnish/English text mismatch during hydration.
+   - Adjust i18n initialization so SSR and first client render use the same language, then apply browser-selected language after hydration.
+
+5. **Verify**
+   - Test the login server function in preview/dev.
+   - After you add the Aiven CA certificate as a secret and publish, test the published login again and check production server logs.
+
+### Required secret
+
+You’ll need to add the Aiven PostgreSQL CA certificate as a secret named:
+
+```text
+AIVEN_CA_CERT
+```
+
+Use the full PEM certificate from Aiven, including:
+
+```text
+-----BEGIN CERTIFICATE-----
+...
+-----END CERTIFICATE-----
+```
+
+Without that certificate, production will continue to reject the self-signed chain or terminate the connection.

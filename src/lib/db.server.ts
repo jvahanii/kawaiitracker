@@ -50,17 +50,29 @@ function describeError(err: unknown): string {
   return String(err);
 }
 
-function isCloudflareWorkerRuntime(): boolean {
-  return (
-    typeof navigator === "object" &&
-    navigator !== null &&
-    typeof navigator.userAgent === "string" &&
-    navigator.userAgent === "Cloudflare-Workers"
-  );
+type SslConfig = boolean | { ca?: string; rejectUnauthorized?: boolean };
+
+function normalizeCaPem(raw: string): string {
+  // Secrets UIs often collapse newlines or escape them as \n. Restore proper PEM.
+  let s = raw.trim();
+  if (s.includes("\\n")) s = s.replace(/\\n/g, "\n");
+  if (!s.includes("\n") && s.includes("-----BEGIN")) {
+    s = s
+      .replace(/-----BEGIN CERTIFICATE-----/g, "\n-----BEGIN CERTIFICATE-----\n")
+      .replace(/-----END CERTIFICATE-----/g, "\n-----END CERTIFICATE-----\n")
+      .replace(/\s+/g, (m) => (m.includes("\n") ? "\n" : " "))
+      .trim();
+  }
+  return s;
 }
 
-function getSslConfig(): true | { rejectUnauthorized: false } {
-  return isCloudflareWorkerRuntime() ? true : { rejectUnauthorized: false };
+function getSslConfig(): SslConfig {
+  const ca = process.env.AIVEN_CA_CERT;
+  if (ca && ca.trim().length > 0) {
+    return { ca: normalizeCaPem(ca), rejectUnauthorized: true };
+  }
+  // Fallback for dev/preview only — production should always have AIVEN_CA_CERT.
+  return { rejectUnauthorized: false } as SslConfig;
 }
 
 function makeClient(): Client {
@@ -73,7 +85,7 @@ function makeClient(): Client {
     user: decodeURIComponent(u.username),
     password: decodeURIComponent(u.password),
     database: u.pathname.replace(/^\//, ""),
-    ssl: getSslConfig(),
+    ssl: getSslConfig() as never,
     connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
   });
 }
