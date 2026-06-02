@@ -115,7 +115,7 @@ export function AuthShell({
         </div>
         <div className="mt-4 flex items-center justify-between">
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-            ← {t("common.back")}
+            {t("common.back")}
           </Link>
           <LanguageSwitcher />
         </div>

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, Link, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { getMe } from "@/lib/api/auth.functions";
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/")({
       throw redirect({ to: "/app/$tenantId", params: { tenantId: tenants[0].id } });
     } catch (err) {
       // Re-throw redirects; swallow transient DB errors so the landing page renders.
-      if (err && typeof err === "object" && ("isRedirect" in err || "to" in err)) throw err;
+      if (isRedirect(err)) throw err;
       console.error("[index beforeLoad] non-fatal:", err);
     }
   },
