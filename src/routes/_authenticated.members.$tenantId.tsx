@@ -93,6 +93,15 @@ function MembersPage() {
             {t("members.title")} · {currentTenant.name}
           </h1>
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setInviteOpen(true)}
+            className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            {t("workspace.addUser")}
+          </button>
+        </div>
       </header>
 
       <main className="mx-auto max-w-3xl p-6">
