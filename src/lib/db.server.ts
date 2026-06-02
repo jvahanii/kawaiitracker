@@ -1,10 +1,8 @@
-import postgres from "postgres";
+import { Client } from "pg";
 
-// Cloudflare Workers don't keep TCP sockets alive reliably between requests.
-// node-postgres (`pg`) frequently throws "Connection terminated unexpectedly"
-// in this runtime, so we use postgres.js (`postgres`) which has better
-// Workers compatibility. We still open a fresh, single-connection client per
-// request and close it afterwards to avoid stale TCP sockets.
+// Cloudflare Workers don't keep TCP sockets alive reliably between requests,
+// and pg.Pool's idle connections cause "Connection terminated unexpectedly"
+// errors. Open a fresh Client per call instead.
 
 export function isConnectionError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
@@ -16,8 +14,8 @@ export function isConnectionError(err: unknown): boolean {
     /server closed the connection/i.test(msg) ||
     /Client has encountered a connection error/i.test(msg) ||
     /Client was closed/i.test(msg) ||
-    /CONNECTION_/i.test(msg) ||
-    /socket/i.test(msg)
+    /socket hang up/i.test(msg) ||
+    /TLS/i.test(msg)
   );
 }
 
@@ -30,7 +28,7 @@ export class DatabaseUnavailableError extends Error {
 }
 
 const MAX_ATTEMPTS = 3;
-const CONNECT_TIMEOUT_S = 15;
+const CONNECT_TIMEOUT_MS = 15_000;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -39,33 +37,47 @@ function sleep(ms: number) {
 function describeError(err: unknown): string {
   if (err instanceof Error) {
     const code = (err as { code?: string }).code;
-    return code ? `${err.name}[${code}]: ${err.message}` : `${err.name}: ${err.message}`;
+    const errno = (err as { errno?: string | number }).errno;
+    const severity = (err as { severity?: string }).severity;
+    const parts = [err.name];
+    if (code) parts.push(`code=${code}`);
+    if (errno !== undefined) parts.push(`errno=${errno}`);
+    if (severity) parts.push(`severity=${severity}`);
+    return `${parts.join(" ")}: ${err.message}`;
   }
   return String(err);
 }
 
-function makeSql() {
+function makeClient(): Client {
   const raw = process.env.AIVEN_DATABASE_URL;
   if (!raw) throw new Error("AIVEN_DATABASE_URL is not configured");
-  return postgres(raw, {
-    ssl: "require",
-    max: 1,
-    idle_timeout: 1,
-    max_lifetime: 30,
-    connect_timeout: CONNECT_TIMEOUT_S,
-    prepare: false,
-    fetch_types: false,
+  const u = new URL(raw);
+  return new Client({
+    host: u.hostname,
+    port: u.port ? Number(u.port) : 5432,
+    user: decodeURIComponent(u.username),
+    password: decodeURIComponent(u.password),
+    database: u.pathname.replace(/^\//, ""),
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
   });
 }
 
 export async function query<T = unknown>(text: string, params: unknown[] = []) {
   let lastErr: unknown;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const sql = makeSql();
+    const client = makeClient();
+    // Swallow async client errors so they don't crash the worker.
+    client.on("error", (err) => {
+      console.error("[db] client error:", describeError(err));
+    });
     try {
-      // postgres.js uses .unsafe() for raw parameterized SQL with $1, $2 style placeholders.
-      const rows = await sql.unsafe(text, params as never[]);
-      return rows as unknown as T[];
+      await client.connect();
+      const res = await client.query<T extends Record<string, unknown> ? T : never>(
+        text,
+        params as unknown[],
+      );
+      return res.rows as T[];
     } catch (err) {
       lastErr = err;
       const desc = describeError(err);
@@ -82,7 +94,7 @@ export async function query<T = unknown>(text: string, params: unknown[] = []) {
       throw err;
     } finally {
       try {
-        await sql.end({ timeout: 1 });
+        await client.end();
       } catch {
         // ignore
       }
