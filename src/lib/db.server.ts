@@ -1,9 +1,10 @@
-import { Client } from "pg";
+import postgres from "postgres";
 
-// Cloudflare Workers don't keep TCP sockets alive reliably between requests,
-// so pg.Pool's idle connections get killed and "Connection terminated"
-// errors surface on the next query. Open a fresh Client per call instead —
-// Aiven handshake is ~100ms which is acceptable for this app.
+// Cloudflare Workers don't keep TCP sockets alive reliably between requests.
+// node-postgres (`pg`) frequently throws "Connection terminated unexpectedly"
+// in this runtime, so we use postgres.js (`postgres`) which has better
+// Workers compatibility. We still open a fresh, single-connection client per
+// request and close it afterwards to avoid stale TCP sockets.
 
 export function isConnectionError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
@@ -14,7 +15,9 @@ export function isConnectionError(err: unknown): boolean {
     /ENOTFOUND/i.test(msg) ||
     /server closed the connection/i.test(msg) ||
     /Client has encountered a connection error/i.test(msg) ||
-    /Client was closed/i.test(msg)
+    /Client was closed/i.test(msg) ||
+    /CONNECTION_/i.test(msg) ||
+    /socket/i.test(msg)
   );
 }
 
@@ -27,68 +30,65 @@ export class DatabaseUnavailableError extends Error {
 }
 
 const MAX_ATTEMPTS = 3;
-const CONNECT_TIMEOUT_MS = 15_000;
+const CONNECT_TIMEOUT_S = 15;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function makeClient(): Client {
+function describeError(err: unknown): string {
+  if (err instanceof Error) {
+    const code = (err as { code?: string }).code;
+    return code ? `${err.name}[${code}]: ${err.message}` : `${err.name}: ${err.message}`;
+  }
+  return String(err);
+}
+
+function makeSql() {
   const raw = process.env.AIVEN_DATABASE_URL;
   if (!raw) throw new Error("AIVEN_DATABASE_URL is not configured");
-  const u = new URL(raw);
-  return new Client({
-    host: u.hostname,
-    port: u.port ? Number(u.port) : 5432,
-    user: decodeURIComponent(u.username),
-    password: decodeURIComponent(u.password),
-    database: u.pathname.replace(/^\//, ""),
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
+  return postgres(raw, {
+    ssl: "require",
+    max: 1,
+    idle_timeout: 1,
+    max_lifetime: 30,
+    connect_timeout: CONNECT_TIMEOUT_S,
+    prepare: false,
+    fetch_types: false,
   });
 }
 
 export async function query<T = unknown>(text: string, params: unknown[] = []) {
   let lastErr: unknown;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const client = makeClient();
-    // Swallow async client errors so they don't crash the worker.
-    client.on("error", (err) => {
-      console.error("[db] client error:", err instanceof Error ? err.message : err);
-    });
+    const sql = makeSql();
     try {
-      await client.connect();
-      const res = await client.query<T extends Record<string, unknown> ? T : never>(
-        text,
-        params as unknown[],
-      );
-      return res.rows as T[];
+      // postgres.js uses .unsafe() for raw parameterized SQL with $1, $2 style placeholders.
+      const rows = await sql.unsafe(text, params as never[]);
+      return rows as unknown as T[];
     } catch (err) {
       lastErr = err;
+      const desc = describeError(err);
       if (isConnectionError(err) && attempt < MAX_ATTEMPTS - 1) {
+        console.warn(`[db] retrying after connection error (attempt ${attempt + 1}): ${desc}`);
         await sleep(150 * (attempt + 1));
         continue;
       }
       if (isConnectionError(err)) {
-        console.error(
-          "[db] connection error after retries:",
-          err instanceof Error ? err.message : err,
-        );
+        console.error(`[db] connection error after retries: ${desc}`);
         throw new DatabaseUnavailableError(err);
       }
+      console.error(`[db] query error: ${desc}`);
       throw err;
     } finally {
       try {
-        await client.end();
+        await sql.end({ timeout: 1 });
       } catch {
         // ignore
       }
     }
   }
-  console.error(
-    "[db] exhausted retries:",
-    lastErr instanceof Error ? lastErr.message : lastErr,
-  );
+  console.error(`[db] exhausted retries: ${describeError(lastErr)}`);
   throw new DatabaseUnavailableError(lastErr);
 }
 
