@@ -95,9 +95,11 @@ function WorkspacePage() {
   });
   const logoutM = useMutation({
     mutationFn: async () => {
+      // Navigate away first so mounted queries unmount before the session
+      // is cleared — otherwise they refetch unauthenticated and 401.
+      await navigate({ to: "/login" });
       await getSupabase().auth.signOut();
     },
-    onSuccess: () => navigate({ to: "/" }),
   });
 
   const [newTitle, setNewTitle] = useState("");
