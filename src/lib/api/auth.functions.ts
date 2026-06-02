@@ -57,25 +57,52 @@ export const login = createServerFn({ method: "POST" })
   .inputValidator(loginInput)
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase().trim();
+    // Log only a short tag so we can correlate failures without leaking PII.
+    const tag = email.slice(0, 3) + "***@" + (email.split("@")[1] ?? "");
     try {
       const row = await queryOne<{ id: string; password_hash: string; display_name: string; email: string }>(
         "select id, password_hash, display_name, email from app_users where email = $1",
         [email],
       );
-      if (!row) return { ok: false as const, error: "Invalid email or password" };
-      const ok = await verifyPassword(data.password, row.password_hash);
-      if (!ok) return { ok: false as const, error: "Invalid email or password" };
-      const session = await useSession<SessionData>(getSessionConfig());
-      await session.update({ userId: row.id });
+      if (!row) {
+        console.warn(`[auth] login: no user for ${tag}`);
+        return { ok: false as const, error: "Invalid email or password" };
+      }
+      let ok = false;
+      try {
+        ok = await verifyPassword(data.password, row.password_hash);
+      } catch (verifyErr) {
+        console.error(`[auth] login: verifyPassword threw for ${tag}:`, verifyErr);
+        return {
+          ok: false as const,
+          error: "Login is temporarily unavailable, please try again.",
+        };
+      }
+      if (!ok) {
+        console.warn(`[auth] login: password mismatch for ${tag}`);
+        return { ok: false as const, error: "Invalid email or password" };
+      }
+      try {
+        const session = await useSession<SessionData>(getSessionConfig());
+        await session.update({ userId: row.id });
+      } catch (sessionErr) {
+        console.error(`[auth] login: session update failed for ${tag}:`, sessionErr);
+        return {
+          ok: false as const,
+          error: "Could not start session, please try again.",
+        };
+      }
+      console.log(`[auth] login: success for ${tag}`);
       return {
         ok: true as const,
         user: { id: row.id, email: row.email, displayName: row.display_name },
       };
     } catch (err) {
       if (err instanceof DatabaseUnavailableError) {
-        console.error("[auth] login db unavailable");
+        console.error(`[auth] login: db unavailable for ${tag}`);
         return { ok: false as const, error: "Service is temporarily unavailable, please try again in a moment." };
       }
+      console.error(`[auth] login: unexpected error for ${tag}:`, err);
       throw err;
     }
   });
