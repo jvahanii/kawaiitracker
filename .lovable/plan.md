@@ -1,27 +1,23 @@
-Toteutan korjauksen näin:
+Havainto: julkaistun sivun lokit näyttävät edelleen `db unavailable` ja `[db] connection error after retries: Connection terminated unexpectedly` kirjautumisen aikana. Tämä ei ole enää salasanavirhe eikä julkaisun välimuistiongelma, vaan tuotantoympäristön tietokantayhteys katkeaa ennen kyselyn valmistumista.
 
-1. **Lisään turvallisen kirjautumisen diagnostiikan**
-   - Kirjaan palvelinpuolella, osuuko kirjautumisessa `app_users`-riviin vai epäonnistuuko salasanan hash-verifiointi.
-   - Lokit eivät sisällä salasanaa tai koko sähköpostia; käytän vain rajattua tunnistetta, jotta ongelma voidaan todentaa ilman arkaluonteista dataa.
+Suunnitelma:
 
-2. **Tarkistan tuotantotietokannan tilanteen**
-   - Varmistan löytyykö `pete.skeittari@gmail.com` tuotannon `app_users`-taulusta.
-   - Tarkistan onko `password_hash` PBKDF2-muodossa (`pbkdf2$...`) ja onko käyttäjällä tenant-jäsenyys.
-   - En muuta tietoja tässä vaiheessa, ellei tarkistus osoita selvästi rikkoutunutta dataa tai pyydät salasanan nollausta.
+1. Vaihda PostgreSQL-ajuri Workers-yhteensopivaan ratkaisuun
+   - Nykyinen `pg`/TCP-yhteys katkeaa tuotannossa SSL/TCP-tasolla.
+   - Korvaan sen `postgres`-ajurilla ja konfiguroin sen serverless-käyttöön ilman pitkäikäisiä idle-yhteyksiä.
+   - Säilytän nykyisen `query()` ja `queryOne()` rajapinnan, jotta muu sovellus ei tarvitse laajaa refaktorointia.
 
-3. **Korjaan mahdollisen hash-/salasanayhteensopivuuden ongelman**
-   - Jos hash-formaatti on vanha tai rikkoutunut, lisään hallitun migraatiopolun tai nollauslogiikan.
-   - Jos hash on kunnossa mutta kaikkien tilien kirjautuminen hylätään, keskityn Web Crypto / base64 -verifioinnin tuotantoympäristöeroihin.
+2. Paranna tietokantavirheen diagnostiikkaa
+   - Lokitan varsinaisen virheviestin ja virhekoodin turvallisesti ilman henkilötietoja.
+   - Pidän käyttäjälle näkyvän virheen ystävällisenä: “Service is temporarily unavailable…”
+   - Näin seuraava tuotantotesti kertoo heti, onko kyse SSL:stä, verkosta, tunnuksista vai ajurista.
 
-4. **Korjaan hydration-virheen kielivalinnasta**
-   - Nykyinen SSR renderöi englanniksi ja selain vaihtaa suomeksi liian aikaisin, mikä aiheuttaa `Back` vs `Takaisin` mismatchin.
-   - Teen kielestä SSR/client-yhteensopivan: ensirenderi pysyy samana, ja kieli vaihtuu vasta hydraation jälkeen ilman React-mismatchia.
+3. Varmista kirjautumisvirta
+   - Testaan serverifunktion/tuotantolokit korjauksen jälkeen.
+   - Jos yhteys toimii, kirjautumisen pitäisi siirtyä seuraavaan vaiheeseen: salasanan tarkistus ja session luonti.
+   - En muuta käyttäjiä, salasanoja tai käyttöliittymää tässä korjauksessa.
 
-5. **Parannan login-jälkeisen ohjauksen luotettavuutta**
-   - Varmistan, että onnistunut login ei näytä virheellisesti etusivua tai login-sivua, vaan odottaa istunnon tallennuksen ja ohjaa oikein.
-   - Tarvittaessa lisään selkeämmän virheilmoituksen tilanteisiin, joissa tili löytyy mutta salasana ei täsmää.
-
-6. **Vahvistan korjauksen**
-   - Tarkistan palvelinlokit ja login-serverifunktion vasteen.
-   - Varmistan, ettei hydration mismatch toistu login-sivulla.
-   - Raportoin, löytyikö Peten tili ja mikä kirjautumisen varsinainen syy oli.
+Tekniset tiedot:
+- Muokattava pääfile: `src/lib/db.server.ts`
+- Mahdollinen riippuvuusmuutos: lisää `postgres` ja poista/ohita `pg`, jos sitä ei enää tarvita.
+- Nykyiset API-tiedostot voivat jäädä samoiksi, koska ne käyttävät vain `query`/`queryOne`-apufunktioita.
