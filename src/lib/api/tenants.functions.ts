@@ -27,29 +27,29 @@ export const createTenant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ name: z.string().min(1).max(80) }).parse(d))
   .handler(async ({ context, data }) => {
-    const { data: rows, error } = await context.supabase.rpc("create_tenant", { p_name: data.name });
+    const { data: rows, error } = (await context.supabase.rpc("create_tenant", { p_name: data.name })) as { data: { id: string; join_code: string }[] | { id: string; join_code: string } | null; error: { message: string } | null };
     if (error) throw new Error(error.message);
     const row = Array.isArray(rows) ? rows[0] : rows;
     if (!row) throw new Error("Failed to create tenant");
-    return { id: row.id as string, joinCode: row.join_code as string };
+    return { id: row.id, joinCode: row.join_code };
   });
 
 export const joinTenant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ code: z.string().min(4).max(16) }).parse(d))
   .handler(async ({ context, data }) => {
-    const { data: rows, error } = await context.supabase.rpc("join_tenant_by_code", { p_code: data.code });
+    const { data: rows, error } = (await context.supabase.rpc("join_tenant_by_code", { p_code: data.code })) as { data: { id: string; name: string }[] | { id: string; name: string } | null; error: { message: string } | null };
     if (error) throw new Error(error.message);
     const row = Array.isArray(rows) ? rows[0] : rows;
     if (!row) return { ok: false as const, error: "No tenant found for that code" };
-    return { ok: true as const, id: row.id as string, name: row.name as string };
+    return { ok: true as const, id: row.id, name: row.name };
   });
 
 export const listTenantMembers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ tenantId: z.string().uuid() }).parse(d))
   .handler(async ({ context, data }) => {
-    const { data: rows, error } = await context.supabase.rpc("get_tenant_members", { p_tenant_id: data.tenantId });
+    const { data: rows, error } = (await context.supabase.rpc("get_tenant_members", { p_tenant_id: data.tenantId })) as { data: { id: string; display_name: string; email: string | null; role: string }[] | null; error: { message: string } | null };
     if (error) throw new Error(error.message);
     return (rows ?? []).map((r: { id: string; display_name: string; email: string | null; role: string }) => ({
       id: r.id,
