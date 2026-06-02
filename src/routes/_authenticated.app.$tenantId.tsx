@@ -143,6 +143,13 @@ function WorkspacePage() {
           <LanguageSwitcher />
           {currentTenant.role === "admin" ? (
             <>
+              <Link
+                to="/members/$tenantId"
+                params={{ tenantId }}
+                className="rounded-md px-2 py-1 text-xs hover:bg-accent"
+              >
+                {t("workspace.manageUsers")}
+              </Link>
               <button
                 type="button"
                 onClick={() => setInviteOpen(true)}
