@@ -26,7 +26,6 @@ type RawItem = {
   amount: number | string | null;
   created_at: string;
   updated_at: string;
-  profiles?: { display_name: string | null } | null;
 };
 
 export const listItems = createServerFn({ method: "GET" })
@@ -35,18 +34,33 @@ export const listItems = createServerFn({ method: "GET" })
   .handler(async ({ context, data }) => {
     const { data: rows, error } = await context.supabase
       .from("items")
-      .select(
-        "id, title, status, assignee_id, notes, amount, created_at, updated_at, profiles:assignee_id(display_name)",
-      )
+      .select("id, title, status, assignee_id, notes, amount, created_at, updated_at")
       .eq("tenant_id", data.tenantId)
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return (rows as unknown as RawItem[]).map<ItemRow>((r) => ({
+    const items = (rows ?? []) as RawItem[];
+
+    // Resolve assignee display names via a single profiles lookup
+    const assigneeIds = Array.from(
+      new Set(items.map((r) => r.assignee_id).filter((v): v is string => !!v)),
+    );
+    const nameById = new Map<string, string>();
+    if (assigneeIds.length > 0) {
+      const { data: profiles } = await context.supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", assigneeIds);
+      for (const p of (profiles ?? []) as { id: string; display_name: string | null }[]) {
+        nameById.set(p.id, p.display_name ?? "");
+      }
+    }
+
+    return items.map<ItemRow>((r) => ({
       id: r.id,
       title: r.title,
       status: r.status,
       assigneeId: r.assignee_id,
-      assigneeName: r.profiles?.display_name ?? null,
+      assigneeName: r.assignee_id ? (nameById.get(r.assignee_id) ?? null) : null,
       notes: r.notes ?? "",
       amount: r.amount === null ? null : Number(r.amount),
       createdAt: r.created_at,
