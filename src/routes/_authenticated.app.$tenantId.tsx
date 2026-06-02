@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -36,10 +36,13 @@ export const Route = createFileRoute("/_authenticated/app/$tenantId")({
 });
 
 
+const authenticatedRoute = getRouteApi("/_authenticated");
+
 function WorkspacePage() {
   const { t } = useTranslation();
   const { tenantId } = Route.useParams();
   const { tenants, currentTenant } = Route.useRouteContext();
+  const { user } = authenticatedRoute.useRouteContext();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -123,6 +126,9 @@ function WorkspacePage() {
           </Link>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          {user ? (
+            <span className="font-medium text-foreground">{user.displayName}</span>
+          ) : null}
           <LanguageSwitcher />
           {currentTenant.role === "admin" ? (
             <button
