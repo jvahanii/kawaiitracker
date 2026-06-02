@@ -47,6 +47,19 @@ function MembersPage() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["members", tenantId] });
 
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copyJoinCode = async () => {
+    try {
+      await navigator.clipboard?.writeText(currentTenant.joinCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const updateM = useMutation({
     mutationFn: (v: { userId: string; role: "admin" | "member" }) =>
       updateRoleFn({ data: { tenantId, ...v } }),
