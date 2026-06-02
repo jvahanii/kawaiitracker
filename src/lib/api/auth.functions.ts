@@ -57,37 +57,57 @@ export const login = createServerFn({ method: "POST" })
   .inputValidator(loginInput)
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase().trim();
-    const row = await queryOne<{ id: string; password_hash: string; display_name: string; email: string }>(
-      "select id, password_hash, display_name, email from app_users where email = $1",
-      [email],
-    );
-    if (!row) return { ok: false as const, error: "Invalid email or password" };
-    const ok = await verifyPassword(data.password, row.password_hash);
-    if (!ok) return { ok: false as const, error: "Invalid email or password" };
-    const session = await useSession<SessionData>(getSessionConfig());
-    await session.update({ userId: row.id });
-    return {
-      ok: true as const,
-      user: { id: row.id, email: row.email, displayName: row.display_name },
-    };
+    try {
+      const row = await queryOne<{ id: string; password_hash: string; display_name: string; email: string }>(
+        "select id, password_hash, display_name, email from app_users where email = $1",
+        [email],
+      );
+      if (!row) return { ok: false as const, error: "Invalid email or password" };
+      const ok = await verifyPassword(data.password, row.password_hash);
+      if (!ok) return { ok: false as const, error: "Invalid email or password" };
+      const session = await useSession<SessionData>(getSessionConfig());
+      await session.update({ userId: row.id });
+      return {
+        ok: true as const,
+        user: { id: row.id, email: row.email, displayName: row.display_name },
+      };
+    } catch (err) {
+      if (err instanceof DatabaseUnavailableError) {
+        console.error("[auth] login db unavailable");
+        return { ok: false as const, error: "Service is temporarily unavailable, please try again in a moment." };
+      }
+      throw err;
+    }
   });
 
 export const logout = createServerFn({ method: "POST" }).handler(async () => {
-  const session = await useSession<SessionData>(getSessionConfig());
-  await session.clear();
+  try {
+    const session = await useSession<SessionData>(getSessionConfig());
+    await session.clear();
+  } catch (err) {
+    console.error("[auth] logout error:", err);
+  }
   return { ok: true };
 });
 
 export const getMe = createServerFn({ method: "GET" }).handler(async () => {
-  const session = await useSession<SessionData>(getSessionConfig());
-  const userId = session.data.userId;
-  if (!userId) return null;
-  const row = await queryOne<UserRow>(
-    "select id, email, display_name from app_users where id = $1",
-    [userId],
-  );
-  if (!row) return null;
-  return { id: row.id, email: row.email, displayName: row.display_name };
+  try {
+    const session = await useSession<SessionData>(getSessionConfig());
+    const userId = session.data.userId;
+    if (!userId) return null;
+    const row = await queryOne<UserRow>(
+      "select id, email, display_name from app_users where id = $1",
+      [userId],
+    );
+    if (!row) return null;
+    return { id: row.id, email: row.email, displayName: row.display_name };
+  } catch (err) {
+    if (err instanceof DatabaseUnavailableError) {
+      console.error("[auth] getMe db unavailable, treating as logged-out");
+      return null;
+    }
+    throw err;
+  }
 });
 
 // ---------- Password reset ----------
