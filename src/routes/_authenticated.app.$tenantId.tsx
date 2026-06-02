@@ -264,41 +264,6 @@ function WorkspacePage() {
 
       </div>
 
-      {inviteOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setInviteOpen(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="mb-2 text-lg font-semibold">{t("workspace.inviteTitle")}</h2>
-            <p className="mb-4 text-sm text-muted-foreground">{t("workspace.inviteBody")}</p>
-            <div className="mb-4 flex items-center gap-2">
-              <code className="flex-1 rounded bg-accent px-3 py-2 text-center font-mono text-lg font-semibold tracking-widest">
-                {currentTenant.joinCode}
-              </code>
-              <button
-                type="button"
-                onClick={copyJoinCode}
-                className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                {copied ? t("workspace.copied") : t("workspace.copyCode")}
-              </button>
-            </div>
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => setInviteOpen(false)}
-                className="rounded-md px-3 py-1.5 text-sm hover:bg-accent"
-              >
-                {t("workspace.close")}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
