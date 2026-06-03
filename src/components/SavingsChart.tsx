@@ -243,7 +243,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   tickFormatter={(v) => fmt(Number(v))}
                   width={70}
-                  domain={[0, (dataMax: number) => Math.max(dataMax, goal.amount ?? 0) * 1.1]}
+                  domain={[0, (dataMax: number) => dataMax * 1.1]}
                 />
                 <Tooltip
                   cursor={{ stroke: "hsl(var(--accent))" }}
