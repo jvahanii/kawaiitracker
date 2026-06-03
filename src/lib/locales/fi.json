@@ -104,6 +104,11 @@
     "member": "Jäsen",
     "remove": "Poista",
     "confirmRemove": "Poistetaanko käyttäjä {{name}} työtilasta?",
-    "lastAdmin": "Työtilassa on oltava vähintään yksi ylläpitäjä."
+    "lastAdmin": "Työtilassa on oltava vähintään yksi ylläpitäjä.",
+    "addDirectTitle": "Lisää käyttäjä sähköpostilla",
+    "addDirectBody": "Jos käyttäjällä on jo tili, hänet lisätään suoraan. Muussa tapauksessa hänelle lähetetään kutsu sähköpostitse.",
+    "addDirectBtn": "Lisää",
+    "addedOk": "Käyttäjä lisätty.",
+    "alreadyMember": "Käyttäjä on jo tämän työtilan jäsen."
   }
 }

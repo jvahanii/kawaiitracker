@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
+  addMemberByEmail,
   listMyTenants,
   listTenantMembers,
   removeMember,
@@ -39,6 +40,7 @@ function MembersPage() {
   const listFn = useServerFn(listTenantMembers);
   const updateRoleFn = useServerFn(updateMemberRole);
   const removeFn = useServerFn(removeMember);
+  const addByEmailFn = useServerFn(addMemberByEmail);
 
   const membersQ = useQuery({
     queryKey: ["members", tenantId],
@@ -49,6 +51,8 @@ function MembersPage() {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [addEmail, setAddEmail] = useState("");
+  const [addRole, setAddRole] = useState<"admin" | "member">("member");
 
   const copyJoinCode = async () => {
     try {
@@ -70,6 +74,19 @@ function MembersPage() {
   const removeM = useMutation({
     mutationFn: (userId: string) => removeFn({ data: { tenantId, userId } }),
     onSuccess: invalidate,
+    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+  });
+
+  const addM = useMutation({
+    mutationFn: (v: { email: string; role: "admin" | "member" }) =>
+      addByEmailFn({ data: { tenantId, ...v } }),
+    onSuccess: (res) => {
+      invalidate();
+      setAddEmail("");
+      setAddRole("member");
+      if (res?.alreadyMember) alert(t("members.alreadyMember"));
+      else alert(t("members.addedOk"));
+    },
     onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
   });
 
@@ -190,6 +207,47 @@ function MembersPage() {
               >
                 {copied ? t("workspace.copied") : t("workspace.copyCode")}
               </button>
+            </div>
+
+            <div className="mb-4 border-t border-border pt-4">
+              <h3 className="mb-2 text-sm font-semibold">{t("members.addDirectTitle")}</h3>
+              <p className="mb-3 text-xs text-muted-foreground">
+                {t("members.addDirectBody")}
+              </p>
+              <form
+                className="flex flex-col gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!addEmail.trim()) return;
+                  addM.mutate({ email: addEmail.trim(), role: addRole });
+                }}
+              >
+                <input
+                  type="email"
+                  required
+                  placeholder="name@example.com"
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  className="input h-9 text-sm"
+                />
+                <div className="flex items-center gap-2">
+                  <select
+                    value={addRole}
+                    onChange={(e) => setAddRole(e.target.value as "admin" | "member")}
+                    className="input h-9 py-0 text-sm"
+                  >
+                    <option value="member">{t("members.member")}</option>
+                    <option value="admin">{t("members.admin")}</option>
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={addM.isPending || !addEmail.trim()}
+                    className="ml-auto rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {addM.isPending ? t("common.saving") : t("members.addDirectBtn")}
+                  </button>
+                </div>
+              </form>
             </div>
             <div className="flex justify-end">
               <button
