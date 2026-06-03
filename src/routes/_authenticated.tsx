@@ -1,11 +1,11 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
-import { tryGetSupabase } from "@/lib/supabase/client";
+import { ensureSupabase } from "@/lib/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    const supabase = tryGetSupabase();
+    const supabase = await ensureSupabase().catch(() => null);
     if (!supabase) throw redirect({ to: "/login" });
 
     // Fast path: trust the persisted session written by signInWithPassword.

@@ -8,7 +8,7 @@ import { GripVertical } from "lucide-react";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SavingsChart } from "@/components/SavingsChart";
 
-import { getSupabase } from "@/lib/supabase/client";
+import { ensureSupabase } from "@/lib/supabase/client";
 import { listMyTenants, listTenantMembers } from "@/lib/api/tenants.functions";
 import {
   createItem,
@@ -120,7 +120,8 @@ function WorkspacePage() {
       // Navigate away first so mounted queries unmount before the session
       // is cleared — otherwise they refetch unauthenticated and 401.
       await navigate({ to: "/login" });
-      await getSupabase().auth.signOut();
+      const supabase = await ensureSupabase();
+      await supabase.auth.signOut();
     },
   });
 
