@@ -141,7 +141,7 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
       lookupErr = e instanceof Error ? e.message : String(e);
     }
 
-    let foundAuthEmail: string | null = null;
+    let resolvedEmail: string | null = null;
     for (let page = 1; !userId && page <= 50; page += 1) {
       try {
         const { data: list, error: listErr } = await admin.auth.admin.listUsers({
@@ -156,7 +156,7 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
         const found = users.find((u) => (u.email ?? "").toLowerCase() === email);
         if (found) {
           userId = found.id;
-          foundAuthEmail = found.email ?? email;
+          resolvedEmail = found.email ?? email;
           break;
         }
         if (users.length < 1000) break;
@@ -166,30 +166,47 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
       }
     }
 
-    if (userId && foundAuthEmail) {
-      await admin.from("profiles").upsert(
-        {
-          id: userId,
-          display_name: foundAuthEmail.split("@")[0] || foundAuthEmail,
-          email: foundAuthEmail,
-        },
-        { onConflict: "id", ignoreDuplicates: true },
-      );
-    }
-
     if (!userId) {
       try {
         const { data: invited, error: inviteErr } =
           await admin.auth.admin.inviteUserByEmail(email);
         if (inviteErr) throw new Error(inviteErr.message);
-        if (invited?.user) userId = invited.user.id;
+        if (invited?.user) {
+          userId = invited.user.id;
+          resolvedEmail = invited.user.email ?? email;
+        }
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        throw new Error(lookupErr ? `${msg} (${lookupErr})` : msg);
+        const inviteMsg = e instanceof Error ? e.message : String(e);
+        const password = `${crypto.randomUUID()}-${crypto.randomUUID()}aA1!`;
+        const { data: created, error: createErr } =
+          await admin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: { display_name: email.split("@")[0] || email },
+          });
+        if (createErr) {
+          throw new Error(
+            lookupErr ? `${createErr.message} (${lookupErr}; ${inviteMsg})` : `${createErr.message} (${inviteMsg})`,
+          );
+        }
+        if (created?.user) {
+          userId = created.user.id;
+          resolvedEmail = created.user.email ?? email;
+        }
       }
     }
 
     if (!userId) throw new Error("Failed to resolve user");
+
+    await admin.from("profiles").upsert(
+      {
+        id: userId,
+        display_name: (resolvedEmail ?? email).split("@")[0] || resolvedEmail || email,
+        email: resolvedEmail ?? email,
+      },
+      { onConflict: "id", ignoreDuplicates: true },
+    );
 
     const { error: insErr } = await admin
       .from("tenant_members")
