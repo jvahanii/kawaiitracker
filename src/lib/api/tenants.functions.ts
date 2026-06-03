@@ -96,6 +96,38 @@ export const removeMember = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const updateMemberName = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        tenantId: z.string().uuid(),
+        userId: z.string().uuid(),
+        displayName: z.string().trim().min(1).max(80),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { data: meRow, error: meErr } = await context.supabase
+      .from("tenant_members")
+      .select("role")
+      .eq("tenant_id", data.tenantId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (meErr) throw new Error(meErr.message);
+    if (!meRow || meRow.role !== "admin") {
+      throw new Error("Only admins can edit names.");
+    }
+    const { getSupabaseAdmin } = await import("@/lib/supabase/admin.server");
+    const admin = getSupabaseAdmin();
+    const { error } = await admin
+      .from("profiles")
+      .update({ display_name: data.displayName })
+      .eq("id", data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const addMemberByEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
