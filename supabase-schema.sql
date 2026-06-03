@@ -295,3 +295,40 @@ grant execute on function public.join_tenant_by_code(text) to authenticated;
 grant execute on function public.list_my_tenants() to authenticated;
 grant execute on function public.get_tenant_members(uuid) to authenticated;
 grant execute on function public.update_member_role(uuid, uuid, text) to authenticated;
+
+-- ============ ITEM ASSIGNEES (multiple per item) ============
+create table if not exists public.item_assignees (
+  item_id uuid not null references public.items(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (item_id, user_id)
+);
+
+create index if not exists item_assignees_user_id_idx on public.item_assignees(user_id);
+
+grant select, insert, update, delete on public.item_assignees to authenticated;
+grant all on public.item_assignees to service_role;
+
+alter table public.item_assignees enable row level security;
+
+drop policy if exists "item_assignees: members rw" on public.item_assignees;
+create policy "item_assignees: members rw"
+  on public.item_assignees for all to authenticated
+  using (
+    exists (
+      select 1 from public.items i
+      where i.id = item_id and public.is_tenant_member(i.tenant_id)
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.items i
+      where i.id = item_id and public.is_tenant_member(i.tenant_id)
+    )
+  );
+
+-- Backfill from legacy single assignee_id column (idempotent)
+insert into public.item_assignees (item_id, user_id)
+  select id, assignee_id from public.items where assignee_id is not null
+  on conflict do nothing;
+
