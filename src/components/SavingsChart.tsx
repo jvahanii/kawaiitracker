@@ -138,21 +138,10 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         cumActual += actualPerMonth.get(tm) ?? 0;
         row.__actual = cumActual;
       }
+      row.__plan = ids.reduce((s, id) => s + (row[id] ?? 0), 0);
       return row;
     });
 
-    // Target trajectory: linear from Jan (0) to Dec (goal.amount) of selected year
-    const goalAmt = goal.amount;
-    if (goalAmt && rows.length > 0) {
-      const tStart = rows[0].t!;
-      const tEnd = rows[rows.length - 1].t!;
-      const span = tEnd - tStart;
-      if (span > 0) {
-        for (const r of rows) {
-          r.target = ((r.t! - tStart) / span) * goalAmt;
-        }
-      }
-    }
 
 
     return { chartData: rows, itemKeys: ids };
@@ -268,13 +257,9 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                   content={({ payload, label }) => {
                     if (!payload || payload.length === 0) return null;
                     const row = payload[0]?.payload as Record<string, number | undefined> | undefined;
+                    const totalPlan = row?.__plan ?? 0;
+                    const totalActual = row?.__actual;
                     const rows: { name: string; value: string }[] = [];
-                    if (row && row.__actual !== undefined) {
-                      rows.push({ name: "Toteuma (yht.)", value: fmt(row.__actual) });
-                    }
-                    if (row && row.target !== undefined) {
-                      rows.push({ name: t("workspace.goalAmount"), value: fmt(row.target) });
-                    }
                     for (const id of itemKeys) {
                       const plan = row?.[id];
                       const actual = row?.[`${id}__a`];
@@ -301,6 +286,14 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                       >
                         <div style={{ fontWeight: 600, marginBottom: 6 }}>
                           {monthFmt.format(new Date(Number(label)))}
+                        </div>
+                        <div style={{ fontWeight: 700, marginBottom: rows.length > 0 ? 4 : 0, paddingBottom: rows.length > 0 ? 4 : 0, borderBottom: rows.length > 0 ? "1px solid var(--border)" : "none" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, lineHeight: 1.6 }}>
+                            <span style={{ color: "hsl(var(--muted-foreground))" }}>Toteuma / Suunnitelma</span>
+                            <span style={{ fontFamily: "monospace", fontWeight: 700 }}>
+                              {totalActual !== undefined ? fmt(totalActual) : "—"} / {fmt(totalPlan)}
+                            </span>
+                          </div>
                         </div>
                         {rows.map((r) => (
                           <div key={r.name} style={{ display: "flex", justifyContent: "space-between", gap: 16, lineHeight: 1.6 }}>
@@ -371,19 +364,6 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                       fontSize: 11,
                       position: "top",
                     }}
-                  />
-                ) : null}
-                {goal.amount ? (
-                  <Line
-                    type="linear"
-                    dataKey="target"
-                    name="target"
-                    stroke="#ef4444"
-                    strokeDasharray="5 4"
-                    strokeWidth={2}
-                    dot={false}
-                    connectNulls
-                    isAnimationActive={false}
                   />
                 ) : null}
                 <Line
