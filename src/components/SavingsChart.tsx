@@ -92,33 +92,53 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   const total = useMemo(() => entries.reduce((s, e) => s + (e.amount ?? 0), 0), [entries]);
   const actualTotal = useMemo(() => entries.reduce((s, e) => s + (e.actual ?? 0), 0), [entries]);
 
-  // Build cumulative-per-item series across all months present in entries
-  const { chartData, itemKeys } = useMemo(() => {
+  // Map from itemId -> list of assignee ids (or ["__unassigned"]) for splitting
+  const itemAssigneeMap = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const it of items) {
+      const ids = it.assignees.map((a) => a.id);
+      m.set(it.id, ids.length > 0 ? ids : ["__unassigned"]);
+    }
+    return m;
+  }, [items]);
+
+  const assigneeName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const it of items) for (const a of it.assignees) m.set(a.id, a.name);
+    m.set("__unassigned", t("workspace.unassigned"));
+    return m;
+  }, [items, t]);
+
+  // Build cumulative series across all months for the selected grouping
+  const { chartData, seriesKeys } = useMemo(() => {
     const months: number[] = [];
     for (let m = 0; m < 12; m++) months.push(monthKey(new Date(year, m, 1)));
 
-    // per-item per-month sum (planned + actual) and per-month total actual
-    const perItemMonth = new Map<string, Map<number, number>>();
-    const perItemMonthActual = new Map<string, Map<number, number>>();
+    // resolve which series-keys an entry belongs to (splitting equally for assignee mode)
+    const keysFor = (itemId: string): { key: string; weight: number }[] => {
+      if (groupBy === "item") return [{ key: itemId, weight: 1 }];
+      const ids = itemAssigneeMap.get(itemId) ?? ["__unassigned"];
+      const w = 1 / ids.length;
+      return ids.map((id) => ({ key: id, weight: w }));
+    };
+
+    const perKeyMonth = new Map<string, Map<number, number>>();
+    const perKeyMonthActual = new Map<string, Map<number, number>>();
     const actualPerMonth = new Map<number, number>();
     for (const e of entries) {
       const k = monthKey(new Date(e.month));
-      let m = perItemMonth.get(e.itemId);
-      if (!m) {
-        m = new Map();
-        perItemMonth.set(e.itemId, m);
+      for (const { key, weight } of keysFor(e.itemId)) {
+        let m = perKeyMonth.get(key);
+        if (!m) { m = new Map(); perKeyMonth.set(key, m); }
+        m.set(k, (m.get(k) ?? 0) + (e.amount ?? 0) * weight);
+        let ma = perKeyMonthActual.get(key);
+        if (!ma) { ma = new Map(); perKeyMonthActual.set(key, ma); }
+        ma.set(k, (ma.get(k) ?? 0) + (e.actual ?? 0) * weight);
       }
-      m.set(k, (m.get(k) ?? 0) + (e.amount ?? 0));
-      let ma = perItemMonthActual.get(e.itemId);
-      if (!ma) {
-        ma = new Map();
-        perItemMonthActual.set(e.itemId, ma);
-      }
-      ma.set(k, (ma.get(k) ?? 0) + (e.actual ?? 0));
       actualPerMonth.set(k, (actualPerMonth.get(k) ?? 0) + (e.actual ?? 0));
     }
 
-    const ids = Array.from(perItemMonth.keys());
+    const ids = Array.from(perKeyMonth.keys());
     const cum = new Map<string, number>(ids.map((id) => [id, 0]));
     const cumA = new Map<string, number>(ids.map((id) => [id, 0]));
     let cumActual = 0;
@@ -126,11 +146,11 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     const rows: Array<Record<string, number | undefined>> = months.map((tm) => {
       const row: Record<string, number | undefined> = { t: tm };
       for (const id of ids) {
-        const add = perItemMonth.get(id)?.get(tm) ?? 0;
+        const add = perKeyMonth.get(id)?.get(tm) ?? 0;
         cum.set(id, (cum.get(id) ?? 0) + add);
         row[id] = cum.get(id) ?? 0;
         if (tm <= now) {
-          const addA = perItemMonthActual.get(id)?.get(tm) ?? 0;
+          const addA = perKeyMonthActual.get(id)?.get(tm) ?? 0;
           cumA.set(id, (cumA.get(id) ?? 0) + addA);
           row[`${id}__a`] = cumA.get(id) ?? 0;
         }
@@ -143,13 +163,14 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
       return row;
     });
 
+    return { chartData: rows, seriesKeys: ids };
+  }, [entries, groupBy, itemAssigneeMap, year]);
 
 
-    return { chartData: rows, itemKeys: ids };
-  }, [entries, goal.amount, goal.date, year]);
-
-
-  const itemTitle = (id: string) => items.find((i) => i.id === id)?.title ?? "—";
+  const seriesTitle = (id: string) =>
+    groupBy === "item"
+      ? items.find((i) => i.id === id)?.title ?? "—"
+      : assigneeName.get(id) ?? "—";
 
   const today = Date.now();
   const daysLeft =
