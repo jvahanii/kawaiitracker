@@ -77,6 +77,7 @@
     "noItems": "No savings and income yet.",
     "selectOrCreate": "Select a savings or income entry, or create a new one.",
     "assignee": "Assignee",
+    "assignees": "Assignees",
     "unassigned": "Unassigned",
     "notesPlaceholder": "Notes…",
     "amount": "Savings amount (€)",
