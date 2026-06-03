@@ -373,3 +373,34 @@ create policy "item_tasks: members rw"
   using (public.is_item_in_my_tenant(item_id))
   with check (public.is_item_in_my_tenant(item_id));
 
+-- ============ DRAG & DROP SORT ORDER ============
+
+-- Add sort_order to items
+alter table public.items add column if not exists sort_order integer not null default 0;
+
+-- Backfill items sort_order to match existing updated_at DESC order per tenant
+-- (only runs when all values are still at the default 0, i.e. before any reordering)
+do $$ begin
+  if not exists (select 1 from public.items where sort_order > 0 limit 1) then
+    with ranked as (
+      select id, (row_number() over (partition by tenant_id order by updated_at desc) - 1)::integer as rn
+      from public.items
+    )
+    update public.items set sort_order = ranked.rn from ranked where public.items.id = ranked.id;
+  end if;
+end $$;
+
+-- Add sort_order to item_tasks
+alter table public.item_tasks add column if not exists sort_order integer not null default 0;
+
+-- Backfill item_tasks sort_order to match existing created_at ASC order per item
+do $$ begin
+  if not exists (select 1 from public.item_tasks where sort_order > 0 limit 1) then
+    with ranked as (
+      select id, (row_number() over (partition by item_id order by created_at asc) - 1)::integer as rn
+      from public.item_tasks
+    )
+    update public.item_tasks set sort_order = ranked.rn from ranked where public.item_tasks.id = ranked.id;
+  end if;
+end $$;
+

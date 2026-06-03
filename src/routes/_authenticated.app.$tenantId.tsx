@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { GripVertical } from "lucide-react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SavingsChart } from "@/components/SavingsChart";
@@ -13,23 +14,20 @@ import {
   createItem,
   deleteItem,
   listItems,
+  reorderItems,
   updateItem,
   type ItemRow,
   type ItemStatus,
 } from "@/lib/api/items.functions";
-import {
-  listEntriesForItem,
-  upsertEntry,
-} from "@/lib/api/entries.functions";
+import { listEntriesForItem, upsertEntry } from "@/lib/api/entries.functions";
 import {
   listTasksForItem,
   createTask,
   updateTask,
   deleteTask,
+  reorderTasks,
   type TaskRow,
 } from "@/lib/api/tasks.functions";
-
-
 
 export const Route = createFileRoute("/_authenticated/app/$tenantId")({
   head: () => ({ meta: [{ title: "Workspace — Tracker" }] }),
@@ -42,7 +40,6 @@ export const Route = createFileRoute("/_authenticated/app/$tenantId")({
   },
   component: WorkspacePage,
 });
-
 
 const authenticatedRoute = getRouteApi("/_authenticated");
 
@@ -59,7 +56,7 @@ function WorkspacePage() {
   const createFn = useServerFn(createItem);
   const updateFn = useServerFn(updateItem);
   const deleteFn = useServerFn(deleteItem);
-  
+  const reorderFn = useServerFn(reorderItems);
 
   const itemsQ = useQuery({
     queryKey: ["items", tenantId],
@@ -72,6 +69,8 @@ function WorkspacePage() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
 
   const items = itemsQ.data ?? [];
   const filtered = useMemo(() => {
@@ -99,6 +98,21 @@ function WorkspacePage() {
   });
   const deleteM = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { tenantId, id } }),
+    onSuccess: () => invalidate(),
+  });
+  const reorderM = useMutation({
+    mutationFn: (orderedIds: string[]) => reorderFn({ data: { tenantId, orderedIds } }),
+    onMutate: (orderedIds) => {
+      const prev = qc.getQueryData<ItemRow[]>(["items", tenantId]);
+      const sorted = orderedIds
+        .map((id) => prev?.find((i) => i.id === id))
+        .filter(Boolean) as ItemRow[];
+      qc.setQueryData(["items", tenantId], sorted);
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["items", tenantId], ctx.prev);
+    },
     onSuccess: () => invalidate(),
   });
   const logoutM = useMutation({
@@ -148,9 +162,7 @@ function WorkspacePage() {
           </Link>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          {user ? (
-            <span className="font-medium text-foreground">{user.displayName}</span>
-          ) : null}
+          {user ? <span className="font-medium text-foreground">{user.displayName}</span> : null}
           <LanguageSwitcher />
           {currentTenant.role === "admin" ? (
             <>
@@ -174,18 +186,13 @@ function WorkspacePage() {
               </button>
             </>
           ) : null}
-          <button
-            onClick={() => logoutM.mutate()}
-            className="rounded-md px-2 py-1 hover:bg-accent"
-          >
+          <button onClick={() => logoutM.mutate()} className="rounded-md px-2 py-1 hover:bg-accent">
             {t("common.logout")}
           </button>
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
-
-
         {/* Left pane */}
         <aside className="flex w-96 flex-col border-r border-border">
           <div className="space-y-2 border-b border-border p-3">
@@ -226,18 +233,68 @@ function WorkspacePage() {
             ) : (
               <ul>
                 {filtered.map((it) => (
-                  <li key={it.id}>
+                  <li
+                    key={it.id}
+                    draggable={!search}
+                    onDragStart={(e) => {
+                      setDraggingItemId(it.id);
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragEnd={() => {
+                      setDraggingItemId(null);
+                      setDragOverItemId(null);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dragOverItemId !== it.id) setDragOverItemId(it.id);
+                    }}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setDragOverItemId(null);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (!draggingItemId || draggingItemId === it.id) {
+                        setDraggingItemId(null);
+                        setDragOverItemId(null);
+                        return;
+                      }
+                      const list = [...items];
+                      const fromIdx = list.findIndex((i) => i.id === draggingItemId);
+                      const toIdx = list.findIndex((i) => i.id === it.id);
+                      const [removed] = list.splice(fromIdx, 1);
+                      list.splice(toIdx, 0, removed);
+                      reorderM.mutate(list.map((i) => i.id));
+                      setDraggingItemId(null);
+                      setDragOverItemId(null);
+                    }}
+                    className={`flex items-stretch border-b border-border transition-opacity ${
+                      draggingItemId === it.id ? "opacity-40" : ""
+                    } ${
+                      dragOverItemId === it.id && draggingItemId !== it.id
+                        ? "border-t-2 border-t-primary"
+                        : ""
+                    }`}
+                  >
+                    {!search && (
+                      <span
+                        className="flex cursor-grab items-center px-1.5 text-muted-foreground hover:text-foreground active:cursor-grabbing"
+                        title="Järjestä vetämällä"
+                      >
+                        <GripVertical size={14} />
+                      </span>
+                    )}
                     <button
                       onClick={() => setSelectedId(it.id)}
-                      className={`flex w-full flex-col items-start gap-1 border-b border-border px-3 py-2 text-left text-sm hover:bg-accent ${
+                      className={`flex min-w-0 flex-1 flex-col items-start gap-1 py-2 pr-3 text-left text-sm hover:bg-accent ${
                         selectedId === it.id ? "bg-accent" : ""
-                      }`}
+                      } ${!search ? "" : "pl-3"}`}
                     >
                       <span className="line-clamp-1 font-medium">{it.title}</span>
                       {it.assigneeName ? (
-                        <span className="text-xs text-muted-foreground">
-                          {it.assigneeName}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{it.assigneeName}</span>
                       ) : null}
                     </button>
                   </li>
@@ -261,9 +318,7 @@ function WorkspacePage() {
                   await updateFn({ data: { tenantId, id: selected.id, ...patch } });
                   invalidate();
                 }}
-                onEntriesChanged={() =>
-                  qc.invalidateQueries({ queryKey: ["entries", tenantId] })
-                }
+                onEntriesChanged={() => qc.invalidateQueries({ queryKey: ["entries", tenantId] })}
                 onDelete={() => deleteM.mutate(selected.id)}
               />
             ) : (
@@ -273,13 +328,10 @@ function WorkspacePage() {
             )}
           </div>
         </main>
-
       </div>
-
     </div>
   );
 }
-
 
 function TaskLists({
   tenantId,
@@ -297,6 +349,7 @@ function TaskLists({
   const createFn = useServerFn(createTask);
   const updateFn = useServerFn(updateTask);
   const deleteFn = useServerFn(deleteTask);
+  const reorderFn = useServerFn(reorderTasks);
 
   const tasksQ = useQuery({
     queryKey: ["tasks", tenantId, itemId],
@@ -319,6 +372,29 @@ function TaskLists({
 
   const deleteM = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { tenantId, id } }),
+    onSuccess: invalidate,
+  });
+
+  const reorderM = useMutation({
+    mutationFn: (orderedIds: string[]) => reorderFn({ data: { tenantId, itemId, orderedIds } }),
+    onMutate: (orderedIds) => {
+      const prev = qc.getQueryData<TaskRow[]>(["tasks", tenantId, itemId]);
+      if (prev) {
+        // Rebuild the tasks list: replace the group being reordered with the new order,
+        // while keeping tasks from other groups in their original positions.
+        const reorderedSet = new Set(orderedIds);
+        const others = prev.filter((t) => !reorderedSet.has(t.id));
+        const reordered = orderedIds
+          .map((id) => prev.find((t) => t.id === id))
+          .filter(Boolean) as TaskRow[];
+        // Interleave: put reordered tasks in their new positions, others after
+        qc.setQueryData(["tasks", tenantId, itemId], [...reordered, ...others]);
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["tasks", tenantId, itemId], ctx.prev);
+    },
     onSuccess: invalidate,
   });
 
@@ -355,6 +431,7 @@ function TaskLists({
             onToggle={(id, done) => updateM.mutate({ id, done })}
             onEditTitle={(id, title) => updateM.mutate({ id, title })}
             onDelete={(id) => deleteM.mutate(id)}
+            onReorder={(orderedIds) => reorderM.mutate(orderedIds)}
           />
         );
       })}
@@ -367,6 +444,7 @@ function TaskLists({
           onToggle={(id, done) => updateM.mutate({ id, done })}
           onEditTitle={(id, title) => updateM.mutate({ id, title })}
           onDelete={(id) => deleteM.mutate(id)}
+          onReorder={(orderedIds) => reorderM.mutate(orderedIds)}
         />
       ) : null}
     </div>
@@ -381,6 +459,7 @@ function TaskGroup({
   onToggle,
   onEditTitle,
   onDelete,
+  onReorder,
 }: {
   name: string;
   tasks: TaskRow[];
@@ -389,10 +468,13 @@ function TaskGroup({
   onToggle: (id: string, done: boolean) => void;
   onEditTitle: (id: string, title: string) => void;
   onDelete: (id: string) => void;
+  onReorder: (orderedIds: string[]) => void;
 }) {
   const [newTitle, setNewTitle] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
 
   const startEdit = (task: TaskRow) => {
     setEditingId(task.id);
@@ -411,7 +493,57 @@ function TaskGroup({
       <h4 className="mb-2 text-sm font-semibold text-foreground">{name}</h4>
       <ul className="space-y-1">
         {tasks.map((t) => (
-          <li key={t.id} className="flex items-center gap-2">
+          <li
+            key={t.id}
+            draggable
+            onDragStart={(e) => {
+              setDraggingTaskId(t.id);
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragEnd={() => {
+              setDraggingTaskId(null);
+              setDragOverTaskId(null);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              if (dragOverTaskId !== t.id) setDragOverTaskId(t.id);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setDragOverTaskId(null);
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (!draggingTaskId || draggingTaskId === t.id) {
+                setDraggingTaskId(null);
+                setDragOverTaskId(null);
+                return;
+              }
+              const list = [...tasks];
+              const fromIdx = list.findIndex((x) => x.id === draggingTaskId);
+              const toIdx = list.findIndex((x) => x.id === t.id);
+              const [removed] = list.splice(fromIdx, 1);
+              list.splice(toIdx, 0, removed);
+              onReorder(list.map((x) => x.id));
+              setDraggingTaskId(null);
+              setDragOverTaskId(null);
+            }}
+            className={`flex items-center gap-2 transition-opacity ${
+              draggingTaskId === t.id ? "opacity-40" : ""
+            } ${
+              dragOverTaskId === t.id && draggingTaskId !== t.id
+                ? "border-t-2 border-t-primary"
+                : ""
+            }`}
+          >
+            <span
+              className="cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing"
+              title="Järjestä vetämällä"
+            >
+              <GripVertical size={14} />
+            </span>
             <input
               type="checkbox"
               checked={t.done}
@@ -497,11 +629,7 @@ function ItemDetail({
   tenantId: string;
   item: ItemRow;
   members: { id: string; displayName: string }[];
-  onSave: (patch: {
-    title?: string;
-    status?: ItemStatus;
-    assigneeIds?: string[];
-  }) => Promise<void>;
+  onSave: (patch: { title?: string; status?: ItemStatus; assigneeIds?: string[] }) => Promise<void>;
 
   onEntriesChanged: () => void;
   onDelete: () => void;
@@ -513,7 +641,6 @@ function ItemDetail({
   const [assigneeIds, setAssigneeIds] = useState<string[]>(initialAssigneeIds);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
@@ -521,10 +648,7 @@ function ItemDetail({
     assigneeIds.length !== initialAssigneeIds.length ||
     assigneeIds.some((id) => !initialAssigneeIds.includes(id));
 
-  const dirty =
-    title !== item.title ||
-    status !== item.status ||
-    assigneesChanged;
+  const dirty = title !== item.title || status !== item.status || assigneesChanged;
 
   const save = async () => {
     if (!dirty) return;
@@ -541,16 +665,11 @@ function ItemDetail({
     }
   };
 
-
   const toggleAssignee = (id: string) => {
-    setAssigneeIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setAssigneeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  const selectedNames = members
-    .filter((m) => assigneeIds.includes(m.id))
-    .map((m) => m.displayName);
+  const selectedNames = members.filter((m) => assigneeIds.includes(m.id)).map((m) => m.displayName);
 
   return (
     <div className="mx-auto max-w-4xl p-6">
@@ -560,11 +679,7 @@ function ItemDetail({
         onBlur={save}
         className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none"
       />
-      <MonthlyEntries
-        tenantId={tenantId}
-        itemId={item.id}
-        onChanged={onEntriesChanged}
-      />
+      <MonthlyEntries tenantId={tenantId} itemId={item.id} onChanged={onEntriesChanged} />
 
       <div className="mt-4 flex flex-wrap gap-3 text-sm">
         <div className="flex items-start gap-2">
@@ -575,9 +690,7 @@ function ItemDetail({
               onClick={() => setPickerOpen((v) => !v)}
               className="input h-8 min-w-[12rem] px-2 py-0 text-left"
             >
-              {selectedNames.length > 0
-                ? selectedNames.join(", ")
-                : t("workspace.unassigned")}
+              {selectedNames.length > 0 ? selectedNames.join(", ") : t("workspace.unassigned")}
             </button>
             {pickerOpen ? (
               <div
@@ -588,9 +701,7 @@ function ItemDetail({
                 }}
               >
                 {members.length === 0 ? (
-                  <p className="px-2 py-1 text-xs text-muted-foreground">
-                    {t("members.empty")}
-                  </p>
+                  <p className="px-2 py-1 text-xs text-muted-foreground">{t("members.empty")}</p>
                 ) : (
                   members.map((m) => {
                     const checked = assigneeIds.includes(m.id);
@@ -615,22 +726,17 @@ function ItemDetail({
         </div>
       </div>
 
-      <TaskLists
-        tenantId={tenantId}
-        itemId={item.id}
-        members={members}
-        assigneeIds={assigneeIds}
-      />
+      <TaskLists tenantId={tenantId} itemId={item.id} members={members} assigneeIds={assigneeIds} />
 
       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
         <span>
           {saving
             ? t("common.saving")
             : dirty
-            ? t("common.unsaved")
-            : savedAt
-            ? t("common.saved")
-            : t("workspace.updated", { when: new Date(item.updatedAt).toLocaleString() })}
+              ? t("common.unsaved")
+              : savedAt
+                ? t("common.saved")
+                : t("workspace.updated", { when: new Date(item.updatedAt).toLocaleString() })}
         </span>
         <button
           onClick={() => {
@@ -846,13 +952,7 @@ function NumberInput({
   );
 }
 
-function TotalEditor({
-  total,
-  onCommit,
-}: {
-  total: number;
-  onCommit: (newTotal: number) => void;
-}) {
+function TotalEditor({ total, onCommit }: { total: number; onCommit: (newTotal: number) => void }) {
   const [text, setText] = useState(String(total));
   const [focused, setFocused] = useState(false);
 
@@ -879,6 +979,3 @@ function TotalEditor({
     />
   );
 }
-
-
-
