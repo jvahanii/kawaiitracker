@@ -403,14 +403,6 @@ function ItemDetail({
       </div>
 
 
-
-      <textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        onBlur={save}
-        placeholder={t("workspace.notesPlaceholder")}
-        className="input mt-6 min-h-[180px] w-full resize-y leading-relaxed"
-      />
       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
         <span>
           {saving
