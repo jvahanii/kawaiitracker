@@ -109,6 +109,7 @@
     "addDirectBody": "If the user already has an account, they're added directly. Otherwise, an invite email is sent.",
     "addDirectBtn": "Add",
     "addedOk": "User added.",
-    "alreadyMember": "User is already a member of this workspace."
+    "alreadyMember": "User is already a member of this workspace.",
+    "editName": "Edit name"
   }
 }
