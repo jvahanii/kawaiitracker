@@ -288,8 +288,8 @@ function ItemDetail({
     title?: string;
     status?: ItemStatus;
     assigneeIds?: string[];
-    notes?: string;
   }) => Promise<void>;
+
   onEntriesChanged: () => void;
   onDelete: () => void;
 }) {
