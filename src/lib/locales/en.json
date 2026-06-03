@@ -36,6 +36,8 @@
     "password": "Password",
     "submit": "Log in",
     "submitting": "Logging in…",
+    "forgotPassword": "Forgot password?",
+    "rememberMe": "Remember me",
     "newHere": "New here?",
     "createAccount": "Create an account"
   },
