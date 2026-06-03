@@ -30,6 +30,7 @@ import {
 } from "@/lib/api/tasks.functions";
 
 
+
 export const Route = createFileRoute("/_authenticated/app/$tenantId")({
   head: () => ({ meta: [{ title: "Workspace — Tracker" }] }),
   beforeLoad: async ({ params }) => {
@@ -280,6 +281,211 @@ function WorkspacePage() {
 }
 
 
+function TaskLists({
+  tenantId,
+  itemId,
+  members,
+  assigneeIds,
+}: {
+  tenantId: string;
+  itemId: string;
+  members: { id: string; displayName: string }[];
+  assigneeIds: string[];
+}) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listTasksForItem);
+  const createFn = useServerFn(createTask);
+  const updateFn = useServerFn(updateTask);
+  const deleteFn = useServerFn(deleteTask);
+
+  const tasksQ = useQuery({
+    queryKey: ["tasks", tenantId, itemId],
+    queryFn: () => listFn({ data: { tenantId, itemId } }),
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["tasks", tenantId, itemId] });
+
+  const createM = useMutation({
+    mutationFn: (v: { title: string; userId?: string }) =>
+      createFn({ data: { tenantId, itemId, title: v.title, userId: v.userId } }),
+    onSuccess: invalidate,
+  });
+
+  const updateM = useMutation({
+    mutationFn: (v: { id: string; title?: string; done?: boolean }) =>
+      updateFn({ data: { tenantId, id: v.id, title: v.title, done: v.done } }),
+    onSuccess: invalidate,
+  });
+
+  const deleteM = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { tenantId, id } }),
+    onSuccess: invalidate,
+  });
+
+  const tasks = tasksQ.data ?? [];
+
+  const grouped = useMemo(() => {
+    const byUser = new Map<string, TaskRow[]>();
+    const unassigned: TaskRow[] = [];
+    for (const t of tasks) {
+      if (t.userId) {
+        const list = byUser.get(t.userId) ?? [];
+        list.push(t);
+        byUser.set(t.userId, list);
+      } else {
+        unassigned.push(t);
+      }
+    }
+    return { byUser, unassigned };
+  }, [tasks]);
+
+  return (
+    <div className="mt-6 space-y-4">
+      {assigneeIds.map((uid) => {
+        const member = members.find((m) => m.id === uid);
+        if (!member) return null;
+        const groupTasks = grouped.byUser.get(uid) ?? [];
+        return (
+          <TaskGroup
+            key={uid}
+            name={member.displayName}
+            tasks={groupTasks}
+            userId={uid}
+            onAdd={(title) => createM.mutate({ title, userId: uid })}
+            onToggle={(id, done) => updateM.mutate({ id, done })}
+            onEditTitle={(id, title) => updateM.mutate({ id, title })}
+            onDelete={(id) => deleteM.mutate(id)}
+          />
+        );
+      })}
+      {grouped.unassigned.length > 0 || assigneeIds.length === 0 ? (
+        <TaskGroup
+          name="Ei vastuuhenkilöä"
+          tasks={grouped.unassigned}
+          userId={undefined}
+          onAdd={(title) => createM.mutate({ title })}
+          onToggle={(id, done) => updateM.mutate({ id, done })}
+          onEditTitle={(id, title) => updateM.mutate({ id, title })}
+          onDelete={(id) => deleteM.mutate(id)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function TaskGroup({
+  name,
+  tasks,
+  userId,
+  onAdd,
+  onToggle,
+  onEditTitle,
+  onDelete,
+}: {
+  name: string;
+  tasks: TaskRow[];
+  userId?: string;
+  onAdd: (title: string) => void;
+  onToggle: (id: string, done: boolean) => void;
+  onEditTitle: (id: string, title: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [newTitle, setNewTitle] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+
+  const startEdit = (task: TaskRow) => {
+    setEditingId(task.id);
+    setEditText(task.title);
+  };
+
+  const commitEdit = () => {
+    if (editingId && editText.trim()) {
+      onEditTitle(editingId, editText.trim());
+    }
+    setEditingId(null);
+  };
+
+  return (
+    <div className="rounded-md border border-border p-3">
+      <h4 className="mb-2 text-sm font-semibold text-foreground">{name}</h4>
+      <ul className="space-y-1">
+        {tasks.map((t) => (
+          <li key={t.id} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={t.done}
+              onChange={() => onToggle(t.id, !t.done)}
+              className="shrink-0"
+            />
+            {editingId === t.id ? (
+              <input
+                autoFocus
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitEdit();
+                  if (e.key === "Escape") setEditingId(null);
+                }}
+                className="input h-7 flex-1 text-sm"
+              />
+            ) : (
+              <span
+                onClick={() => startEdit(t)}
+                className={`flex-1 cursor-pointer text-sm ${
+                  t.done ? "text-muted-foreground line-through" : "text-foreground"
+                }`}
+                title="Klikkaa muokataksesi"
+              >
+                {t.title}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => startEdit(t)}
+              className="rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+              title="Muokkaa"
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(t.id)}
+              className="rounded px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/10"
+              title="Poista"
+            >
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!newTitle.trim()) return;
+          onAdd(newTitle.trim());
+          setNewTitle("");
+        }}
+        className="mt-2 flex gap-1"
+      >
+        <input
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          placeholder="Uusi tehtävä…"
+          className="input h-7 flex-1 text-sm"
+        />
+        <button
+          type="submit"
+          className="rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground"
+        >
+          Lisää
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function ItemDetail({
   tenantId,
   item,
@@ -412,11 +618,9 @@ function ItemDetail({
       <TaskLists
         tenantId={tenantId}
         itemId={item.id}
-        assignees={item.assignees}
+        members={members}
+        assigneeIds={assigneeIds}
       />
-
-
-
 
       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
         <span>
@@ -441,147 +645,7 @@ function ItemDetail({
   );
 }
 
-function TaskLists({
-  tenantId,
-  itemId,
-  assignees,
-}: {
-  tenantId: string;
-  itemId: string;
-  assignees: { id: string; name: string }[];
-}) {
-  const qc = useQueryClient();
-  const listFn = useServerFn(listTasksForItem);
-  const createFn = useServerFn(createTask);
-  const updateFn = useServerFn(updateTask);
-  const deleteFn = useServerFn(deleteTask);
-
-  const tasksQ = useQuery({
-    queryKey: ["tasks", tenantId, itemId],
-    queryFn: () => listFn({ data: { tenantId, itemId } }),
-  });
-
-  const invalidate = () =>
-    qc.invalidateQueries({ queryKey: ["tasks", tenantId, itemId] });
-
-  const createM = useMutation({
-    mutationFn: (v: { userId: string | null; title: string }) =>
-      createFn({ data: { tenantId, itemId, userId: v.userId, title: v.title } }),
-    onSuccess: invalidate,
-  });
-  const updateM = useMutation({
-    mutationFn: (v: { id: string; done?: boolean; title?: string }) =>
-      updateFn({ data: { tenantId, ...v } }),
-    onSuccess: invalidate,
-  });
-  const deleteM = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { tenantId, id } }),
-    onSuccess: invalidate,
-  });
-
-  const tasks = tasksQ.data ?? [];
-  const groups: { id: string | null; name: string; tasks: TaskRow[] }[] = [
-    ...assignees.map((a) => ({
-      id: a.id,
-      name: a.name,
-      tasks: tasks.filter((t) => t.userId === a.id),
-    })),
-    {
-      id: null,
-      name: "Yleiset tehtävät",
-      tasks: tasks.filter((t) => !t.userId || !assignees.some((a) => a.id === t.userId)),
-    },
-  ];
-
-  return (
-    <div className="mt-6 space-y-4">
-      {groups.map((g) => (
-        <TaskGroup
-          key={g.id ?? "none"}
-          name={g.name}
-          tasks={g.tasks}
-          onAdd={(title) => createM.mutate({ userId: g.id, title })}
-          onToggle={(id, done) => updateM.mutate({ id, done })}
-          onDelete={(id) => deleteM.mutate(id)}
-        />
-      ))}
-    </div>
-  );
-}
-
-function TaskGroup({
-  name,
-  tasks,
-  onAdd,
-  onToggle,
-  onDelete,
-}: {
-  name: string;
-  tasks: TaskRow[];
-  onAdd: (title: string) => void;
-  onToggle: (id: string, done: boolean) => void;
-  onDelete: (id: string) => void;
-}) {
-  const [draft, setDraft] = useState("");
-  return (
-    <div className="rounded-md border border-border p-3">
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {name}
-      </h4>
-      <ul className="space-y-1">
-        {tasks.map((task) => (
-          <li key={task.id} className="group flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={task.done}
-              onChange={(e) => onToggle(task.id, e.target.checked)}
-              className="h-4 w-4"
-            />
-            <span
-              className={`flex-1 ${task.done ? "text-muted-foreground line-through" : ""}`}
-            >
-              {task.title}
-            </span>
-            <button
-              type="button"
-              onClick={() => onDelete(task.id)}
-              className="rounded px-1.5 py-0.5 text-xs text-muted-foreground opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-              aria-label="Poista tehtävä"
-            >
-              ✕
-            </button>
-          </li>
-        ))}
-      </ul>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const v = draft.trim();
-          if (!v) return;
-          onAdd(v);
-          setDraft("");
-        }}
-        className="mt-2 flex gap-1"
-      >
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Uusi tehtävä…"
-          className="input h-7 flex-1 text-xs"
-        />
-        <button
-          type="submit"
-          className="rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground"
-        >
-          +
-        </button>
-      </form>
-    </div>
-  );
-}
-
 function MonthlyEntries({
-
   tenantId,
   itemId,
   onChanged,
