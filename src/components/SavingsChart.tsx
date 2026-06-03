@@ -6,6 +6,7 @@ import {
   Area,
   CartesianGrid,
   ComposedChart,
+  LabelList,
   Line,
   ReferenceLine,
   ResponsiveContainer,
@@ -346,6 +347,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                 />
                 {seriesKeys.map((id, idx) => {
                   const c = colorFor(id, idx);
+                  const dc = darkColorFor(id, idx);
                   return (
                     <Area
                       key={id}
@@ -359,9 +361,44 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                       strokeWidth={1}
                       strokeDasharray="3 3"
                       isAnimationActive={false}
-                    />
+                    >
+                      <LabelList
+                        dataKey={id}
+                        content={(props: {
+                          x?: number | string;
+                          y?: number | string;
+                          width?: number | string;
+                          index?: number;
+                          value?: number | string;
+                        }) => {
+                          const i = props.index ?? -1;
+                          // Place one label per series, near the middle of the chart
+                          const target = Math.max(0, Math.min(chartData.length - 1, Math.floor(chartData.length / 2)));
+                          if (i !== target) return null;
+                          const x = Number(props.x ?? 0);
+                          const y = Number(props.y ?? 0);
+                          const w = Number(props.width ?? 0);
+                          const label = seriesTitle(id);
+                          if (!label || label === "—") return null;
+                          return (
+                            <text
+                              x={x + w / 2}
+                              y={y + 10}
+                              textAnchor="middle"
+                              fontSize={10}
+                              fontWeight={600}
+                              fill={dc}
+                              style={{ paintOrder: "stroke", stroke: "var(--card)", strokeWidth: 3, strokeLinejoin: "round" }}
+                            >
+                              {label}
+                            </text>
+                          );
+                        }}
+                      />
+                    </Area>
                   );
                 })}
+
                 {seriesKeys.map((id, idx) => {
                   const c = darkColorFor(id, idx);
                   return (
