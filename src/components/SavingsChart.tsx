@@ -289,7 +289,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                         </div>
                         <div style={{ fontWeight: 700, marginBottom: rows.length > 0 ? 4 : 0, paddingBottom: rows.length > 0 ? 4 : 0, borderBottom: rows.length > 0 ? "1px solid var(--border)" : "none" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 16, lineHeight: 1.6 }}>
-                            <span style={{ color: "hsl(var(--muted-foreground))" }}>Toteuma / Suunnitelma</span>
+                             <span style={{ color: "hsl(var(--muted-foreground))" }}>Toteuma / Suunnitelma</span>
                             <span style={{ fontFamily: "monospace", fontWeight: 700 }}>
                               {totalActual !== undefined ? fmt(totalActual) : "—"} / {fmt(totalPlan)}
                             </span>
