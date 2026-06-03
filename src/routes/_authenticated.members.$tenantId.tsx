@@ -208,6 +208,47 @@ function MembersPage() {
                 {copied ? t("workspace.copied") : t("workspace.copyCode")}
               </button>
             </div>
+
+            <div className="mb-4 border-t border-border pt-4">
+              <h3 className="mb-2 text-sm font-semibold">{t("members.addDirectTitle")}</h3>
+              <p className="mb-3 text-xs text-muted-foreground">
+                {t("members.addDirectBody")}
+              </p>
+              <form
+                className="flex flex-col gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!addEmail.trim()) return;
+                  addM.mutate({ email: addEmail.trim(), role: addRole });
+                }}
+              >
+                <input
+                  type="email"
+                  required
+                  placeholder="name@example.com"
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  className="input h-9 text-sm"
+                />
+                <div className="flex items-center gap-2">
+                  <select
+                    value={addRole}
+                    onChange={(e) => setAddRole(e.target.value as "admin" | "member")}
+                    className="input h-9 py-0 text-sm"
+                  >
+                    <option value="member">{t("members.member")}</option>
+                    <option value="admin">{t("members.admin")}</option>
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={addM.isPending || !addEmail.trim()}
+                    className="ml-auto rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {addM.isPending ? t("common.saving") : t("members.addDirectBtn")}
+                  </button>
+                </div>
+              </form>
+            </div>
             <div className="flex justify-end">
               <button
                 type="button"
