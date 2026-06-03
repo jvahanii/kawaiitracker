@@ -437,12 +437,6 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                       strokeDasharray="4 4"
                       strokeWidth={1.5}
                       ifOverflow="extendDomain"
-                      label={{
-                        value: t("workspace.goalAmountShort") ?? "Goal",
-                        fill: "var(--destructive)",
-                        fontSize: 11,
-                        position: "insideTopRight",
-                      }}
                     />
                   ) : null}
                   <Line
