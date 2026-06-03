@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { applyDetectedLanguage } from "@/lib/i18n";
+import i18n, { applyDetectedLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,23 +22,23 @@ function Landing() {
     setMounted(true);
     applyDetectedLanguage();
   }, []);
-  // Until mounted, render the same English text that SSR produced so React's
-  // hydration diff is empty. After mount we re-render in the detected language.
-  const tr = mounted ? t : ((k: string) => fallbackEn[k] ?? k);
+  // First client render must match SSR (English) to avoid React error #418.
+  // After mount we switch to the detected language.
+  const tr = mounted ? t : i18n.getFixedT("en");
   return (
     <div className="min-h-screen text-foreground">
       <header>
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
           <span className="text-2xl font-bold tracking-tight" style={{ fontFamily: "Fredoka, sans-serif" }}>
-            🌸 {t("common.appName")}
+            🌸 {tr("common.appName")}
           </span>
           <div className="flex items-center gap-3">
-            <LanguageSwitcher />
+            {mounted ? <LanguageSwitcher /> : <span className="inline-block h-8 w-10" />}
             <Link to="/login" className="kawaii-button-soft text-sm">
-              {t("landing.login")}
+              {tr("landing.login")}
             </Link>
             <Link to="/signup" className="kawaii-button text-sm">
-              {t("landing.signup")} ♡
+              {tr("landing.signup")} ♡
             </Link>
           </div>
         </div>
@@ -48,17 +48,17 @@ function Landing() {
           ✨ ʕ•ᴥ•ʔ ✨
         </div>
         <h1 className="whitespace-pre-line text-balance text-6xl font-bold tracking-tight">
-          {t("landing.heading")}
+          {tr("landing.heading")}
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-balance text-base text-muted-foreground">
-          {t("landing.sub")}
+          {tr("landing.sub")}
         </p>
         <div className="mt-10 flex justify-center gap-3">
           <Link to="/signup" className="kawaii-button">
-            {t("landing.getStarted")} 🌷
+            {tr("landing.getStarted")} 🌷
           </Link>
           <Link to="/login" className="kawaii-button-soft">
-            {t("landing.haveAccount")}
+            {tr("landing.haveAccount")}
           </Link>
         </div>
         <div className="pointer-events-none mt-16 flex justify-center gap-6 text-3xl">
