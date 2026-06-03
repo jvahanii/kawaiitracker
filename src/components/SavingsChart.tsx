@@ -257,13 +257,9 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                   content={({ payload, label }) => {
                     if (!payload || payload.length === 0) return null;
                     const row = payload[0]?.payload as Record<string, number | undefined> | undefined;
+                    const totalPlan = row?.__plan ?? 0;
+                    const totalActual = row?.__actual;
                     const rows: { name: string; value: string }[] = [];
-                    if (row && row.__actual !== undefined) {
-                      rows.push({ name: "Toteuma (yht.)", value: fmt(row.__actual) });
-                    }
-                    if (row && row.target !== undefined) {
-                      rows.push({ name: t("workspace.goalAmount"), value: fmt(row.target) });
-                    }
                     for (const id of itemKeys) {
                       const plan = row?.[id];
                       const actual = row?.[`${id}__a`];
@@ -290,6 +286,14 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                       >
                         <div style={{ fontWeight: 600, marginBottom: 6 }}>
                           {monthFmt.format(new Date(Number(label)))}
+                        </div>
+                        <div style={{ fontWeight: 700, marginBottom: rows.length > 0 ? 4 : 0, paddingBottom: rows.length > 0 ? 4 : 0, borderBottom: rows.length > 0 ? "1px solid var(--border)" : "none" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, lineHeight: 1.6 }}>
+                            <span style={{ color: "hsl(var(--muted-foreground))" }}>Toteuma / Suunnitelma</span>
+                            <span style={{ fontFamily: "monospace", fontWeight: 700 }}>
+                              {totalActual !== undefined ? fmt(totalActual) : "—"} / {fmt(totalPlan)}
+                            </span>
+                          </div>
                         </div>
                         {rows.map((r) => (
                           <div key={r.name} style={{ display: "flex", justifyContent: "space-between", gap: 16, lineHeight: 1.6 }}>
