@@ -289,6 +289,7 @@ function ItemDetail({
     status?: ItemStatus;
     assigneeIds?: string[];
   }) => Promise<void>;
+
   onEntriesChanged: () => void;
   onDelete: () => void;
 }) {
@@ -298,6 +299,7 @@ function ItemDetail({
   const initialAssigneeIds = item.assignees.map((a) => a.id);
   const [assigneeIds, setAssigneeIds] = useState<string[]>(initialAssigneeIds);
   const [pickerOpen, setPickerOpen] = useState(false);
+
 
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -325,6 +327,7 @@ function ItemDetail({
       setSaving(false);
     }
   };
+
 
   const toggleAssignee = (id: string) => {
     setAssigneeIds((prev) =>
@@ -398,7 +401,6 @@ function ItemDetail({
           </div>
         </div>
       </div>
-
 
 
       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
