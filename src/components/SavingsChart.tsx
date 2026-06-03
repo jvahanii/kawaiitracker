@@ -53,6 +53,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   const { t, i18n } = useTranslation();
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
   const [goal, setGoal] = useState<Goal>({ amount: null, date: null });
+  const [groupBy, setGroupBy] = useState<"item" | "assignee">("item");
 
   useEffect(() => {
     setGoal(loadGoal(tenantId, year));
