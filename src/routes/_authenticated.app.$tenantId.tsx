@@ -324,51 +324,16 @@ function TaskLists({
 
   const tasks = tasksQ.data ?? [];
 
-  const grouped = useMemo(() => {
-    const byUser = new Map<string, TaskRow[]>();
-    const unassigned: TaskRow[] = [];
-    for (const t of tasks) {
-      if (t.userId) {
-        const list = byUser.get(t.userId) ?? [];
-        list.push(t);
-        byUser.set(t.userId, list);
-      } else {
-        unassigned.push(t);
-      }
-    }
-    return { byUser, unassigned };
-  }, [tasks]);
-
   return (
-    <div className="mt-6 space-y-4">
-      {assigneeIds.map((uid) => {
-        const member = members.find((m) => m.id === uid);
-        if (!member) return null;
-        const groupTasks = grouped.byUser.get(uid) ?? [];
-        return (
-          <TaskGroup
-            key={uid}
-            name={member.displayName}
-            tasks={groupTasks}
-            userId={uid}
-            onAdd={(title) => createM.mutate({ title, userId: uid })}
-            onToggle={(id, done) => updateM.mutate({ id, done })}
-            onEditTitle={(id, title) => updateM.mutate({ id, title })}
-            onDelete={(id) => deleteM.mutate(id)}
-          />
-        );
-      })}
-      {grouped.unassigned.length > 0 || assigneeIds.length === 0 ? (
-        <TaskGroup
-          name="Ei vastuuhenkilöä"
-          tasks={grouped.unassigned}
-          userId={undefined}
-          onAdd={(title) => createM.mutate({ title })}
-          onToggle={(id, done) => updateM.mutate({ id, done })}
-          onEditTitle={(id, title) => updateM.mutate({ id, title })}
-          onDelete={(id) => deleteM.mutate(id)}
-        />
-      ) : null}
+    <div className="mt-6">
+      <TaskGroup
+        name="Tehtävät"
+        tasks={tasks}
+        onAdd={(title) => createM.mutate({ title })}
+        onToggle={(id, done) => updateM.mutate({ id, done })}
+        onEditTitle={(id, title) => updateM.mutate({ id, title })}
+        onDelete={(id) => deleteM.mutate(id)}
+      />
     </div>
   );
 }
