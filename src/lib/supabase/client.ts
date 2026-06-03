@@ -2,8 +2,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let client: SupabaseClient | null = null;
 let initConfig: { url: string; publishableKey: string } | null = null;
+let bootstrapPromise: Promise<SupabaseClient> | null = null;
 
-/** Public config injected by Lovable Cloud via VITE_* env vars. */
+/** Public config injected by Lovable Cloud via VITE_* env vars (when present). */
 export function getEmbeddedSupabaseConfig(): { url: string; publishableKey: string } | null {
   const url = import.meta.env.VITE_SUPABASE_URL ?? "";
   const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
@@ -12,20 +13,13 @@ export function getEmbeddedSupabaseConfig(): { url: string; publishableKey: stri
 }
 
 /**
- * Initialize the browser Supabase client. Uses VITE_* injected config by
- * default; an explicit config can be passed as fallback. Safe to call
- * repeatedly with the same config.
+ * Initialize the browser Supabase client with an explicit config.
+ * Safe to call repeatedly with the same config.
  */
-export function initSupabase(config?: { url: string; publishableKey: string }): SupabaseClient {
-  const resolved = config ?? getEmbeddedSupabaseConfig();
-  if (!resolved) {
-    throw new Error(
-      "Supabase config unavailable. VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY missing.",
-    );
-  }
-  if (client && initConfig?.url === resolved.url) return client;
-  initConfig = resolved;
-  client = createClient(resolved.url, resolved.publishableKey, {
+export function initSupabase(config: { url: string; publishableKey: string }): SupabaseClient {
+  if (client && initConfig?.url === config.url) return client;
+  initConfig = config;
+  client = createClient(config.url, config.publishableKey, {
     auth: {
       persistSession: typeof window !== "undefined",
       autoRefreshToken: true,
@@ -36,9 +30,35 @@ export function initSupabase(config?: { url: string; publishableKey: string }): 
   return client;
 }
 
-/** Get the initialised client. Lazy-inits from embedded config if needed. */
+/**
+ * Ensure the client is initialised. Uses VITE_* embedded config when available,
+ * otherwise fetches the public config from a server function. Cached.
+ */
+export async function ensureSupabase(): Promise<SupabaseClient> {
+  if (client) return client;
+  if (bootstrapPromise) return bootstrapPromise;
+  bootstrapPromise = (async () => {
+    const embedded = getEmbeddedSupabaseConfig();
+    if (embedded) return initSupabase(embedded);
+    const { getSupabaseConfig } = await import("./config.functions");
+    const cfg = await getSupabaseConfig();
+    return initSupabase(cfg);
+  })().catch((err) => {
+    bootstrapPromise = null;
+    throw err;
+  });
+  return bootstrapPromise;
+}
+
+/** Synchronous accessor — only safe after ensureSupabase() has resolved. */
 export function getSupabase(): SupabaseClient {
-  if (!client) return initSupabase();
+  if (!client) {
+    const embedded = getEmbeddedSupabaseConfig();
+    if (embedded) return initSupabase(embedded);
+    throw new Error(
+      "Supabase client not initialised. Call ensureSupabase() first.",
+    );
+  }
   return client;
 }
 

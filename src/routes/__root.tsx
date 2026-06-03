@@ -11,7 +11,7 @@ import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import "@/lib/i18n";
-import { initSupabase } from "@/lib/supabase/client";
+import { ensureSupabase } from "@/lib/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -71,14 +71,6 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  // Supabase public config is inlined at build time (see vite.config.ts) so
-  // the browser client can be initialised without a server-fn roundtrip. This
-  // is required for the static preview build which has no server runtime.
-  beforeLoad: () => {
-    if (typeof window !== "undefined") {
-      initSupabase();
-    }
-  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -147,27 +139,26 @@ function SupabaseAuthSync() {
 
 
   useEffect(() => {
-    // Lazy import to avoid SSR window access
-    import("@/lib/supabase/client").then(({ tryGetSupabase }) => {
-      const supabase = tryGetSupabase();
-      if (!supabase) return;
-      const { data } = supabase.auth.onAuthStateChange((event) => {
-        if (event === "SIGNED_OUT") {
-          // Drop cached data without refetching — there's no token, so
-          // refetches would all 401. The _authenticated gate handles redirect.
-          queryClient.cancelQueries();
-          queryClient.clear();
-        } else {
-          queryClient.invalidateQueries();
-        }
-        router.invalidate();
-      });
-      (SupabaseAuthSync as unknown as { _unsub?: () => void })._unsub = () =>
-        data.subscription.unsubscribe();
-    });
+    let unsub: (() => void) | undefined;
+    let cancelled = false;
+    ensureSupabase()
+      .then((supabase) => {
+        if (cancelled) return;
+        const { data } = supabase.auth.onAuthStateChange((event) => {
+          if (event === "SIGNED_OUT") {
+            queryClient.cancelQueries();
+            queryClient.clear();
+          } else {
+            queryClient.invalidateQueries();
+          }
+          router.invalidate();
+        });
+        unsub = () => data.subscription.unsubscribe();
+      })
+      .catch((err) => console.error("Supabase init failed", err));
     return () => {
-      const ref = SupabaseAuthSync as unknown as { _unsub?: () => void };
-      ref._unsub?.();
+      cancelled = true;
+      unsub?.();
     };
   }, [router, queryClient]);
 
