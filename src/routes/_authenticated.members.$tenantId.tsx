@@ -79,6 +79,17 @@ function MembersPage() {
     onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
   });
 
+  const renameM = useMutation({
+    mutationFn: (v: { userId: string; displayName: string }) =>
+      updateNameFn({ data: { tenantId, ...v } }),
+    onSuccess: () => {
+      setEditingId(null);
+      setEditingName("");
+      invalidate();
+    },
+    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+  });
+
   const addM = useMutation({
     mutationFn: (v: { email: string; role: "admin" | "member" }) =>
       addByEmailFn({ data: { tenantId, ...v } }),
