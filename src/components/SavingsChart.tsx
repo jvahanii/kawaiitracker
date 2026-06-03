@@ -195,11 +195,6 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
             · Toteuma:{" "}
             <span className="font-mono font-semibold text-foreground">{fmt(actualTotal)}</span>
           </span>
-          {pct !== null ? (
-            <span className="ml-2">
-              ({pct}% / {fmt(goal.amount ?? 0)})
-            </span>
-          ) : null}
           {daysLeft !== null ? (
             <span className="ml-2">· {t("workspace.daysLeft", { count: daysLeft })}</span>
           ) : null}
