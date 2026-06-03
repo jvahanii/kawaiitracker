@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getSupabase } from "@/lib/supabase/client";
+import { listMyTenants } from "@/lib/api/tenants.functions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const Route = createFileRoute("/login")({
@@ -27,7 +28,18 @@ function LoginPage() {
       if (error) throw new Error(error.message);
       return { ok: true as const };
     },
-    onSuccess: () => navigate({ to: "/" }),
+    onSuccess: async () => {
+      try {
+        const tenants = await listMyTenants();
+        if (tenants.length === 0) {
+          navigate({ to: "/onboarding" });
+        } else {
+          navigate({ to: "/app/$tenantId", params: { tenantId: tenants[0].id } });
+        }
+      } catch {
+        navigate({ to: "/onboarding" });
+      }
+    },
   });
 
   const errorMessage = m.error ? (m.error as Error).message : null;

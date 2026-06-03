@@ -1,9 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
-import { tryGetSupabase } from "@/lib/supabase/client";
-import { listMyTenants } from "@/lib/api/tenants.functions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const Route = createFileRoute("/")({
@@ -16,34 +13,8 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-function useRedirectIfSignedIn() {
-  const navigate = useNavigate();
-  useEffect(() => {
-    const supabase = tryGetSupabase();
-    if (!supabase) return;
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase.auth.getUser();
-      if (cancelled || !data.user) return;
-      try {
-        const tenants = await listMyTenants();
-        if (cancelled) return;
-        if (tenants.length === 0) navigate({ to: "/onboarding" });
-        else navigate({ to: "/app/$tenantId", params: { tenantId: tenants[0].id } });
-      } catch (err) {
-        console.error("[index] listMyTenants failed:", err);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [navigate]);
-}
-
-
 function Landing() {
   const { t } = useTranslation();
-  useRedirectIfSignedIn();
   return (
     <div className="min-h-screen text-foreground">
       <header>

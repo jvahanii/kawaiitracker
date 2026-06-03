@@ -34,6 +34,7 @@ function SignupPage() {
       return { ok: true as const, hasSession: !!res.session };
     },
     onSuccess: (res) => {
+      // New users have no tenants yet — go straight to onboarding.
       if (res.hasSession) navigate({ to: "/onboarding" });
     },
   });
