@@ -109,6 +109,7 @@
     "addDirectBody": "Jos käyttäjällä on jo tili, hänet lisätään suoraan. Muussa tapauksessa hänelle lähetetään kutsu sähköpostitse.",
     "addDirectBtn": "Lisää",
     "addedOk": "Käyttäjä lisätty.",
-    "alreadyMember": "Käyttäjä on jo tämän työtilan jäsen."
+    "alreadyMember": "Käyttäjä on jo tämän työtilan jäsen.",
+    "editName": "Muokkaa nimeä"
   }
 }
