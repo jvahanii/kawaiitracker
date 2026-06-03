@@ -207,12 +207,16 @@ export const reorderItems = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ context, data }) => {
-    for (let i = 0; i < data.orderedIds.length; i++) {
-      const { error } = await context.supabase
-        .from("items")
-        .update({ sort_order: i })
-        .eq("id", data.orderedIds[i])
-        .eq("tenant_id", data.tenantId);
+    const results = await Promise.all(
+      data.orderedIds.map((id, i) =>
+        context.supabase
+          .from("items")
+          .update({ sort_order: i })
+          .eq("id", id)
+          .eq("tenant_id", data.tenantId),
+      ),
+    );
+    for (const { error } of results) {
       if (error) throw new Error(error.message);
     }
     return { ok: true };

@@ -387,7 +387,7 @@ function TaskLists({
         const reordered = orderedIds
           .map((id) => prev.find((t) => t.id === id))
           .filter(Boolean) as TaskRow[];
-        // Interleave: put reordered tasks in their new positions, others after
+        // Put reordered group at the top in their new order, other groups after
         qc.setQueryData(["tasks", tenantId, itemId], [...reordered, ...others]);
       }
       return { prev };
