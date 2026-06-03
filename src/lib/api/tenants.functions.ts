@@ -186,9 +186,12 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
             user_metadata: { display_name: email.split("@")[0] || email },
           });
         if (createErr) {
-          throw new Error(
-            lookupErr ? `${createErr.message} (${lookupErr}; ${inviteMsg})` : `${createErr.message} (${inviteMsg})`,
-          );
+          return {
+            ok: false as const,
+            error: lookupErr
+              ? `${createErr.message} (${lookupErr}; ${inviteMsg})`
+              : `${createErr.message} (${inviteMsg})`,
+          };
         }
         if (created?.user) {
           userId = created.user.id;
@@ -197,7 +200,9 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
       }
     }
 
-    if (!userId) throw new Error("Failed to resolve user");
+    if (!userId) {
+      return { ok: false as const, error: "Failed to resolve user" };
+    }
 
     await admin.from("profiles").upsert(
       {
