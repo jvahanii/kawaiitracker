@@ -8,6 +8,7 @@ import { listMyTenants } from "@/lib/api/tenants.functions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const Route = createFileRoute("/login")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Log in — Tracker" }] }),
   component: LoginPage,
 });
