@@ -6,10 +6,20 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// Inline Supabase public config at build time so the client can initialise
+// without a server-function roundtrip. This is required for the static preview
+// build (`id-preview--*.lovable.app`) which has no server runtime.
+const SUPABASE_URL = process.env.EXT_SUPABASE_URL ?? "";
+const SUPABASE_PUBLISHABLE_KEY = process.env.EXT_SUPABASE_PUBLISHABLE_KEY ?? "";
+
 export default defineConfig({
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
     server: { entry: "server" },
+  },
+  vite: {
+    define: {
+      __SUPABASE_URL__: JSON.stringify(SUPABASE_URL),
+      __SUPABASE_PUBLISHABLE_KEY__: JSON.stringify(SUPABASE_PUBLISHABLE_KEY),
+    },
   },
 });

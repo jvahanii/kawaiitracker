@@ -1,39 +1,48 @@
 ## Mistä on kyse
 
-Kirjautuminen toimii — Supabase palauttaa 200:n ja sessionin tallentuu. Toinen 400-virhe logissa oli pelkkä kirjoitusvirhe salasanassa.
+Tuotannossa (`kawaiitracker.lovable.app`) login toimii, koska siellä pyörii oikea server-runtime ja `getSupabaseConfig` server-funktio palauttaa Supabase URL+publishable keyn.
 
-Käyttäjän kokema "login fails" on todellisuudessa **landing-sivun (`/`) hydration-kraschi**, joka tekee ruudusta tyhjän ennen kuin ehtii klikata "Kirjaudu"-linkkiä.
+Preview-ympäristössä (`id-preview--…lovable.app`) sivusto on **staattinen prerender-build**. Siellä ei ole server-runtimea, joten `getSupabaseConfig`-kutsu epäonnistuu virheellä:
 
-### Juurisyy
+```
+Invariant failed: expected content-type header to be set
+  at getResponse (serverFnFetcher)
+  at __root.tsx beforeLoad
+```
 
-1. `/` on SSR-reitti. Server renderöi sen englanniksi (i18n on pakotettu `en`-kieleen `src/lib/i18n.ts`:ssä).
-2. `__root.tsx`:n `SupabaseAuthSync` ajaa `applyDetectedLanguage()`:n useEffectissa heti hydration jälkeen.
-3. `applyDetectedLanguage()` vaihtaa kielen `fi`:hin `setTimeout(…, 0)`:lla.
-4. Landing-puu ehtii rerenderöidä suomeksi ennen kuin React on saanut hydration valmiiksi → SSR-HTML (englanti) ≠ klientti (suomi) → **React error #418** → koko sivu räjähtää valkoiseksi.
-
-Tämä on sama bugi kuin aikaisempi `/login`-bugi, joka korjattiin `ssr: false`:lla. Landing-sivulla ei voi käyttää samaa ratkaisua, koska se on julkinen sivu jonka pitää SEO:n vuoksi SSR:ää.
+Tämä kaataa root-routen `beforeLoad`:n ennen kuin Supabase-klientti ehditään alustaa → login-sivu ei latautua eikä autentikointia voi tehdä.
 
 ## Korjaus
 
-Renderöi käännetyt tekstit landing-sivulla vasta kun komponentti on mountattu klientillä. SSR-HTML pidetään deterministisenä (englanti), ja sama englanti renderöidään ensimmäisellä klientti-renderöinnillä, jonka jälkeen kieli saa vaihtua.
+Injektoi Supabasen julkinen URL ja publishable key client-bundleen build-ajalla, jolloin selain ei tarvitse server-roundtrippiä alustaakseen klientin. Server-funktio jää varmuusvaraksi mutta sitä ei enää tarvita normaalireitillä.
 
 ### Muutokset
 
-**`src/lib/i18n.ts`**
-- Älä vaihda kieltä heti — paljasta `applyDetectedLanguage()` ilman `setTimeout`-kikkailua. Kutsuja päättää koska se on turvallista.
+**`vite.config.ts`**
+- Lue build-ajalla `process.env.EXT_SUPABASE_URL` ja `process.env.EXT_SUPABASE_PUBLISHABLE_KEY`.
+- Inline ne client-bundleen `define`-optiolla (esim. `__SUPABASE_URL__` ja `__SUPABASE_PUBLISHABLE_KEY__`). Nämä ovat julkisia arvoja, joten injektointi on turvallista.
+
+**`src/lib/supabase/client.ts`**
+- Lisää `getEmbeddedConfig()` joka palauttaa build-ajan vakiot kun ne ovat saatavilla.
+- `initSupabase(config?)` hyväksyy myös undefinedin: jos parametri puuttuu, käyttää embedded-arvoja.
 
 **`src/routes/__root.tsx`**
-- Poista `applyDetectedLanguage()`-kutsu `SupabaseAuthSync`:n useEffectistä, tai siirrä se ajettavaksi vasta kun `mounted`-flagi on `true` ensimmäisen renderöinnin jälkeen. Tämä takaa että hydration ehtii valmiiksi englanniksi ennen kielen vaihtoa.
+- Poista `beforeLoad`-server-fn-kutsu `getSupabaseConfig`:lle. Alusta Supabase-klientti suoraan embedded-vakioilla heti `beforeLoad`:ssa (client-puolella) ja `RootComponent`:ssa.
+- `loader` voi palauttaa embedded-configin (tai poistaa kokonaan jos ei käytetä).
 
-**`src/routes/index.tsx`** (landing)
-- Lisää `useEffect` + `useState`-mounted-flagi. Renderöi `t(...)`-tekstit vasta kun `mounted === true`; ennen sitä renderöi sama englanninkielinen teksti minkä server tuotti. Tämä eliminoi mismatchin vaikka i18nextin sisäinen tila ehtisi vaihtua.
+**`src/lib/supabase/config.functions.ts`**
+- Jää olemaan, ettei muut moduulit hajoa, mutta sitä ei enää kutsuta bootstrapissa.
 
-Vaihtoehto (yksinkertaisempi): Kutsu `i18n.changeLanguage(detectedLang)` vasta `requestAnimationFrame` + yhden tickin viiveellä `SupabaseAuthSync`:ssä, **eikä koskaan** ensimmäisen commitin aikana. Yhdistettynä siihen että `applyDetectedLanguage` ajetaan vasta `mounted`-tilassa, hydration on aina deterministinen.
+### Miksi tämä toimii
+
+- Static preview ja production saavat saman embedded-configin → ei server-roundtrippiä → ei `content-type`-virhettä.
+- URL + publishable key ovat samat julkiset arvot jotka Supabase paljastaa joka tapauksessa selaimelle, joten bundlaaminen ei tuo uutta tietovuotoa.
+- SSR-koodi (server-side renderöinti tuotannossa) toimii myös, koska `process.env.EXT_SUPABASE_*` on saatavilla server-runtimessa, ja `define` korvataan client-buildissä.
 
 ## Tiedostot
 
-- `src/lib/i18n.ts`
+- `vite.config.ts`
+- `src/lib/supabase/client.ts`
 - `src/routes/__root.tsx`
-- (mahdollisesti `src/routes/index.tsx` jos halutaan ekstra-vakuutus)
 
-Ei DB- eikä env-muutoksia. Auth-reitit ovat jo `ssr: false` ja niitä ei kosketa.
+Ei DB- eikä uusia env-muutoksia.
