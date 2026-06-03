@@ -1,22 +1,33 @@
-## Plan
+## Fix red goal line in SavingsChart
 
-1. **Stop the root route from crashing public pages**
-   - Remove the eager `initSupabase()` call from the root `beforeLoad`.
-   - Root `beforeLoad` currently throws when public auth config is missing, so clicking **Login** shows the global error page before `/login` can render.
+**Problems**
+1. The line doesn't render. The chart wraps the destructive token as `hsl(var(--destructive))`, but in `src/styles.css` `--destructive` is defined as `oklch(...)`. Wrapping an oklch value in `hsl(...)` yields an invalid color, so Recharts draws nothing. (The existing goal-date `ReferenceLine` has the same bug but is less visible.)
+2. The current implementation draws a diagonal "target pace" `<Line dataKey="__target">` from 0 → goal across the year. The user wants a horizontal line at the goal amount.
 
-2. **Restore a runtime config fallback for the browser auth client**
-   - Reintroduce the existing `getSupabaseConfig` server function as a fallback only when `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` are absent.
-   - Initialize the client in a safe client-only component/effect, not during SSR.
+**Changes (only `src/components/SavingsChart.tsx`)**
 
-3. **Make auth routes wait for initialization instead of throwing**
-   - Update `/login` (and shared auth pages that use `getSupabase`) so they initialize Supabase config before calling auth methods.
-   - Keep login form behavior the same.
+1. Remove the diagonal target line:
+   - Drop the `__target` computation in the `useMemo` (lines ~149–153 `goalTime`/`targetSpan` and lines ~171–174 `row.__target = …`).
+   - Remove the `<Line dataKey="__target" …>` block (lines ~457–469).
 
-4. **Verify the actual failure path**
-   - Re-check browser console/runtime signals after the change to confirm the missing-config error no longer appears and `/login` renders.
+2. Add a horizontal `<ReferenceLine y={goal.amount}>` inside the `ComposedChart`, rendered only when `goal.amount > 0`:
+   ```tsx
+   <ReferenceLine
+     y={goal.amount}
+     stroke="var(--destructive)"
+     strokeDasharray="4 4"
+     strokeWidth={1.5}
+     ifOverflow="extendDomain"
+     label={{
+       value: t("workspace.goalAmountShort") ?? "Goal",
+       fill: "var(--destructive)",
+       fontSize: 11,
+       position: "insideTopRight",
+     }}
+   />
+   ```
+   `ifOverflow="extendDomain"` ensures the line is visible even when the goal exceeds the current Y max.
 
-## Technical details
+3. Fix the existing goal-date `ReferenceLine` stroke/label to use `var(--destructive)` instead of `hsl(var(--destructive))` so it also renders correctly.
 
-- The confirmed error is: `Supabase config unavailable. VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY missing.`
-- It is thrown from `src/routes/__root.tsx` line 79 via `initSupabase()` during router `beforeLoad`.
-- The fix is not a UI change; it is an auth initialization flow fix.
+No other files or business logic touched.

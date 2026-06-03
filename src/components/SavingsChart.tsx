@@ -146,11 +146,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     const now = monthKey(new Date());
     const yearStart = monthKey(new Date(year, 0, 1));
     const yearEnd = monthKey(new Date(year, 11, 1));
-    const goalTime =
-      goal.date && !Number.isNaN(new Date(goal.date).getTime())
-        ? monthKey(new Date(goal.date))
-        : yearEnd;
-    const targetSpan = Math.max(1, goalTime - yearStart);
+    void yearStart; void yearEnd;
     const rows: Array<Record<string, number | undefined>> = months.map((tm) => {
       const row: Record<string, number | undefined> = { t: tm };
       for (const id of ids) {
@@ -168,15 +164,11 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         row.__actual = cumActual;
       }
       row.__plan = ids.reduce((s, id) => s + (row[id] ?? 0), 0);
-      if (goal.amount && goal.amount > 0) {
-        const ratio = Math.min(1, Math.max(0, (tm - yearStart) / targetSpan));
-        row.__target = goal.amount * ratio;
-      }
       return row;
     });
 
     return { chartData: rows, seriesKeys: ids };
-  }, [entries, goal.amount, goal.date, groupBy, itemAssigneeMap, year]);
+  }, [entries, groupBy, itemAssigneeMap, year]);
 
 
   const seriesTitle = (id: string) =>
