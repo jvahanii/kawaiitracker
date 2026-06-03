@@ -192,7 +192,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
           {t("workspace.chartTotal")}:{" "}
           <span className="font-mono font-semibold text-foreground">{fmt(total)}</span>
           <span className="ml-2">
-            · Toteuma:{" "}
+            · {i18n.language === "fi" ? "Toteuma" : "Actual"}:{" "}
             <span className="font-mono font-semibold text-foreground">{fmt(actualTotal)}</span>
           </span>
           {daysLeft !== null ? (
