@@ -344,7 +344,8 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                   <ReferenceLine
                     y={goal.amount}
                     stroke="hsl(var(--destructive))"
-                    strokeDasharray="5 4"
+                    strokeDasharray="8 6"
+                    strokeWidth={2}
                     label={{
                       value: t("workspace.goalAmount"),
                       fill: "hsl(var(--destructive))",
