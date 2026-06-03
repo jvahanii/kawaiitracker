@@ -95,3 +95,63 @@ export const removeMember = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+export const addMemberByEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        tenantId: z.string().uuid(),
+        email: z.string().email().max(255),
+        role: z.enum(["admin", "member"]).default("member"),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    // Verify caller is admin of this tenant (RLS-scoped)
+    const { data: meRow, error: meErr } = await context.supabase
+      .from("tenant_members")
+      .select("role")
+      .eq("tenant_id", data.tenantId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (meErr) throw new Error(meErr.message);
+    if (!meRow || meRow.role !== "admin") {
+      throw new Error("Only admins can add users.");
+    }
+
+    const { getSupabaseAdmin } = await import("@/lib/supabase/admin.server");
+    const admin = getSupabaseAdmin();
+    const email = data.email.trim().toLowerCase();
+
+    // Find or invite user
+    let userId: string | null = null;
+    const { data: invited, error: inviteErr } =
+      await admin.auth.admin.inviteUserByEmail(email);
+    if (invited?.user) {
+      userId = invited.user.id;
+    } else {
+      // Likely already exists — look up via listUsers
+      const { data: list, error: listErr } = await admin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+      if (listErr) throw new Error(inviteErr?.message ?? listErr.message);
+      const found = list?.users?.find(
+        (u) => (u.email ?? "").toLowerCase() === email,
+      );
+      if (!found) throw new Error(inviteErr?.message ?? "User not found");
+      userId = found.id;
+    }
+
+    if (!userId) throw new Error("Failed to resolve user");
+
+    const { error: insErr } = await admin
+      .from("tenant_members")
+      .insert({ tenant_id: data.tenantId, user_id: userId, role: data.role });
+    if (insErr && !/duplicate|unique/i.test(insErr.message)) {
+      throw new Error(insErr.message);
+    }
+
+    return { ok: true as const, userId, alreadyMember: !!insErr };
+  });
