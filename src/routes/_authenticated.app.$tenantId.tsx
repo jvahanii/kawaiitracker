@@ -281,6 +281,211 @@ function WorkspacePage() {
 }
 
 
+function TaskLists({
+  tenantId,
+  itemId,
+  members,
+  assigneeIds,
+}: {
+  tenantId: string;
+  itemId: string;
+  members: { id: string; displayName: string }[];
+  assigneeIds: string[];
+}) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listTasksForItem);
+  const createFn = useServerFn(createTask);
+  const updateFn = useServerFn(updateTask);
+  const deleteFn = useServerFn(deleteTask);
+
+  const tasksQ = useQuery({
+    queryKey: ["tasks", tenantId, itemId],
+    queryFn: () => listFn({ data: { tenantId, itemId } }),
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["tasks", tenantId, itemId] });
+
+  const createM = useMutation({
+    mutationFn: (v: { title: string; userId?: string }) =>
+      createFn({ data: { tenantId, itemId, title: v.title, userId: v.userId } }),
+    onSuccess: invalidate,
+  });
+
+  const updateM = useMutation({
+    mutationFn: (v: { id: string; title?: string; done?: boolean }) =>
+      updateFn({ data: { tenantId, id: v.id, title: v.title, done: v.done } }),
+    onSuccess: invalidate,
+  });
+
+  const deleteM = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { tenantId, id } }),
+    onSuccess: invalidate,
+  });
+
+  const tasks = tasksQ.data ?? [];
+
+  const grouped = useMemo(() => {
+    const byUser = new Map<string, TaskRow[]>();
+    const unassigned: TaskRow[] = [];
+    for (const t of tasks) {
+      if (t.userId) {
+        const list = byUser.get(t.userId) ?? [];
+        list.push(t);
+        byUser.set(t.userId, list);
+      } else {
+        unassigned.push(t);
+      }
+    }
+    return { byUser, unassigned };
+  }, [tasks]);
+
+  return (
+    <div className="mt-6 space-y-4">
+      {assigneeIds.map((uid) => {
+        const member = members.find((m) => m.id === uid);
+        if (!member) return null;
+        const groupTasks = grouped.byUser.get(uid) ?? [];
+        return (
+          <TaskGroup
+            key={uid}
+            name={member.displayName}
+            tasks={groupTasks}
+            userId={uid}
+            onAdd={(title) => createM.mutate({ title, userId: uid })}
+            onToggle={(id, done) => updateM.mutate({ id, done })}
+            onEditTitle={(id, title) => updateM.mutate({ id, title })}
+            onDelete={(id) => deleteM.mutate(id)}
+          />
+        );
+      })}
+      {grouped.unassigned.length > 0 || assigneeIds.length === 0 ? (
+        <TaskGroup
+          name="Ei vastuuhenkilöä"
+          tasks={grouped.unassigned}
+          userId={undefined}
+          onAdd={(title) => createM.mutate({ title })}
+          onToggle={(id, done) => updateM.mutate({ id, done })}
+          onEditTitle={(id, title) => updateM.mutate({ id, title })}
+          onDelete={(id) => deleteM.mutate(id)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function TaskGroup({
+  name,
+  tasks,
+  userId,
+  onAdd,
+  onToggle,
+  onEditTitle,
+  onDelete,
+}: {
+  name: string;
+  tasks: TaskRow[];
+  userId?: string;
+  onAdd: (title: string) => void;
+  onToggle: (id: string, done: boolean) => void;
+  onEditTitle: (id: string, title: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [newTitle, setNewTitle] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+
+  const startEdit = (task: TaskRow) => {
+    setEditingId(task.id);
+    setEditText(task.title);
+  };
+
+  const commitEdit = () => {
+    if (editingId && editText.trim()) {
+      onEditTitle(editingId, editText.trim());
+    }
+    setEditingId(null);
+  };
+
+  return (
+    <div className="rounded-md border border-border p-3">
+      <h4 className="mb-2 text-sm font-semibold text-foreground">{name}</h4>
+      <ul className="space-y-1">
+        {tasks.map((t) => (
+          <li key={t.id} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={t.done}
+              onChange={() => onToggle(t.id, !t.done)}
+              className="shrink-0"
+            />
+            {editingId === t.id ? (
+              <input
+                autoFocus
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitEdit();
+                  if (e.key === "Escape") setEditingId(null);
+                }}
+                className="input h-7 flex-1 text-sm"
+              />
+            ) : (
+              <span
+                onClick={() => startEdit(t)}
+                className={`flex-1 cursor-pointer text-sm ${
+                  t.done ? "text-muted-foreground line-through" : "text-foreground"
+                }`}
+                title="Klikkaa muokataksesi"
+              >
+                {t.title}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => startEdit(t)}
+              className="rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+              title="Muokkaa"
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(t.id)}
+              className="rounded px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/10"
+              title="Poista"
+            >
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!newTitle.trim()) return;
+          onAdd(newTitle.trim());
+          setNewTitle("");
+        }}
+        className="mt-2 flex gap-1"
+      >
+        <input
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          placeholder="Uusi tehtävä…"
+          className="input h-7 flex-1 text-sm"
+        />
+        <button
+          type="submit"
+          className="rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground"
+        >
+          Lisää
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function ItemDetail({
   tenantId,
   item,
