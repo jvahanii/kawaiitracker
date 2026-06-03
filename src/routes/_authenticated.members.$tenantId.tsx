@@ -40,6 +40,7 @@ function MembersPage() {
 
   const listFn = useServerFn(listTenantMembers);
   const updateRoleFn = useServerFn(updateMemberRole);
+  const updateNameFn = useServerFn(updateMemberName);
   const removeFn = useServerFn(removeMember);
   const addByEmailFn = useServerFn(addMemberByEmail);
 
