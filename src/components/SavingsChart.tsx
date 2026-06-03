@@ -349,6 +349,14 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                   {seriesKeys.map((id, idx) => {
                     const c = colorFor(id, idx);
                     const dc = darkColorFor(id, idx);
+                    // Distribute label x-positions across data range so labels of
+                    // different series don't pile up at the same month.
+                    const n = Math.max(1, seriesKeys.length);
+                    const m = Math.max(1, chartData.length);
+                    const targetIndex = Math.max(
+                      0,
+                      Math.min(m - 1, Math.floor(((idx + 0.5) * m) / n)),
+                    );
                     return (
                       <Area
                         key={id}
@@ -369,22 +377,25 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                             x?: number | string;
                             y?: number | string;
                             width?: number | string;
+                            height?: number | string;
                             index?: number;
                             value?: number | string;
                           }) => {
                             const i = props.index ?? -1;
-                            // Place one label per series, near the middle of the chart
-                            const target = Math.max(0, Math.min(chartData.length - 1, Math.floor(chartData.length / 2)));
-                            if (i !== target) return null;
+                            if (i !== targetIndex) return null;
                             const x = Number(props.x ?? 0);
                             const y = Number(props.y ?? 0);
                             const w = Number(props.width ?? 0);
+                            const h = Number(props.height ?? 0);
                             const label = seriesTitle(id);
                             if (!label || label === "—") return null;
+                            // Vertically center within the band when possible,
+                            // otherwise nudge just below the top edge.
+                            const cy = h > 16 ? y + h / 2 + 3 : y + 10;
                             return (
                               <text
                                 x={x + w / 2}
-                                y={y + 10}
+                                y={cy}
                                 textAnchor="middle"
                                 fontSize={10}
                                 fontWeight={600}
