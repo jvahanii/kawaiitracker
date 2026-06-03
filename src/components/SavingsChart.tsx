@@ -265,13 +265,51 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                   }}
                   labelFormatter={(v) => monthFmt.format(new Date(Number(v)))}
-                  formatter={(v: number, name: string) => {
-                    const key = String(name);
-                    if (key === "__actual") return [fmt(Number(v)), "Toteuma (yht.)"];
-                    if (key === "target") return [fmt(Number(v)), t("workspace.goalAmount")];
-                    if (key.endsWith("__a"))
-                      return [fmt(Number(v)), `${itemTitle(key.slice(0, -3))} (toteuma)`];
-                    return [fmt(Number(v)), `${itemTitle(key)} (suunn.)`];
+                  content={({ payload, label }) => {
+                    if (!payload || payload.length === 0) return null;
+                    const row = payload[0]?.payload as Record<string, number | undefined> | undefined;
+                    const rows: { name: string; value: string }[] = [];
+                    if (row && row.__actual !== undefined) {
+                      rows.push({ name: "Toteuma (yht.)", value: fmt(row.__actual) });
+                    }
+                    if (row && row.target !== undefined) {
+                      rows.push({ name: t("workspace.goalAmount"), value: fmt(row.target) });
+                    }
+                    for (const id of itemKeys) {
+                      const plan = row?.[id];
+                      const actual = row?.[`${id}__a`];
+                      if (plan === undefined && actual === undefined) continue;
+                      const name = itemTitle(id);
+                      if (actual !== undefined && plan !== undefined) {
+                        rows.push({ name, value: `${fmt(actual)} / ${fmt(plan)}` });
+                      } else if (actual !== undefined) {
+                        rows.push({ name: `${name} (toteuma)`, value: fmt(actual) });
+                      } else if (plan !== undefined) {
+                        rows.push({ name: `${name} (suunn.)`, value: fmt(plan) });
+                      }
+                    }
+                    return (
+                      <div
+                        style={{
+                          backgroundColor: "var(--card)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 8,
+                          fontSize: 12,
+                          padding: "8px 12px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                          {monthFmt.format(new Date(Number(label)))}
+                        </div>
+                        {rows.map((r) => (
+                          <div key={r.name} style={{ display: "flex", justifyContent: "space-between", gap: 16, lineHeight: 1.6 }}>
+                            <span style={{ color: "hsl(var(--muted-foreground))" }}>{r.name}</span>
+                            <span style={{ fontFamily: "monospace", fontWeight: 500 }}>{r.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
                   }}
                 />
                 {itemKeys.map((id, idx) => {
