@@ -41,7 +41,8 @@ export const listItems = createServerFn({ method: "GET" })
       .from("items")
       .select("id, title, status, assignee_id, notes, amount, created_at, updated_at")
       .eq("tenant_id", data.tenantId)
-      .order("updated_at", { ascending: false });
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     const items = (rows ?? []) as RawItem[];
 
@@ -105,9 +106,22 @@ export const createItem = createServerFn({ method: "POST" })
     z.object({ tenantId: z.string().uuid(), title: z.string().min(1).max(200) }).parse(d),
   )
   .handler(async ({ context, data }) => {
+    const { data: maxRow } = await context.supabase
+      .from("items")
+      .select("sort_order")
+      .eq("tenant_id", data.tenantId)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const nextOrder = ((maxRow as { sort_order?: number } | null)?.sort_order ?? -1) + 1;
     const { data: row, error } = await context.supabase
       .from("items")
-      .insert({ tenant_id: data.tenantId, title: data.title.trim(), created_by: context.userId })
+      .insert({
+        tenant_id: data.tenantId,
+        title: data.title.trim(),
+        created_by: context.userId,
+        sort_order: nextOrder,
+      })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
@@ -161,9 +175,7 @@ export const updateItem = createServerFn({ method: "POST" })
           item_id: data.id,
           user_id: uid,
         }));
-        const { error: insErr } = await context.supabase
-          .from("item_assignees")
-          .insert(rows);
+        const { error: insErr } = await context.supabase.from("item_assignees").insert(rows);
         if (insErr) throw new Error(insErr.message);
       }
     }
@@ -181,5 +193,31 @@ export const deleteItem = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("tenant_id", data.tenantId);
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const reorderItems = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        tenantId: z.string().uuid(),
+        orderedIds: z.array(z.string().uuid()).max(500),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const results = await Promise.all(
+      data.orderedIds.map((id, i) =>
+        context.supabase
+          .from("items")
+          .update({ sort_order: i })
+          .eq("id", id)
+          .eq("tenant_id", data.tenantId),
+      ),
+    );
+    for (const { error } of results) {
+      if (error) throw new Error(error.message);
+    }
     return { ok: true };
   });
