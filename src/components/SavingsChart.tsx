@@ -341,20 +341,30 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     />
                   );
                 })}
-                {goal.amount ? (
-                  <ReferenceLine
-                    y={goal.amount}
-                    stroke="hsl(var(--destructive))"
-                    strokeDasharray="8 6"
-                    strokeWidth={2}
-                    label={{
-                      value: t("workspace.goalAmount"),
-                      fill: "hsl(var(--destructive))",
-                      fontSize: 11,
-                      position: "insideTopRight",
-                    }}
-                  />
-                ) : null}
+                {(() => {
+                  const effectiveGoal =
+                    goal.amount && goal.amount > 0
+                      ? goal.amount
+                      : (chartData[chartData.length - 1]?.__plan ?? 0);
+                  if (!effectiveGoal || effectiveGoal <= 0) return null;
+                  const isFallback = !(goal.amount && goal.amount > 0);
+                  return (
+                    <ReferenceLine
+                      y={effectiveGoal}
+                      stroke="hsl(var(--destructive))"
+                      strokeDasharray="8 6"
+                      strokeWidth={2}
+                      label={{
+                        value: isFallback
+                          ? `${t("workspace.goalAmount")} (${fmt(effectiveGoal)})`
+                          : t("workspace.goalAmount"),
+                        fill: "hsl(var(--destructive))",
+                        fontSize: 11,
+                        position: "insideTopRight",
+                      }}
+                    />
+                  );
+                })()}
                 {goal.date && !Number.isNaN(new Date(goal.date).getTime()) ? (
                   <ReferenceLine
                     x={monthKey(new Date(goal.date))}
