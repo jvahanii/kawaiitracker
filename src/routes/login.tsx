@@ -98,8 +98,9 @@ function LoginPage() {
             autoComplete="current-password"
           />
         </Field>
-        <label className="flex items-center gap-2 text-sm">
+        <label htmlFor="rememberMe" className="flex items-center gap-2 text-sm">
           <input
+            id="rememberMe"
             type="checkbox"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
