@@ -81,6 +81,10 @@ function MembersPage() {
     mutationFn: (v: { email: string; role: "admin" | "member" }) =>
       addByEmailFn({ data: { tenantId, ...v } }),
     onSuccess: (res) => {
+      if (res?.ok === false) {
+        alert(res.error);
+        return;
+      }
       invalidate();
       setAddEmail("");
       setAddRole("member");
