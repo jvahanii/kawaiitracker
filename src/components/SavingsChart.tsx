@@ -6,6 +6,7 @@ import {
   Area,
   CartesianGrid,
   ComposedChart,
+  LabelList,
   Line,
   ReferenceLine,
   ResponsiveContainer,
