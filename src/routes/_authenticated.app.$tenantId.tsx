@@ -297,7 +297,6 @@ function ItemDetail({
   const status = item.status;
   const initialAssigneeIds = item.assignees.map((a) => a.id);
   const [assigneeIds, setAssigneeIds] = useState<string[]>(initialAssigneeIds);
-  const [notes, setNotes] = useState(item.notes);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
@@ -310,8 +309,7 @@ function ItemDetail({
   const dirty =
     title !== item.title ||
     status !== item.status ||
-    assigneesChanged ||
-    notes !== item.notes;
+    assigneesChanged;
 
   const save = async () => {
     if (!dirty) return;
@@ -321,7 +319,6 @@ function ItemDetail({
         title,
         status,
         assigneeIds: assigneesChanged ? assigneeIds : undefined,
-        notes,
       });
       setSavedAt(Date.now());
     } finally {
