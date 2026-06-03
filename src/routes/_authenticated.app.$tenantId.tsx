@@ -21,6 +21,13 @@ import {
   listEntriesForItem,
   upsertEntry,
 } from "@/lib/api/entries.functions";
+import {
+  listTasksForItem,
+  createTask,
+  updateTask,
+  deleteTask,
+  type TaskRow,
+} from "@/lib/api/tasks.functions";
 
 
 export const Route = createFileRoute("/_authenticated/app/$tenantId")({
