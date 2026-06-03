@@ -441,7 +441,147 @@ function ItemDetail({
   );
 }
 
+function TaskLists({
+  tenantId,
+  itemId,
+  assignees,
+}: {
+  tenantId: string;
+  itemId: string;
+  assignees: { id: string; name: string }[];
+}) {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listTasksForItem);
+  const createFn = useServerFn(createTask);
+  const updateFn = useServerFn(updateTask);
+  const deleteFn = useServerFn(deleteTask);
+
+  const tasksQ = useQuery({
+    queryKey: ["tasks", tenantId, itemId],
+    queryFn: () => listFn({ data: { tenantId, itemId } }),
+  });
+
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: ["tasks", tenantId, itemId] });
+
+  const createM = useMutation({
+    mutationFn: (v: { userId: string | null; title: string }) =>
+      createFn({ data: { tenantId, itemId, userId: v.userId, title: v.title } }),
+    onSuccess: invalidate,
+  });
+  const updateM = useMutation({
+    mutationFn: (v: { id: string; done?: boolean; title?: string }) =>
+      updateFn({ data: { tenantId, ...v } }),
+    onSuccess: invalidate,
+  });
+  const deleteM = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { tenantId, id } }),
+    onSuccess: invalidate,
+  });
+
+  const tasks = tasksQ.data ?? [];
+  const groups: { id: string | null; name: string; tasks: TaskRow[] }[] = [
+    ...assignees.map((a) => ({
+      id: a.id,
+      name: a.name,
+      tasks: tasks.filter((t) => t.userId === a.id),
+    })),
+    {
+      id: null,
+      name: "Yleiset tehtävät",
+      tasks: tasks.filter((t) => !t.userId || !assignees.some((a) => a.id === t.userId)),
+    },
+  ];
+
+  return (
+    <div className="mt-6 space-y-4">
+      {groups.map((g) => (
+        <TaskGroup
+          key={g.id ?? "none"}
+          name={g.name}
+          tasks={g.tasks}
+          onAdd={(title) => createM.mutate({ userId: g.id, title })}
+          onToggle={(id, done) => updateM.mutate({ id, done })}
+          onDelete={(id) => deleteM.mutate(id)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TaskGroup({
+  name,
+  tasks,
+  onAdd,
+  onToggle,
+  onDelete,
+}: {
+  name: string;
+  tasks: TaskRow[];
+  onAdd: (title: string) => void;
+  onToggle: (id: string, done: boolean) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  return (
+    <div className="rounded-md border border-border p-3">
+      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {name}
+      </h4>
+      <ul className="space-y-1">
+        {tasks.map((task) => (
+          <li key={task.id} className="group flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={task.done}
+              onChange={(e) => onToggle(task.id, e.target.checked)}
+              className="h-4 w-4"
+            />
+            <span
+              className={`flex-1 ${task.done ? "text-muted-foreground line-through" : ""}`}
+            >
+              {task.title}
+            </span>
+            <button
+              type="button"
+              onClick={() => onDelete(task.id)}
+              className="rounded px-1.5 py-0.5 text-xs text-muted-foreground opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+              aria-label="Poista tehtävä"
+            >
+              ✕
+            </button>
+          </li>
+        ))}
+      </ul>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const v = draft.trim();
+          if (!v) return;
+          onAdd(v);
+          setDraft("");
+        }}
+        className="mt-2 flex gap-1"
+      >
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Uusi tehtävä…"
+          className="input h-7 flex-1 text-xs"
+        />
+        <button
+          type="submit"
+          className="rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground"
+        >
+          +
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function MonthlyEntries({
+
   tenantId,
   itemId,
   onChanged,
