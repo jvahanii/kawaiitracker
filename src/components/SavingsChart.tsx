@@ -283,11 +283,11 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     const totalPlan = row?.__plan ?? 0;
                     const totalActual = row?.__actual;
                     const rows: { name: string; value: string }[] = [];
-                    for (const id of itemKeys) {
+                    for (const id of seriesKeys) {
                       const plan = row?.[id];
                       const actual = row?.[`${id}__a`];
                       if (plan === undefined && actual === undefined) continue;
-                      const name = itemTitle(id);
+                      const name = seriesTitle(id);
                       if (actual !== undefined && plan !== undefined) {
                         rows.push({ name, value: `${fmt(actual)} / ${fmt(plan)}` });
                       } else if (actual !== undefined) {
@@ -328,7 +328,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     );
                   }}
                 />
-                {itemKeys.map((id, idx) => {
+                {seriesKeys.map((id, idx) => {
                   const c = colorFor(id, idx);
                   return (
                     <Area
@@ -346,7 +346,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     />
                   );
                 })}
-                {itemKeys.map((id, idx) => {
+                {seriesKeys.map((id, idx) => {
                   const c = darkColorFor(id, idx);
                   return (
                     <Area
@@ -406,13 +406,13 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
               <span className="inline-block h-0.5 w-4 bg-foreground" />
               <span className="text-muted-foreground">Toteuma (yht.)</span>
             </span>
-              {itemKeys.map((id, idx) => (
+              {seriesKeys.map((id, idx) => (
                 <span key={id} className="inline-flex items-center gap-1">
                   <span
                     className="inline-block h-2.5 w-2.5 rounded-sm"
                     style={{ backgroundColor: colorFor(id, idx) }}
                   />
-                  <span className="text-muted-foreground">{itemTitle(id)}</span>
+                  <span className="text-muted-foreground">{seriesTitle(id)}</span>
                 </span>
               ))}
             </div>
