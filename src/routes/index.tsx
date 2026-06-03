@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { applyDetectedLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -15,6 +17,14 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   const { t } = useTranslation();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    applyDetectedLanguage();
+  }, []);
+  // Until mounted, render the same English text that SSR produced so React's
+  // hydration diff is empty. After mount we re-render in the detected language.
+  const tr = mounted ? t : ((k: string) => fallbackEn[k] ?? k);
   return (
     <div className="min-h-screen text-foreground">
       <header>
