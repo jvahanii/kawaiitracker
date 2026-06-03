@@ -11,7 +11,6 @@ import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import "@/lib/i18n";
-import { getSupabaseConfig } from "@/lib/supabase/config.functions";
 import { initSupabase } from "@/lib/supabase/client";
 
 function NotFoundComponent() {
@@ -72,24 +71,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  // Fetch the Supabase config and, on the client, eagerly initialize the
-  // Supabase browser client.  This must happen in beforeLoad (not just in
-  // RootComponent's render) so that the client is available before any child
-  // route's beforeLoad runs.  Without this, a hard page reload on an
-  // authenticated route (e.g. after Loveable deploys a change) executes
-  // _authenticated.beforeLoad before RootComponent has rendered, so
-  // tryGetSupabase() returns null and the user is incorrectly redirected to
-  // /login.
-  beforeLoad: async () => {
-    const config = await getSupabaseConfig();
+  // Supabase public config is inlined at build time (see vite.config.ts) so
+  // the browser client can be initialised without a server-fn roundtrip. This
+  // is required for the static preview build which has no server runtime.
+  beforeLoad: () => {
     if (typeof window !== "undefined") {
-      initSupabase(config);
+      initSupabase();
     }
-    return { supabaseConfig: config };
   },
-  // Re-expose the config fetched by beforeLoad as loader data so that
-  // RootComponent can access it via useLoaderData() without an extra request.
-  loader: ({ context }) => context.supabaseConfig,
   head: () => ({
     meta: [
       { charSet: "utf-8" },
