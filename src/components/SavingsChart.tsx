@@ -270,7 +270,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                       } else if (actual !== undefined) {
                         rows.push({ name: `${name} (toteuma)`, value: fmt(actual) });
                       } else if (plan !== undefined) {
-                        rows.push({ name: `${name} (suunn.)`, value: fmt(plan) });
+                        rows.push({ name: `${name} (suunnitelma)`, value: fmt(plan) });
                       }
                     }
                     return (
