@@ -1,34 +1,26 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-declare const __SUPABASE_URL__: string;
-declare const __SUPABASE_PUBLISHABLE_KEY__: string;
-
 let client: SupabaseClient | null = null;
 let initConfig: { url: string; publishableKey: string } | null = null;
 
-/** Build-time injected public config (see vite.config.ts). */
+/** Public config injected by Lovable Cloud via VITE_* env vars. */
 export function getEmbeddedSupabaseConfig(): { url: string; publishableKey: string } | null {
-  try {
-    const url = typeof __SUPABASE_URL__ === "string" ? __SUPABASE_URL__ : "";
-    const publishableKey =
-      typeof __SUPABASE_PUBLISHABLE_KEY__ === "string" ? __SUPABASE_PUBLISHABLE_KEY__ : "";
-    if (url && publishableKey) return { url, publishableKey };
-  } catch {
-    // ignore
-  }
+  const url = import.meta.env.VITE_SUPABASE_URL ?? "";
+  const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
+  if (url && publishableKey) return { url, publishableKey };
   return null;
 }
 
 /**
- * Initialize the browser Supabase client. Uses the build-time embedded config
- * by default; an explicit config can be passed (e.g. from a server-fn) as a
- * fallback. Safe to call multiple times with the same config.
+ * Initialize the browser Supabase client. Uses VITE_* injected config by
+ * default; an explicit config can be passed as fallback. Safe to call
+ * repeatedly with the same config.
  */
 export function initSupabase(config?: { url: string; publishableKey: string }): SupabaseClient {
   const resolved = config ?? getEmbeddedSupabaseConfig();
   if (!resolved) {
     throw new Error(
-      "Supabase config unavailable. Build-time env EXT_SUPABASE_URL / EXT_SUPABASE_PUBLISHABLE_KEY missing.",
+      "Supabase config unavailable. VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY missing.",
     );
   }
   if (client && initConfig?.url === resolved.url) return client;
@@ -44,12 +36,9 @@ export function initSupabase(config?: { url: string; publishableKey: string }): 
   return client;
 }
 
-/** Get the initialised client. Throws if init hasn't run. */
+/** Get the initialised client. Lazy-inits from embedded config if needed. */
 export function getSupabase(): SupabaseClient {
-  if (!client) {
-    // Lazy init from embedded config if caller forgot to bootstrap.
-    return initSupabase();
-  }
+  if (!client) return initSupabase();
   return client;
 }
 

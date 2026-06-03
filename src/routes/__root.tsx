@@ -129,10 +129,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
-  // Initialise the Supabase browser client synchronously from embedded config
-  // (safe to call repeatedly).
-  initSupabase();
-
   return (
     <QueryClientProvider client={queryClient}>
       <SupabaseAuthSync />
@@ -140,6 +136,7 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
+
 
 function SupabaseAuthSync() {
   const router = useRouter();

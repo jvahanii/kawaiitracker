@@ -398,39 +398,20 @@ function TaskLists({
 
   return (
     <div className="mt-6 space-y-4">
-      {assigneeIds.map((uid) => {
-        const member = members.find((m) => m.id === uid);
-        if (!member) return null;
-        const groupTasks = grouped.byUser.get(uid) ?? [];
-        return (
-          <TaskGroup
-            key={uid}
-            name={member.displayName}
-            tasks={groupTasks}
-            userId={uid}
-            onAdd={(title) => createM.mutate({ title, userId: uid })}
-            onToggle={(id, done) => updateM.mutate({ id, done })}
-            onEditTitle={(id, title) => updateM.mutate({ id, title })}
-            onDelete={(id) => deleteM.mutate(id)}
-            onReorder={(orderedIds) => reorderM.mutate(orderedIds)}
-          />
-        );
-      })}
-      {grouped.unassigned.length > 0 || assigneeIds.length === 0 ? (
-        <TaskGroup
-          name="Ei vastuuhenkilöä"
-          tasks={grouped.unassigned}
-          userId={undefined}
-          onAdd={(title) => createM.mutate({ title })}
-          onToggle={(id, done) => updateM.mutate({ id, done })}
-          onEditTitle={(id, title) => updateM.mutate({ id, title })}
-          onDelete={(id) => deleteM.mutate(id)}
-          onReorder={(orderedIds) => reorderM.mutate(orderedIds)}
-        />
-      ) : null}
+      <TaskGroup
+        name="Tehtävät"
+        tasks={tasks}
+        userId={undefined}
+        onAdd={(title) => createM.mutate({ title })}
+        onToggle={(id, done) => updateM.mutate({ id, done })}
+        onEditTitle={(id, title) => updateM.mutate({ id, title })}
+        onDelete={(id) => deleteM.mutate(id)}
+        onReorder={(orderedIds) => reorderM.mutate(orderedIds)}
+      />
     </div>
   );
 }
+
 
 function TaskGroup({
   name,
@@ -707,7 +688,7 @@ function ItemDetail({
         </div>
       </div>
 
-      <TaskLists tenantId={tenantId} itemId={item.id} members={members} assigneeIds={assigneeIds} />
+      <TaskLists tenantId={tenantId} itemId={item.id} />
 
       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
         <span>

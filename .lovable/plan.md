@@ -1,48 +1,35 @@
-## Mistä on kyse
+## Ongelma
 
-Tuotannossa (`kawaiitracker.lovable.app`) login toimii, koska siellä pyörii oikea server-runtime ja `getSupabaseConfig` server-funktio palauttaa Supabase URL+publishable keyn.
-
-Preview-ympäristössä (`id-preview--…lovable.app`) sivusto on **staattinen prerender-build**. Siellä ei ole server-runtimea, joten `getSupabaseConfig`-kutsu epäonnistuu virheellä:
+Tuotanto kaatuu 500-virheeseen joka sivulla. Server-lokit:
 
 ```
-Invariant failed: expected content-type header to be set
-  at getResponse (serverFnFetcher)
-  at __root.tsx beforeLoad
+Error: Supabase config unavailable. Build-time env EXT_SUPABASE_URL / EXT_SUPABASE_PUBLISHABLE_KEY missing.
 ```
 
-Tämä kaataa root-routen `beforeLoad`:n ennen kuin Supabase-klientti ehditään alustaa → login-sivu ei latautua eikä autentikointia voi tehdä.
+Edellisessä kierroksessa otimme käyttöön `vite.config.ts`:n `define`-plugin, joka lukee `process.env.EXT_SUPABASE_URL` build-ajalla. Nämä env-muuttujat eivät kuitenkaan ole saatavilla Lovable-build-pipelinessa, joten `__SUPABASE_URL__` korvautuu tyhjällä merkkijonolla, ja `initSupabase()` heittää virheen SSR:ssä → root-routen `errorComponent` renderöi koko sivun ajaksi.
+
+Lisäksi `RootComponent` kutsuu `initSupabase()` synkronisesti myös SSR:ssä, mikä kaataa renderin vaikka beforeLoad on jo client-only-suojattu.
 
 ## Korjaus
 
-Injektoi Supabasen julkinen URL ja publishable key client-bundleen build-ajalla, jolloin selain ei tarvitse server-roundtrippiä alustaakseen klientin. Server-funktio jää varmuusvaraksi mutta sitä ei enää tarvita normaalireitillä.
+Käytä Lovablen automaattisesti injektoimia `VITE_SUPABASE_URL` ja `VITE_SUPABASE_PUBLISHABLE_KEY`-muuttujia (jotka ovat aina saatavilla `import.meta.env`:ssa sekä client- että server-bundleissa) suoraan. Poistetaan oma `define`-konfiguraatio ja `EXT_*`-referenssit kokonaan.
 
 ### Muutokset
 
-**`vite.config.ts`**
-- Lue build-ajalla `process.env.EXT_SUPABASE_URL` ja `process.env.EXT_SUPABASE_PUBLISHABLE_KEY`.
-- Inline ne client-bundleen `define`-optiolla (esim. `__SUPABASE_URL__` ja `__SUPABASE_PUBLISHABLE_KEY__`). Nämä ovat julkisia arvoja, joten injektointi on turvallista.
+**`vite.config.ts`** — Poista `define`-blokki ja `EXT_*`-lukeminen. Palaa minimaaliseen `defineConfig`-kutsuun.
 
-**`src/lib/supabase/client.ts`**
-- Lisää `getEmbeddedConfig()` joka palauttaa build-ajan vakiot kun ne ovat saatavilla.
-- `initSupabase(config?)` hyväksyy myös undefinedin: jos parametri puuttuu, käyttää embedded-arvoja.
+**`src/lib/supabase/client.ts`** — Korvaa `__SUPABASE_URL__` / `__SUPABASE_PUBLISHABLE_KEY__` referensseillä `import.meta.env.VITE_SUPABASE_URL` ja `import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY`. Poista `declare const` -rivit.
 
-**`src/routes/__root.tsx`**
-- Poista `beforeLoad`-server-fn-kutsu `getSupabaseConfig`:lle. Alusta Supabase-klientti suoraan embedded-vakioilla heti `beforeLoad`:ssa (client-puolella) ja `RootComponent`:ssa.
-- `loader` voi palauttaa embedded-configin (tai poistaa kokonaan jos ei käytetä).
-
-**`src/lib/supabase/config.functions.ts`**
-- Jää olemaan, ettei muut moduulit hajoa, mutta sitä ei enää kutsuta bootstrapissa.
+**`src/routes/__root.tsx`** — Poista synkroninen `initSupabase()`-kutsu `RootComponent`:n rungosta (tämä ajetaan myös SSR:ssä). Jätä client-only `beforeLoad`-kutsu, ja siirrä `RootComponent`:n init `useEffect`-koukkuun, jotta SSR-render ei riipu Supabase-klientistä.
 
 ### Miksi tämä toimii
 
-- Static preview ja production saavat saman embedded-configin → ei server-roundtrippiä → ei `content-type`-virhettä.
-- URL + publishable key ovat samat julkiset arvot jotka Supabase paljastaa joka tapauksessa selaimelle, joten bundlaaminen ei tuo uutta tietovuotoa.
-- SSR-koodi (server-side renderöinti tuotannossa) toimii myös, koska `process.env.EXT_SUPABASE_*` on saatavilla server-runtimessa, ja `define` korvataan client-buildissä.
+- `VITE_SUPABASE_*` ovat Lovable Cloudin auto-injektoimia ja saatavilla joka buildissa (production, preview, dev).
+- Ei tarvita server-fn-roundtrippiä → static preview toimii edelleen.
+- SSR ei enää yritä alustaa Supabase-klienttiä, joten production renderöi sivun ilman 500-virhettä.
 
 ## Tiedostot
 
 - `vite.config.ts`
 - `src/lib/supabase/client.ts`
 - `src/routes/__root.tsx`
-
-Ei DB- eikä uusia env-muutoksia.
