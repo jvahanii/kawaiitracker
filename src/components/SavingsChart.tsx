@@ -239,6 +239,22 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
             className="input h-7 w-28 py-0 text-xs"
           />
         </label>
+        <div className="ml-auto inline-flex overflow-hidden rounded border border-border">
+          <button
+            type="button"
+            onClick={() => setGroupBy("item")}
+            className={`px-2 py-0.5 text-xs ${groupBy === "item" ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50"}`}
+          >
+            Kohteittain
+          </button>
+          <button
+            type="button"
+            onClick={() => setGroupBy("assignee")}
+            className={`px-2 py-0.5 text-xs ${groupBy === "assignee" ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50"}`}
+          >
+            Vastuuhenkilöittäin
+          </button>
+        </div>
       </div>
 
       {!hasData ? (
