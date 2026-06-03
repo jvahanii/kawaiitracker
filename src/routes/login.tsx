@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getSupabase } from "@/lib/supabase/client";
@@ -13,20 +13,44 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+const REMEMBER_KEY = "rememberedEmail";
+
 function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REMEMBER_KEY);
+      if (saved) {
+        setEmail(saved);
+        setRememberMe(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const m = useMutation({
-    mutationFn: async (data: { email: string; password: string }) => {
+    mutationFn: async (data: { email: string; password: string; rememberMe: boolean }) => {
       const supabase = getSupabase();
       const { error } = await supabase.auth.signInWithPassword({
         email: data.email.trim().toLowerCase(),
         password: data.password,
       });
       if (error) throw new Error(error.message);
+      try {
+        if (data.rememberMe) {
+          localStorage.setItem(REMEMBER_KEY, data.email.trim().toLowerCase());
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
+      } catch {
+        // ignore
+      }
       return { ok: true as const };
     },
     onSuccess: async () => {
@@ -50,7 +74,7 @@ function LoginPage() {
       <form
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
-          m.mutate({ email, password });
+          m.mutate({ email, password, rememberMe });
         }}
         className="space-y-4"
       >
@@ -74,6 +98,16 @@ function LoginPage() {
             autoComplete="current-password"
           />
         </Field>
+        <label htmlFor="rememberMe" className="flex items-center gap-2 text-sm">
+          <input
+            id="rememberMe"
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="h-4 w-4 rounded border-border"
+          />
+          {t("login.rememberMe")}
+        </label>
         {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
         <button
           type="submit"

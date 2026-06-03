@@ -36,6 +36,8 @@
     "password": "Salasana",
     "submit": "Kirjaudu",
     "submitting": "Kirjaudutaan…",
+    "forgotPassword": "Unohditko salasanasi?",
+    "rememberMe": "Muista minut",
     "newHere": "Uusi käyttäjä?",
     "createAccount": "Luo tili"
   },
