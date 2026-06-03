@@ -348,3 +348,28 @@ insert into public.item_assignees (item_id, user_id)
   select id, assignee_id from public.items where assignee_id is not null
   on conflict do nothing;
 
+-- ============ ITEM TASKS ============
+create table if not exists public.item_tasks (
+  id uuid primary key default gen_random_uuid(),
+  item_id uuid not null references public.items(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null,
+  title text not null default '',
+  done boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists item_tasks_item_id_idx on public.item_tasks(item_id);
+create index if not exists item_tasks_user_id_idx on public.item_tasks(user_id);
+
+grant select, insert, update, delete on public.item_tasks to authenticated;
+grant all on public.item_tasks to service_role;
+
+alter table public.item_tasks enable row level security;
+
+drop policy if exists "item_tasks: members rw" on public.item_tasks;
+create policy "item_tasks: members rw"
+  on public.item_tasks for all to authenticated
+  using (public.is_item_in_my_tenant(item_id))
+  with check (public.is_item_in_my_tenant(item_id));
+
