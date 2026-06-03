@@ -49,15 +49,18 @@ export const listItems = createServerFn({ method: "GET" })
     const itemIds = items.map((r) => r.id);
     const assigneesByItem = new Map<string, string[]>();
     if (itemIds.length > 0) {
-      const { data: rels } = await context.supabase
+      const { data: rels, error: relErr } = await context.supabase
         .from("item_assignees")
         .select("item_id, user_id")
         .in("item_id", itemIds);
-      for (const r of (rels ?? []) as { item_id: string; user_id: string }[]) {
-        const list = assigneesByItem.get(r.item_id) ?? [];
-        list.push(r.user_id);
-        assigneesByItem.set(r.item_id, list);
+      if (!relErr) {
+        for (const r of (rels ?? []) as { item_id: string; user_id: string }[]) {
+          const list = assigneesByItem.get(r.item_id) ?? [];
+          list.push(r.user_id);
+          assigneesByItem.set(r.item_id, list);
+        }
       }
+      // If table doesn't exist yet, silently fall back to legacy assignee_id
     }
 
     // Resolve names from profiles
