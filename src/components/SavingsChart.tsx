@@ -144,9 +144,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     const cumA = new Map<string, number>(ids.map((id) => [id, 0]));
     let cumActual = 0;
     const now = monthKey(new Date());
-    const yearStart = monthKey(new Date(year, 0, 1));
-    const yearEnd = monthKey(new Date(year, 11, 1));
-    void yearStart; void yearEnd;
+    void now;
     const rows: Array<Record<string, number | undefined>> = months.map((tm) => {
       const row: Record<string, number | undefined> = { t: tm };
       for (const id of ids) {
