@@ -442,21 +442,6 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex w-40 shrink-0 flex-col gap-y-1.5 self-center text-xs">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="inline-block h-0.5 w-4 bg-foreground" />
-                <span className="text-muted-foreground">Toteuma (yht.)</span>
-              </span>
-              {seriesKeys.map((id, idx) => (
-                <span key={id} className="inline-flex items-center gap-1.5">
-                  <span
-                    className="inline-block h-2.5 w-2.5 rounded-sm"
-                    style={{ backgroundColor: colorFor(id, idx) }}
-                  />
-                  <span className="text-muted-foreground">{seriesTitle(id)}</span>
-                </span>
-              ))}
-            </div>
           </div>
 
         </>
