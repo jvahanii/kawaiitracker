@@ -409,6 +409,14 @@ function ItemDetail({
         </div>
       </div>
 
+      <TaskLists
+        tenantId={tenantId}
+        itemId={item.id}
+        assignees={item.assignees}
+      />
+
+
+
 
       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
         <span>
