@@ -40,6 +40,7 @@ function MembersPage() {
   const listFn = useServerFn(listTenantMembers);
   const updateRoleFn = useServerFn(updateMemberRole);
   const removeFn = useServerFn(removeMember);
+  const addByEmailFn = useServerFn(addMemberByEmail);
 
   const membersQ = useQuery({
     queryKey: ["members", tenantId],
@@ -50,6 +51,8 @@ function MembersPage() {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [addEmail, setAddEmail] = useState("");
+  const [addRole, setAddRole] = useState<"admin" | "member">("member");
 
   const copyJoinCode = async () => {
     try {
