@@ -144,13 +144,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     const cumA = new Map<string, number>(ids.map((id) => [id, 0]));
     let cumActual = 0;
     const now = monthKey(new Date());
-    const yearStart = monthKey(new Date(year, 0, 1));
-    const yearEnd = monthKey(new Date(year, 11, 1));
-    const goalTime =
-      goal.date && !Number.isNaN(new Date(goal.date).getTime())
-        ? monthKey(new Date(goal.date))
-        : yearEnd;
-    const targetSpan = Math.max(1, goalTime - yearStart);
+    
     const rows: Array<Record<string, number | undefined>> = months.map((tm) => {
       const row: Record<string, number | undefined> = { t: tm };
       for (const id of ids) {
@@ -168,15 +162,11 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         row.__actual = cumActual;
       }
       row.__plan = ids.reduce((s, id) => s + (row[id] ?? 0), 0);
-      if (goal.amount && goal.amount > 0) {
-        const ratio = Math.min(1, Math.max(0, (tm - yearStart) / targetSpan));
-        row.__target = goal.amount * ratio;
-      }
       return row;
     });
 
     return { chartData: rows, seriesKeys: ids };
-  }, [entries, goal.amount, goal.date, groupBy, itemAssigneeMap, year]);
+  }, [entries, groupBy, itemAssigneeMap, year]);
 
 
   const seriesTitle = (id: string) =>
@@ -435,13 +425,28 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                   {goal.date && !Number.isNaN(new Date(goal.date).getTime()) ? (
                     <ReferenceLine
                       x={monthKey(new Date(goal.date))}
-                      stroke="hsl(var(--destructive))"
+                      stroke="var(--destructive)"
                       strokeDasharray="2 4"
                       label={{
                         value: t("workspace.goalDateShort"),
-                        fill: "hsl(var(--destructive))",
+                        fill: "var(--destructive)",
                         fontSize: 11,
                         position: "top",
+                      }}
+                    />
+                  ) : null}
+                  {goal.amount && goal.amount > 0 ? (
+                    <ReferenceLine
+                      y={goal.amount}
+                      stroke="var(--destructive)"
+                      strokeDasharray="4 4"
+                      strokeWidth={1.5}
+                      ifOverflow="extendDomain"
+                      label={{
+                        value: t("workspace.goalAmountShort") ?? "Goal",
+                        fill: "var(--destructive)",
+                        fontSize: 11,
+                        position: "insideTopRight",
                       }}
                     />
                   ) : null}
@@ -454,19 +459,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     dot={{ r: 2.5, fill: "hsl(var(--foreground))" }}
                     isAnimationActive={false}
                   />
-                  {goal.amount && goal.amount > 0 ? (
-                    <Line
-                      type="linear"
-                      dataKey="__target"
-                      name="__target"
-                      stroke="hsl(var(--destructive))"
-                      strokeWidth={1.5}
-                      strokeDasharray="4 4"
-                      dot={false}
-                      activeDot={false}
-                      isAnimationActive={false}
-                    />
-                  ) : null}
+
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
