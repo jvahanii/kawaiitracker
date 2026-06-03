@@ -349,14 +349,9 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                   {seriesKeys.map((id, idx) => {
                     const c = colorFor(id, idx);
                     const dc = darkColorFor(id, idx);
-                    // Distribute label x-positions across data range so labels of
-                    // different series don't pile up at the same month.
-                    const n = Math.max(1, seriesKeys.length);
+                    // Place all labels at the right edge (last data point).
                     const m = Math.max(1, chartData.length);
-                    const targetIndex = Math.max(
-                      0,
-                      Math.min(m - 1, Math.floor(((idx + 0.5) * m) / n)),
-                    );
+                    const targetIndex = m - 1;
                     return (
                       <Area
                         key={id}
@@ -389,14 +384,12 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                             const h = Number(props.height ?? 0);
                             const label = seriesTitle(id);
                             if (!label || label === "—") return null;
-                            // Vertically center within the band when possible,
-                            // otherwise nudge just below the top edge.
                             const cy = h > 16 ? y + h / 2 + 3 : y + 10;
                             return (
                               <text
-                                x={x + w / 2}
+                                x={x + w - 4}
                                 y={cy}
-                                textAnchor="middle"
+                                textAnchor="end"
                                 fontSize={10}
                                 fontWeight={600}
                                 fill={dc}
