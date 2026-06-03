@@ -13,7 +13,7 @@ import appCss from "../styles.css?url";
 import "@/lib/i18n";
 import { applyDetectedLanguage } from "@/lib/i18n";
 import { getSupabaseConfig } from "@/lib/supabase/config.functions";
-import { initSupabase } from "@/lib/supabase/client";
+import { initSupabase, tryGetSupabase } from "@/lib/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -73,6 +73,18 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  // Eagerly initialize the Supabase browser client before any child route's
+  // beforeLoad runs. Without this, a hard page reload on an authenticated
+  // route (e.g. after Loveable deploys a change) executes
+  // _authenticated.beforeLoad before RootComponent has rendered, so
+  // tryGetSupabase() returns null and the user is incorrectly redirected to
+  // /login.
+  beforeLoad: async () => {
+    if (typeof window !== "undefined" && !tryGetSupabase()) {
+      const config = await getSupabaseConfig();
+      initSupabase(config);
+    }
+  },
   loader: () => getSupabaseConfig(),
   head: () => ({
     meta: [
