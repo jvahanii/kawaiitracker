@@ -124,24 +124,33 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
     const admin = getSupabaseAdmin();
     const email = data.email.trim().toLowerCase();
 
-    // Find or invite user
+    // Find existing user first; only invite if not found.
     let userId: string | null = null;
-    const { data: invited, error: inviteErr } =
-      await admin.auth.admin.inviteUserByEmail(email);
-    if (invited?.user) {
-      userId = invited.user.id;
-    } else {
-      // Likely already exists — look up via listUsers
+    let lookupErr: string | null = null;
+    try {
       const { data: list, error: listErr } = await admin.auth.admin.listUsers({
         page: 1,
         perPage: 1000,
       });
-      if (listErr) throw new Error(inviteErr?.message ?? listErr.message);
+      if (listErr) lookupErr = listErr.message;
       const found = list?.users?.find(
         (u) => (u.email ?? "").toLowerCase() === email,
       );
-      if (!found) throw new Error(inviteErr?.message ?? "User not found");
-      userId = found.id;
+      if (found) userId = found.id;
+    } catch (e) {
+      lookupErr = e instanceof Error ? e.message : String(e);
+    }
+
+    if (!userId) {
+      try {
+        const { data: invited, error: inviteErr } =
+          await admin.auth.admin.inviteUserByEmail(email);
+        if (inviteErr) throw new Error(inviteErr.message);
+        if (invited?.user) userId = invited.user.id;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        throw new Error(lookupErr ? `${msg} (${lookupErr})` : msg);
+      }
     }
 
     if (!userId) throw new Error("Failed to resolve user");
