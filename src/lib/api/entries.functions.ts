@@ -7,8 +7,8 @@ export type EntryRow = {
   id: string;
   itemId: string;
   month: string; // YYYY-MM-DD
-  amount: number;
-  actual: number;
+  amount: number | null;
+  actual: number | null;
 };
 
 const monthSchema = z
@@ -20,8 +20,8 @@ type RawEntry = {
   id: string;
   item_id: string;
   month: string;
-  amount: number | string;
-  actual_amount: number | string;
+  amount: number | string | null;
+  actual_amount: number | string | null;
 };
 
 function mapEntry(r: RawEntry): EntryRow {
@@ -29,8 +29,9 @@ function mapEntry(r: RawEntry): EntryRow {
     id: r.id,
     itemId: r.item_id,
     month: r.month.slice(0, 10),
-    amount: Number(r.amount),
-    actual: Number(r.actual_amount),
+    amount: r.amount !== null && r.amount !== undefined ? Number(r.amount) : null,
+    actual:
+      r.actual_amount !== null && r.actual_amount !== undefined ? Number(r.actual_amount) : null,
   };
 }
 
@@ -92,8 +93,22 @@ export const upsertEntry = createServerFn({ method: "POST" })
       .eq("month", data.month)
       .maybeSingle();
 
-    const amount = data.amount !== undefined ? data.amount : Number(existing?.amount ?? 0);
-    const actual = data.actual !== undefined ? data.actual : Number(existing?.actual_amount ?? 0);
+    const amount =
+      data.amount !== undefined
+        ? data.amount
+        : existing
+          ? existing.amount != null
+            ? Number(existing.amount)
+            : null
+          : null;
+    const actual =
+      data.actual !== undefined
+        ? data.actual
+        : existing
+          ? existing.actual_amount != null
+            ? Number(existing.actual_amount)
+            : null
+          : null;
 
     const { data: row, error } = await context.supabase
       .from("item_entries")
