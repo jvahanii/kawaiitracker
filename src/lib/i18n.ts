@@ -22,9 +22,9 @@ if (i18n.language !== "en") {
   i18n.changeLanguage("en");
 }
 
-// Detect the preferred language after the first browser paint. React can
-// hydrate lazy route segments after parent effects, so delay the language
-// change one tick to keep server-rendered English matching first client text.
+// Detect the preferred language. Caller decides when to invoke this — it must
+// be after all SSR-rendered subtrees have finished hydrating, otherwise the
+// language swap will trigger a hydration mismatch (React error #418).
 export function applyDetectedLanguage() {
   if (typeof window === "undefined") return;
   try {
@@ -33,9 +33,7 @@ export function applyDetectedLanguage() {
     const detected = stored || (nav.startsWith("fi") ? "fi" : "en");
     const lang = detected.startsWith("fi") ? "fi" : "en";
     if (i18n.language !== lang) {
-      window.setTimeout(() => {
-        i18n.changeLanguage(lang);
-      }, 0);
+      i18n.changeLanguage(lang);
     }
   } catch {
     // ignore

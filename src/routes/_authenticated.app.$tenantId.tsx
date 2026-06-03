@@ -336,13 +336,9 @@ function WorkspacePage() {
 function TaskLists({
   tenantId,
   itemId,
-  members,
-  assigneeIds,
 }: {
   tenantId: string;
   itemId: string;
-  members: { id: string; displayName: string }[];
-  assigneeIds: string[];
 }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listTasksForItem);
@@ -399,21 +395,6 @@ function TaskLists({
   });
 
   const tasks = tasksQ.data ?? [];
-
-  const grouped = useMemo(() => {
-    const byUser = new Map<string, TaskRow[]>();
-    const unassigned: TaskRow[] = [];
-    for (const t of tasks) {
-      if (t.userId) {
-        const list = byUser.get(t.userId) ?? [];
-        list.push(t);
-        byUser.set(t.userId, list);
-      } else {
-        unassigned.push(t);
-      }
-    }
-    return { byUser, unassigned };
-  }, [tasks]);
 
   return (
     <div className="mt-6 space-y-4">

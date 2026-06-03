@@ -11,7 +11,6 @@ import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import "@/lib/i18n";
-import { applyDetectedLanguage } from "@/lib/i18n";
 import { getSupabaseConfig } from "@/lib/supabase/config.functions";
 import { initSupabase } from "@/lib/supabase/client";
 
@@ -157,9 +156,9 @@ function SupabaseAuthSync() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    applyDetectedLanguage();
-  }, []);
+  // Language detection runs from the landing route's effect to avoid
+  // hydration mismatches on SSR'd public routes.
+
 
   useEffect(() => {
     // Lazy import to avoid SSR window access
