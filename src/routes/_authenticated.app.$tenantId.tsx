@@ -311,8 +311,7 @@ function ItemDetail({
   const dirty =
     title !== item.title ||
     status !== item.status ||
-    assigneesChanged ||
-    notes !== item.notes;
+    assigneesChanged;
 
   const save = async () => {
     if (!dirty) return;
@@ -322,13 +321,13 @@ function ItemDetail({
         title,
         status,
         assigneeIds: assigneesChanged ? assigneeIds : undefined,
-        notes,
       });
       setSavedAt(Date.now());
     } finally {
       setSaving(false);
     }
   };
+
 
   const toggleAssignee = (id: string) => {
     setAssigneeIds((prev) =>
