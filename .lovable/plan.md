@@ -1,48 +1,39 @@
-## Mitä on rikki
+## Mistä on kyse
 
-Et pääse kirjautumaan koska `/login` näyttää tyhjältä / kaatuu hydraatioon. Konsolissa näkyy React-virhe #418 ("Hydration failed… server rendered text didn't match the client"). Ero on juuri i18n-tekstissä:
+Kirjautuminen toimii — Supabase palauttaa 200:n ja sessionin tallentuu. Toinen 400-virhe logissa oli pelkkä kirjoitusvirhe salasanassa.
 
-```
-+ Takaisin   ← klientti (suomi)
-- Back       ← serveri (englanti)
-```
+Käyttäjän kokema "login fails" on todellisuudessa **landing-sivun (`/`) hydration-kraschi**, joka tekee ruudusta tyhjän ennen kuin ehtii klikata "Kirjaudu"-linkkiä.
 
-Mitä tapahtuu:
+### Juurisyy
 
-1. `src/lib/i18n.ts` alustaa i18next kielelle `en` ja pakottaa serverillä englannin niin että SSR-HTML on englanniksi ("Back", "Log in", …).
-2. `applyDetectedLanguage()` ajetaan `__root.tsx`:n `useEffect`issa heti hydraation jälkeen. Se vaihtaa kielen `fi`-arvoon `setTimeout(…, 0)`:n kautta.
-3. `/login` on **lazy route** (oma chunk). Kun chunk latautuu ja React hydratoi sen, i18nextin kieli on jo ehtinyt vaihtua `fi`-arvoksi → ensimmäinen renderöinty teksti on suomi, mutta SSR-HTML on englanti → hydraatio epäonnistuu → koko `/login`-puu räjähtää ja ruutu jää valkoiseksi.
+1. `/` on SSR-reitti. Server renderöi sen englanniksi (i18n on pakotettu `en`-kieleen `src/lib/i18n.ts`:ssä).
+2. `__root.tsx`:n `SupabaseAuthSync` ajaa `applyDetectedLanguage()`:n useEffectissa heti hydration jälkeen.
+3. `applyDetectedLanguage()` vaihtaa kielen `fi`:hin `setTimeout(…, 0)`:lla.
+4. Landing-puu ehtii rerenderöidä suomeksi ennen kuin React on saanut hydration valmiiksi → SSR-HTML (englanti) ≠ klientti (suomi) → **React error #418** → koko sivu räjähtää valkoiseksi.
 
-Tämä ei liity Supabase-autentikointiin sinänsä — kirjautumislomaketta ei pääse koskaan klikkaamaan koska sivu kaatuu hydraatioon.
+Tämä on sama bugi kuin aikaisempi `/login`-bugi, joka korjattiin `ssr: false`:lla. Landing-sivulla ei voi käyttää samaa ratkaisua, koska se on julkinen sivu jonka pitää SEO:n vuoksi SSR:ää.
 
 ## Korjaus
 
-Poista SSR auth-sivuilta. Ne ovat täysin selainpuolisia (lomake + Supabase-istunto `localStorage`:ssa); SSR:stä ei ole hyötyä eikä SEO:lle väliä. Sama temppu kuin `_authenticated`-layoutissa.
+Renderöi käännetyt tekstit landing-sivulla vasta kun komponentti on mountattu klientillä. SSR-HTML pidetään deterministisenä (englanti), ja sama englanti renderöidään ensimmäisellä klientti-renderöinnillä, jonka jälkeen kieli saa vaihtua.
 
-Lisää `ssr: false` näihin reitteihin:
+### Muutokset
 
-- `src/routes/login.tsx`
-- `src/routes/signup.tsx`
-- `src/routes/forgot-password.tsx`
-- `src/routes/reset-password.tsx`
+**`src/lib/i18n.ts`**
+- Älä vaihda kieltä heti — paljasta `applyDetectedLanguage()` ilman `setTimeout`-kikkailua. Kutsuja päättää koska se on turvallista.
 
-```ts
-export const Route = createFileRoute("/login")({
-  ssr: false,
-  head: () => ({ meta: [{ title: "Log in — Tracker" }] }),
-  component: LoginPage,
-});
-```
+**`src/routes/__root.tsx`**
+- Poista `applyDetectedLanguage()`-kutsu `SupabaseAuthSync`:n useEffectistä, tai siirrä se ajettavaksi vasta kun `mounted`-flagi on `true` ensimmäisen renderöinnin jälkeen. Tämä takaa että hydration ehtii valmiiksi englanniksi ennen kielen vaihtoa.
 
-Kun reitti ei SSR:ää, ei ole serveri-HTML:ää johon klientin tulisi täsmätä → ei hydraatiomismatchia → lomake näkyy, painikkeen klikkaus toimii, ja jo aikaisemmin tehty `onSuccess` (suora navigointi `/onboarding` tai `/app/$tenantId`) johdattaa työpöydälle.
+**`src/routes/index.tsx`** (landing)
+- Lisää `useEffect` + `useState`-mounted-flagi. Renderöi `t(...)`-tekstit vasta kun `mounted === true`; ennen sitä renderöi sama englanninkielinen teksti minkä server tuotti. Tämä eliminoi mismatchin vaikka i18nextin sisäinen tila ehtisi vaihtua.
 
-Landing-sivua (`/`) ei kosketa — se on englanniksi sekä serverillä että klientillä ennen kielen vaihtoa, ja ainoat erot ovat `LanguageSwitcher` + linkkitekstit. Jos sieltä ilmestyy hydraatiovaroituksia jatkossa, fiksataan vasta sitten (esim. lykätään `applyDetectedLanguage` Suspense-flushin yli tai renderöidään käännetty teksti vasta `mounted`-flagin jälkeen).
+Vaihtoehto (yksinkertaisempi): Kutsu `i18n.changeLanguage(detectedLang)` vasta `requestAnimationFrame` + yhden tickin viiveellä `SupabaseAuthSync`:ssä, **eikä koskaan** ensimmäisen commitin aikana. Yhdistettynä siihen että `applyDetectedLanguage` ajetaan vasta `mounted`-tilassa, hydration on aina deterministinen.
 
 ## Tiedostot
 
-- `src/routes/login.tsx` — lisää `ssr: false`
-- `src/routes/signup.tsx` — lisää `ssr: false`
-- `src/routes/forgot-password.tsx` — lisää `ssr: false`
-- `src/routes/reset-password.tsx` — lisää `ssr: false`
+- `src/lib/i18n.ts`
+- `src/routes/__root.tsx`
+- (mahdollisesti `src/routes/index.tsx` jos halutaan ekstra-vakuutus)
 
-Ei DB- eikä env-muutoksia.
+Ei DB- eikä env-muutoksia. Auth-reitit ovat jo `ssr: false` ja niitä ei kosketa.
