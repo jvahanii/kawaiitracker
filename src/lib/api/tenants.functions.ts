@@ -133,6 +133,7 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
         .from("profiles")
         .select("id")
         .ilike("email", email)
+        .limit(1)
         .maybeSingle();
       if (profileErr) lookupErr = profileErr.message;
       if (profile?.id) userId = profile.id as string;
