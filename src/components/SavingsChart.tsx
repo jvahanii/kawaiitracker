@@ -264,190 +264,191 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         </p>
       ) : (
         <>
-          <div className="h-36 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis
-                  dataKey="t"
-                  type="number"
-                  domain={[monthKey(new Date(year, 0, 1)), monthKey(new Date(year, 11, 1))]}
-                  allowDataOverflow
-                  scale="time"
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  tickFormatter={(v) => monthFmt.format(new Date(Number(v)))}
-                />
+          <div className="flex gap-3">
+            <div className="h-36 flex-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis
+                    dataKey="t"
+                    type="number"
+                    domain={[monthKey(new Date(year, 0, 1)), monthKey(new Date(year, 11, 1))]}
+                    allowDataOverflow
+                    scale="time"
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickFormatter={(v) => monthFmt.format(new Date(Number(v)))}
+                  />
 
-                <YAxis
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  tickFormatter={(v) => fmt(Number(v))}
-                  width={70}
-                  domain={[0, (dataMax: number) => dataMax * 1.1]}
-                />
-                <Tooltip
-                  cursor={{ stroke: "hsl(var(--accent))" }}
-                  contentStyle={{
-                    backgroundColor: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                  }}
-                  labelFormatter={(v) => monthFmt.format(new Date(Number(v)))}
-                  content={({ payload, label }) => {
-                    if (!payload || payload.length === 0) return null;
-                    const row = payload[0]?.payload as Record<string, number | undefined> | undefined;
-                    const totalPlan = row?.__plan ?? 0;
-                    const totalActual = row?.__actual;
-                    const rows: { name: string; value: string }[] = [];
-                    for (const id of seriesKeys) {
-                      const plan = row?.[id];
-                      const actual = row?.[`${id}__a`];
-                      if (plan === undefined && actual === undefined) continue;
-                      const name = seriesTitle(id);
-                      if (actual !== undefined && plan !== undefined) {
-                        rows.push({ name, value: `${fmt(actual)} / ${fmt(plan)}` });
-                      } else if (actual !== undefined) {
-                        rows.push({ name: `${name} (toteuma)`, value: fmt(actual) });
-                      } else if (plan !== undefined) {
-                        rows.push({ name: `${name} (suunnitelma)`, value: fmt(plan) });
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickFormatter={(v) => fmt(Number(v))}
+                    width={70}
+                    domain={[0, (dataMax: number) => dataMax * 1.1]}
+                  />
+                  <Tooltip
+                    cursor={{ stroke: "hsl(var(--accent))" }}
+                    contentStyle={{
+                      backgroundColor: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                    }}
+                    labelFormatter={(v) => monthFmt.format(new Date(Number(v)))}
+                    content={({ payload, label }) => {
+                      if (!payload || payload.length === 0) return null;
+                      const row = payload[0]?.payload as Record<string, number | undefined> | undefined;
+                      const totalPlan = row?.__plan ?? 0;
+                      const totalActual = row?.__actual;
+                      const rows: { name: string; value: string }[] = [];
+                      for (const id of seriesKeys) {
+                        const plan = row?.[id];
+                        const actual = row?.[`${id}__a`];
+                        if (plan === undefined && actual === undefined) continue;
+                        const name = seriesTitle(id);
+                        if (actual !== undefined && plan !== undefined) {
+                          rows.push({ name, value: `${fmt(actual)} / ${fmt(plan)}` });
+                        } else if (actual !== undefined) {
+                          rows.push({ name: `${name} (toteuma)`, value: fmt(actual) });
+                        } else if (plan !== undefined) {
+                          rows.push({ name: `${name} (suunnitelma)`, value: fmt(plan) });
+                        }
                       }
-                    }
-                    return (
-                      <div
-                        style={{
-                          backgroundColor: "var(--card)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 8,
-                          fontSize: 12,
-                          padding: "8px 12px",
-                          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                        }}
-                      >
-                        <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                          {monthFmt.format(new Date(Number(label)))}
-                        </div>
-                        <div style={{ fontWeight: 700, marginBottom: rows.length > 0 ? 4 : 0, paddingBottom: rows.length > 0 ? 4 : 0, borderBottom: rows.length > 0 ? "1px solid var(--border)" : "none" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, lineHeight: 1.6 }}>
-                            <span style={{ color: "hsl(var(--muted-foreground))" }}>Toteuma / Suunnitelma</span>
-                            <span style={{ fontFamily: "monospace", fontWeight: 700 }}>
-                              {totalActual !== undefined ? fmt(totalActual) : "—"} / {fmt(totalPlan)}
-                            </span>
+                      return (
+                        <div
+                          style={{
+                            backgroundColor: "var(--card)",
+                            border: "1px solid var(--border)",
+                            borderRadius: 8,
+                            fontSize: 12,
+                            padding: "8px 12px",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                            {monthFmt.format(new Date(Number(label)))}
                           </div>
-                        </div>
-                        {rows.map((r) => (
-                          <div key={r.name} style={{ display: "flex", justifyContent: "space-between", gap: 16, lineHeight: 1.6 }}>
-                            <span style={{ color: "hsl(var(--muted-foreground))" }}>{r.name}</span>
-                            <span style={{ fontFamily: "monospace", fontWeight: 500 }}>{r.value}</span>
+                          <div style={{ fontWeight: 700, marginBottom: rows.length > 0 ? 4 : 0, paddingBottom: rows.length > 0 ? 4 : 0, borderBottom: rows.length > 0 ? "1px solid var(--border)" : "none" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 16, lineHeight: 1.6 }}>
+                              <span style={{ color: "hsl(var(--muted-foreground))" }}>Toteuma / Suunnitelma</span>
+                              <span style={{ fontFamily: "monospace", fontWeight: 700 }}>
+                                {totalActual !== undefined ? fmt(totalActual) : "—"} / {fmt(totalPlan)}
+                              </span>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    );
-                  }}
-                />
-                {seriesKeys.map((id, idx) => {
-                  const c = colorFor(id, idx);
-                  const dc = darkColorFor(id, idx);
-                  return (
-                    <Area
-                      key={id}
-                      type="monotone"
-                      dataKey={id}
-                      name={id}
-                      stackId="plan"
-                      stroke={c}
-                      fill={c}
-                      fillOpacity={0.35}
-                      strokeWidth={1}
-                      strokeDasharray="3 3"
-                      isAnimationActive={false}
-                    >
-                      <LabelList
-                        dataKey={id}
-                        content={(props: {
-                          x?: number | string;
-                          y?: number | string;
-                          width?: number | string;
-                          index?: number;
-                          value?: number | string;
-                        }) => {
-                          const i = props.index ?? -1;
-                          // Place one label per series, near the middle of the chart
-                          const target = Math.max(0, Math.min(chartData.length - 1, Math.floor(chartData.length / 2)));
-                          if (i !== target) return null;
-                          const x = Number(props.x ?? 0);
-                          const y = Number(props.y ?? 0);
-                          const w = Number(props.width ?? 0);
-                          const label = seriesTitle(id);
-                          if (!label || label === "—") return null;
-                          return (
-                            <text
-                              x={x + w / 2}
-                              y={y + 10}
-                              textAnchor="middle"
-                              fontSize={10}
-                              fontWeight={600}
-                              fill={dc}
-                              style={{ paintOrder: "stroke", stroke: "var(--card)", strokeWidth: 3, strokeLinejoin: "round" }}
-                            >
-                              {label}
-                            </text>
-                          );
-                        }}
-                      />
-                    </Area>
-                  );
-                })}
-
-                {seriesKeys.map((id, idx) => {
-                  const c = darkColorFor(id, idx);
-                  return (
-                    <Area
-                      key={`${id}__a`}
-                      type="monotone"
-                      dataKey={`${id}__a`}
-                      name={`${id}__a`}
-                      stackId="actual"
-                      stroke={c}
-                      fill={c}
-                      fillOpacity={0.85}
-                      strokeWidth={1.5}
-                      isAnimationActive={false}
-                    />
-                  );
-                })}
-                {goal.date && !Number.isNaN(new Date(goal.date).getTime()) ? (
-                  <ReferenceLine
-                    x={monthKey(new Date(goal.date))}
-                    stroke="hsl(var(--destructive))"
-                    strokeDasharray="2 4"
-                    label={{
-                      value: t("workspace.goalDateShort"),
-                      fill: "hsl(var(--destructive))",
-                      fontSize: 11,
-                      position: "top",
+                          {rows.map((r) => (
+                            <div key={r.name} style={{ display: "flex", justifyContent: "space-between", gap: 16, lineHeight: 1.6 }}>
+                              <span style={{ color: "hsl(var(--muted-foreground))" }}>{r.name}</span>
+                              <span style={{ fontFamily: "monospace", fontWeight: 500 }}>{r.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
                     }}
                   />
-                ) : null}
-                <Line
-                  type="monotone"
-                  dataKey="__actual"
-                  name="__actual"
-                  stroke="hsl(var(--foreground))"
-                  strokeWidth={2}
-                  dot={{ r: 2.5, fill: "hsl(var(--foreground))" }}
-                  isAnimationActive={false}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-            <span className="inline-flex items-center gap-1">
-              <span className="inline-block h-0.5 w-4 bg-foreground" />
-              <span className="text-muted-foreground">Toteuma (yht.)</span>
-            </span>
+                  {seriesKeys.map((id, idx) => {
+                    const c = colorFor(id, idx);
+                    const dc = darkColorFor(id, idx);
+                    return (
+                      <Area
+                        key={id}
+                        type="monotone"
+                        dataKey={id}
+                        name={id}
+                        stackId="plan"
+                        stroke={c}
+                        fill={c}
+                        fillOpacity={0.35}
+                        strokeWidth={1}
+                        strokeDasharray="3 3"
+                        isAnimationActive={false}
+                      >
+                        <LabelList
+                          dataKey={id}
+                          content={(props: {
+                            x?: number | string;
+                            y?: number | string;
+                            width?: number | string;
+                            index?: number;
+                            value?: number | string;
+                          }) => {
+                            const i = props.index ?? -1;
+                            // Place one label per series, near the middle of the chart
+                            const target = Math.max(0, Math.min(chartData.length - 1, Math.floor(chartData.length / 2)));
+                            if (i !== target) return null;
+                            const x = Number(props.x ?? 0);
+                            const y = Number(props.y ?? 0);
+                            const w = Number(props.width ?? 0);
+                            const label = seriesTitle(id);
+                            if (!label || label === "—") return null;
+                            return (
+                              <text
+                                x={x + w / 2}
+                                y={y + 10}
+                                textAnchor="middle"
+                                fontSize={10}
+                                fontWeight={600}
+                                fill={dc}
+                                style={{ paintOrder: "stroke", stroke: "var(--card)", strokeWidth: 3, strokeLinejoin: "round" }}
+                              >
+                                {label}
+                              </text>
+                            );
+                          }}
+                        />
+                      </Area>
+                    );
+                  })}
+
+                  {seriesKeys.map((id, idx) => {
+                    const c = darkColorFor(id, idx);
+                    return (
+                      <Area
+                        key={`${id}__a`}
+                        type="monotone"
+                        dataKey={`${id}__a`}
+                        name={`${id}__a`}
+                        stackId="actual"
+                        stroke={c}
+                        fill={c}
+                        fillOpacity={0.85}
+                        strokeWidth={1.5}
+                        isAnimationActive={false}
+                      />
+                    );
+                  })}
+                  {goal.date && !Number.isNaN(new Date(goal.date).getTime()) ? (
+                    <ReferenceLine
+                      x={monthKey(new Date(goal.date))}
+                      stroke="hsl(var(--destructive))"
+                      strokeDasharray="2 4"
+                      label={{
+                        value: t("workspace.goalDateShort"),
+                        fill: "hsl(var(--destructive))",
+                        fontSize: 11,
+                        position: "top",
+                      }}
+                    />
+                  ) : null}
+                  <Line
+                    type="monotone"
+                    dataKey="__actual"
+                    name="__actual"
+                    stroke="hsl(var(--foreground))"
+                    strokeWidth={2}
+                    dot={{ r: 2.5, fill: "hsl(var(--foreground))" }}
+                    isAnimationActive={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex w-40 shrink-0 flex-col gap-y-1.5 self-center text-xs">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-0.5 w-4 bg-foreground" />
+                <span className="text-muted-foreground">Toteuma (yht.)</span>
+              </span>
               {seriesKeys.map((id, idx) => (
-                <span key={id} className="inline-flex items-center gap-1">
+                <span key={id} className="inline-flex items-center gap-1.5">
                   <span
                     className="inline-block h-2.5 w-2.5 rounded-sm"
                     style={{ backgroundColor: colorFor(id, idx) }}
@@ -456,6 +457,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                 </span>
               ))}
             </div>
+          </div>
 
         </>
       )}
