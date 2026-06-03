@@ -13,7 +13,7 @@ import appCss from "../styles.css?url";
 import "@/lib/i18n";
 import { applyDetectedLanguage } from "@/lib/i18n";
 import { getSupabaseConfig } from "@/lib/supabase/config.functions";
-import { initSupabase, tryGetSupabase } from "@/lib/supabase/client";
+import { initSupabase } from "@/lib/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -73,19 +73,24 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  // Eagerly initialize the Supabase browser client before any child route's
-  // beforeLoad runs. Without this, a hard page reload on an authenticated
-  // route (e.g. after Loveable deploys a change) executes
+  // Fetch the Supabase config and, on the client, eagerly initialize the
+  // Supabase browser client.  This must happen in beforeLoad (not just in
+  // RootComponent's render) so that the client is available before any child
+  // route's beforeLoad runs.  Without this, a hard page reload on an
+  // authenticated route (e.g. after Loveable deploys a change) executes
   // _authenticated.beforeLoad before RootComponent has rendered, so
   // tryGetSupabase() returns null and the user is incorrectly redirected to
   // /login.
   beforeLoad: async () => {
-    if (typeof window !== "undefined" && !tryGetSupabase()) {
-      const config = await getSupabaseConfig();
+    const config = await getSupabaseConfig();
+    if (typeof window !== "undefined") {
       initSupabase(config);
     }
+    return { supabaseConfig: config };
   },
-  loader: () => getSupabaseConfig(),
+  // Re-expose the config fetched by beforeLoad as loader data so that
+  // RootComponent can access it via useLoaderData() without an extra request.
+  loader: ({ context }) => context.supabaseConfig,
   head: () => ({
     meta: [
       { charSet: "utf-8" },
