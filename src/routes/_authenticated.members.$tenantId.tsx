@@ -154,9 +154,60 @@ function MembersPage() {
                   key={m.id}
                   className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                 >
-                  <div className="min-w-0">
-                    <div className="font-medium">{m.displayName}</div>
-                    <div className="text-xs text-muted-foreground">{m.email}</div>
+                  <div className="min-w-0 flex-1">
+                    {editingId === m.id ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const name = editingName.trim();
+                          if (!name) return;
+                          renameM.mutate({ userId: m.id, displayName: name });
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <input
+                          autoFocus
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          className="input h-8 flex-1 text-sm"
+                          maxLength={80}
+                        />
+                        <button
+                          type="submit"
+                          disabled={renameM.isPending || !editingName.trim()}
+                          className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                        >
+                          {renameM.isPending ? t("common.saving") : t("common.saved")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingId(null);
+                            setEditingName("");
+                          }}
+                          className="rounded-md px-2 py-1 text-xs hover:bg-accent"
+                        >
+                          {t("common.cancel")}
+                        </button>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium">{m.displayName}</div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingId(m.id);
+                              setEditingName(m.displayName);
+                            }}
+                            className="rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
+                          >
+                            {t("members.editName")}
+                          </button>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{m.email}</div>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <select
