@@ -258,10 +258,11 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                 <Tooltip
                   cursor={{ stroke: "hsl(var(--accent))" }}
                   contentStyle={{
-                    background: "hsl(var(--background))",
-                    border: "1px solid hsl(var(--border))",
+                    backgroundColor: "var(--card)",
+                    border: "1px solid var(--border)",
                     borderRadius: 8,
                     fontSize: 12,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                   }}
                   labelFormatter={(v) => monthFmt.format(new Date(Number(v)))}
                   formatter={(v: number, name: string) => {
