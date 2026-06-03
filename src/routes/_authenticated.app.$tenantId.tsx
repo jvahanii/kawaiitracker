@@ -606,11 +606,11 @@ function NumberInput({
   placeholder?: string;
   className?: string;
 }) {
-  const [text, setText] = useState(value === null ? "" : String(value));
+  const [text, setText] = useState(value === null ? "0" : String(value));
   const [focused, setFocused] = useState(false);
 
   useEffect(() => {
-    if (!focused) setText(value === null ? "" : String(value));
+    if (!focused) setText(value === null ? "0" : String(value));
   }, [value, focused]);
 
   return (
