@@ -124,21 +124,56 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
     const admin = getSupabaseAdmin();
     const email = data.email.trim().toLowerCase();
 
-    // Find existing user first; only invite if not found.
+    // Find existing user first; only invite if not found. Prefer profiles,
+    // then paginate Auth users so accounts beyond the first 1000 are found too.
     let userId: string | null = null;
     let lookupErr: string | null = null;
     try {
-      const { data: list, error: listErr } = await admin.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
-      });
-      if (listErr) lookupErr = listErr.message;
-      const found = list?.users?.find(
-        (u) => (u.email ?? "").toLowerCase() === email,
-      );
-      if (found) userId = found.id;
+      const { data: profile, error: profileErr } = await admin
+        .from("profiles")
+        .select("id")
+        .ilike("email", email)
+        .maybeSingle();
+      if (profileErr) lookupErr = profileErr.message;
+      if (profile?.id) userId = profile.id as string;
     } catch (e) {
       lookupErr = e instanceof Error ? e.message : String(e);
+    }
+
+    let foundAuthEmail: string | null = null;
+    for (let page = 1; !userId && page <= 50; page += 1) {
+      try {
+        const { data: list, error: listErr } = await admin.auth.admin.listUsers({
+          page,
+          perPage: 1000,
+        });
+        if (listErr) {
+          lookupErr = listErr.message;
+          break;
+        }
+        const users = list?.users ?? [];
+        const found = users.find((u) => (u.email ?? "").toLowerCase() === email);
+        if (found) {
+          userId = found.id;
+          foundAuthEmail = found.email ?? email;
+          break;
+        }
+        if (users.length < 1000) break;
+      } catch (e) {
+        lookupErr = e instanceof Error ? e.message : String(e);
+        break;
+      }
+    }
+
+    if (userId && foundAuthEmail) {
+      await admin.from("profiles").upsert(
+        {
+          id: userId,
+          display_name: foundAuthEmail.split("@")[0] || foundAuthEmail,
+          email: foundAuthEmail,
+        },
+        { onConflict: "id", ignoreDuplicates: true },
+      );
     }
 
     if (!userId) {
