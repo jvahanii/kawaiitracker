@@ -146,11 +146,27 @@ create table if not exists public.item_entries (
   id uuid primary key default gen_random_uuid(),
   item_id uuid not null references public.items(id) on delete cascade,
   month date not null,
-  amount numeric not null default 0,
-  actual_amount numeric not null default 0,
+  amount numeric,
+  actual_amount numeric,
   updated_at timestamptz not null default now(),
   unique (item_id, month)
 );
+
+-- Migration: make amount/actual_amount nullable for existing installations
+do $$ begin
+  begin
+    alter table public.item_entries alter column amount drop not null;
+  exception when others then null; end;
+  begin
+    alter table public.item_entries alter column amount drop default;
+  exception when others then null; end;
+  begin
+    alter table public.item_entries alter column actual_amount drop not null;
+  exception when others then null; end;
+  begin
+    alter table public.item_entries alter column actual_amount drop default;
+  exception when others then null; end;
+end $$;
 
 create index if not exists item_entries_item_id_idx on public.item_entries(item_id);
 

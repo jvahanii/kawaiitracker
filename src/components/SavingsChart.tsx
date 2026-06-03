@@ -88,7 +88,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     [allEntries, year],
   );
   const items = itemsQ.data ?? [];
-  const total = useMemo(() => entries.reduce((s, e) => s + e.amount, 0), [entries]);
+  const total = useMemo(() => entries.reduce((s, e) => s + (e.amount ?? 0), 0), [entries]);
   const actualTotal = useMemo(() => entries.reduce((s, e) => s + (e.actual ?? 0), 0), [entries]);
 
   // Build cumulative-per-item series across all months present in entries
@@ -107,7 +107,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
         m = new Map();
         perItemMonth.set(e.itemId, m);
       }
-      m.set(k, (m.get(k) ?? 0) + e.amount);
+      m.set(k, (m.get(k) ?? 0) + (e.amount ?? 0));
       let ma = perItemMonthActual.get(e.itemId);
       if (!ma) {
         ma = new Map();
