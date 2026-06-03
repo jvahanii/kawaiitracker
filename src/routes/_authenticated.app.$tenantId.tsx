@@ -287,7 +287,7 @@ function ItemDetail({
   onSave: (patch: {
     title?: string;
     status?: ItemStatus;
-    assigneeId?: string | null;
+    assigneeIds?: string[];
     notes?: string;
   }) => Promise<void>;
   onEntriesChanged: () => void;
@@ -296,28 +296,49 @@ function ItemDetail({
   const { t } = useTranslation();
   const [title, setTitle] = useState(item.title);
   const status = item.status;
-  const [assigneeId, setAssigneeId] = useState<string | "">(item.assigneeId ?? "");
+  const initialAssigneeIds = item.assignees.map((a) => a.id);
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(initialAssigneeIds);
   const [notes, setNotes] = useState(item.notes);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
+  const assigneesChanged =
+    assigneeIds.length !== initialAssigneeIds.length ||
+    assigneeIds.some((id) => !initialAssigneeIds.includes(id));
+
   const dirty =
     title !== item.title ||
     status !== item.status ||
-    (assigneeId || null) !== item.assigneeId ||
+    assigneesChanged ||
     notes !== item.notes;
 
   const save = async () => {
     if (!dirty) return;
     setSaving(true);
     try {
-      await onSave({ title, status, assigneeId: assigneeId || null, notes });
+      await onSave({
+        title,
+        status,
+        assigneeIds: assigneesChanged ? assigneeIds : undefined,
+        notes,
+      });
       setSavedAt(Date.now());
     } finally {
       setSaving(false);
     }
   };
+
+  const toggleAssignee = (id: string) => {
+    setAssigneeIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const selectedNames = members
+    .filter((m) => assigneeIds.includes(m.id))
+    .map((m) => m.displayName);
 
   return (
     <div className="mx-auto max-w-4xl p-6">
@@ -334,23 +355,54 @@ function ItemDetail({
       />
 
       <div className="mt-4 flex flex-wrap gap-3 text-sm">
-        <label className="flex items-center gap-2">
-          <span className="text-muted-foreground">{t("workspace.assignee")}</span>
-          <select
-            value={assigneeId}
-            onChange={(e) => setAssigneeId(e.target.value)}
-            onBlur={save}
-            className="input h-8 py-0"
-          >
-            <option value="">{t("workspace.unassigned")}</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex items-start gap-2">
+          <span className="pt-1 text-muted-foreground">{t("workspace.assignees")}</span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setPickerOpen((v) => !v)}
+              className="input h-8 min-w-[12rem] px-2 py-0 text-left"
+            >
+              {selectedNames.length > 0
+                ? selectedNames.join(", ")
+                : t("workspace.unassigned")}
+            </button>
+            {pickerOpen ? (
+              <div
+                className="absolute z-20 mt-1 max-h-60 w-64 overflow-auto rounded-md border border-border bg-background p-2 shadow-lg"
+                onMouseLeave={() => {
+                  setPickerOpen(false);
+                  void save();
+                }}
+              >
+                {members.length === 0 ? (
+                  <p className="px-2 py-1 text-xs text-muted-foreground">
+                    {t("members.empty")}
+                  </p>
+                ) : (
+                  members.map((m) => {
+                    const checked = assigneeIds.includes(m.id);
+                    return (
+                      <label
+                        key={m.id}
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-accent"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleAssignee(m.id)}
+                        />
+                        <span>{m.displayName}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
+
 
 
       <textarea
