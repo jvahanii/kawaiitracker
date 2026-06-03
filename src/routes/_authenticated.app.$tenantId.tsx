@@ -284,13 +284,9 @@ function WorkspacePage() {
 function TaskLists({
   tenantId,
   itemId,
-  members,
-  assigneeIds,
 }: {
   tenantId: string;
   itemId: string;
-  members: { id: string; displayName: string }[];
-  assigneeIds: string[];
 }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listTasksForItem);
