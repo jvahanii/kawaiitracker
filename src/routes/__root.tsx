@@ -11,7 +11,6 @@ import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import "@/lib/i18n";
-import "@/lib/i18n";
 import { getSupabaseConfig } from "@/lib/supabase/config.functions";
 import { initSupabase } from "@/lib/supabase/client";
 
