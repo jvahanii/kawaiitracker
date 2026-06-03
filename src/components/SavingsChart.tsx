@@ -341,19 +341,6 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                     />
                   );
                 })}
-                {goal.amount && goal.amount > 0 ? (
-                  <ReferenceLine
-                    y={goal.amount}
-                    stroke="hsl(var(--destructive))"
-                    strokeWidth={2}
-                    label={{
-                      value: `${t("workspace.goalAmount")} (${fmt(goal.amount)})`,
-                      fill: "hsl(var(--destructive))",
-                      fontSize: 11,
-                      position: "insideTopRight",
-                    }}
-                  />
-                ) : null}
                 {goal.date && !Number.isNaN(new Date(goal.date).getTime()) ? (
                   <ReferenceLine
                     x={monthKey(new Date(goal.date))}
