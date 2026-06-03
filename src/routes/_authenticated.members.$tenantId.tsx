@@ -77,6 +77,19 @@ function MembersPage() {
     onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
   });
 
+  const addM = useMutation({
+    mutationFn: (v: { email: string; role: "admin" | "member" }) =>
+      addByEmailFn({ data: { tenantId, ...v } }),
+    onSuccess: (res) => {
+      invalidate();
+      setAddEmail("");
+      setAddRole("member");
+      if (res?.alreadyMember) alert(t("members.alreadyMember"));
+      else alert(t("members.addedOk"));
+    },
+    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+  });
+
   const members = membersQ.data ?? [];
   const adminCount = members.filter((m) => m.role === "admin").length;
 
