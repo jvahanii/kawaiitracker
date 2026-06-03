@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState, useEffect, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getSupabase } from "@/lib/supabase/client";
+import { ensureSupabase } from "@/lib/supabase/client";
 import { listMyTenants } from "@/lib/api/tenants.functions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -36,7 +36,7 @@ function LoginPage() {
 
   const m = useMutation({
     mutationFn: async (data: { email: string; password: string; rememberMe: boolean }) => {
-      const supabase = getSupabase();
+      const supabase = await ensureSupabase();
       const { error } = await supabase.auth.signInWithPassword({
         email: data.email.trim().toLowerCase(),
         password: data.password,

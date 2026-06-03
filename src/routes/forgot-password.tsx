@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { getSupabase } from "@/lib/supabase/client";
+import { ensureSupabase } from "@/lib/supabase/client";
 import { AuthShell, Field } from "./login";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -18,7 +18,7 @@ function ForgotPasswordPage() {
 
   const m = useMutation({
     mutationFn: async (data: { email: string }) => {
-      const supabase = getSupabase();
+      const supabase = await ensureSupabase();
       const redirectTo =
         typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;
       const { error } = await supabase.auth.resetPasswordForEmail(
