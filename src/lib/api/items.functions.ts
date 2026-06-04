@@ -97,6 +97,7 @@ export const listItems = createServerFn({ method: "GET" })
         assigneeName: assignees.length > 0 ? assignees.map((a) => a.name).join(", ") : null,
         notes: r.notes ?? "",
         amount: r.amount === null ? null : Number(r.amount),
+        folderId: r.folder_id ?? null,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       };
