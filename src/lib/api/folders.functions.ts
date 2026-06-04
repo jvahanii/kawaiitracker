@@ -25,7 +25,7 @@ export const listFolders = createServerFn({ method: "GET" })
   .handler(async ({ context, data }) => {
     const { data: rows, error } = await context.supabase
       .from("folders")
-      .select("id, parent_id, name, sort_order")
+      .select("id, parent_id, name, sort_order, restricted")
       .eq("tenant_id", data.tenantId)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
@@ -35,6 +35,7 @@ export const listFolders = createServerFn({ method: "GET" })
       parentId: r.parent_id,
       name: r.name,
       sortOrder: r.sort_order,
+      restricted: r.restricted === true,
     }));
   });
 
