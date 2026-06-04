@@ -3,6 +3,16 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/lib/supabase/auth-middleware";
 
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { [k: string]: JsonValue }
+  | JsonValue[];
+
+export type AuditChange = { old: JsonValue; new: JsonValue };
+
 export type AuditEntry = {
   id: number;
   createdAt: string;
@@ -12,8 +22,8 @@ export type AuditEntry = {
   tableName: string;
   recordId: string | null;
   action: "INSERT" | "UPDATE" | "DELETE";
-  changes: Record<string, { old: unknown; new: unknown }> | null;
-  rowData: Record<string, unknown> | null;
+  changes: { [k: string]: AuditChange } | null;
+  rowData: { [k: string]: JsonValue } | null;
 };
 
 export const listAuditLog = createServerFn({ method: "GET" })
@@ -26,29 +36,25 @@ export const listAuditLog = createServerFn({ method: "GET" })
       })
       .parse(d),
   )
-  .handler(async ({ context, data }) => {
-    const { data: rows, error } = (await context.supabase.rpc("list_audit_log", {
+  .handler(async ({ context, data }): Promise<AuditEntry[]> => {
+    const { data: rows, error } = await context.supabase.rpc("list_audit_log", {
       p_tenant_id: data.tenantId,
       p_limit: data.limit ?? 200,
-    })) as {
-      data:
-        | {
-            id: number;
-            created_at: string;
-            actor_id: string | null;
-            actor_name: string | null;
-            actor_email: string | null;
-            table_name: string;
-            record_id: string | null;
-            action: string;
-            changes: Record<string, { old: unknown; new: unknown }> | null;
-            row_data: Record<string, unknown> | null;
-          }[]
-        | null;
-      error: { message: string } | null;
-    };
+    });
     if (error) throw new Error(error.message);
-    return (rows ?? []).map<AuditEntry>((r) => ({
+    const list = (rows ?? []) as Array<{
+      id: number;
+      created_at: string;
+      actor_id: string | null;
+      actor_name: string | null;
+      actor_email: string | null;
+      table_name: string;
+      record_id: string | null;
+      action: string;
+      changes: { [k: string]: AuditChange } | null;
+      row_data: { [k: string]: JsonValue } | null;
+    }>;
+    return list.map((r) => ({
       id: r.id,
       createdAt: r.created_at,
       actorId: r.actor_id,
