@@ -123,6 +123,9 @@
     "save": "Save",
     "manageUsers": "Users"
   },
+  "reset": {
+    "submit": "Submit"
+  },
   "members": {
     "title": "Users",
     "empty": "No users.",
