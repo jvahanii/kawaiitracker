@@ -12,6 +12,8 @@ export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
 });
 
+const RECOVERY_SESSION_TIMEOUT_MS = 8000;
+
 function ResetPasswordPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -21,7 +23,7 @@ function ResetPasswordPage() {
 
   useEffect(() => {
     let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout>;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let unsub: (() => void) | undefined;
 
     ensureSupabase()
@@ -40,11 +42,11 @@ function ResetPasswordPage() {
         // fires once it has exchanged the one-time code in the URL for tokens.
         timeoutId = setTimeout(() => {
           if (!cancelled) setLinkInvalid(true);
-        }, 8000);
+        }, RECOVERY_SESSION_TIMEOUT_MS);
 
         const { data: listener } = supabase.auth.onAuthStateChange((event) => {
           if (event === "PASSWORD_RECOVERY") {
-            clearTimeout(timeoutId);
+            if (timeoutId !== undefined) clearTimeout(timeoutId);
             if (!cancelled) setSessionReady(true);
             unsub?.();
           }
@@ -57,7 +59,7 @@ function ResetPasswordPage() {
 
     return () => {
       cancelled = true;
-      clearTimeout(timeoutId);
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
       unsub?.();
     };
   }, []);
