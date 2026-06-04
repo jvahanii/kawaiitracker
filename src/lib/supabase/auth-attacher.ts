@@ -11,9 +11,9 @@ export const attachSupabaseAuth = createMiddleware({ type: "function" }).client(
   async ({ next, serverFnMeta }) => {
     if (typeof window === "undefined") return next();
     try {
-      const filename = serverFnMeta?.filename ?? "";
-      const exportName = serverFnMeta?.functionName ?? "";
-      if (filename.includes("/supabase/config.functions.ts") || exportName.includes("getSupabaseConfig")) {
+      const functionId = serverFnMeta?.id ?? "";
+      const decodedFunctionId = functionId ? atob(functionId).toLowerCase() : "";
+      if (decodedFunctionId.includes("/supabase/config.functions.ts")) {
         return next();
       }
 
