@@ -107,10 +107,47 @@ function WorkspacePage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ["items", tenantId] });
 
   const createM = useMutation({
-    mutationFn: (title: string) => createFn({ data: { tenantId, title } }),
+    mutationFn: (vars: { title: string; folderId: string | null }) =>
+      createFn({ data: { tenantId, title: vars.title, folderId: vars.folderId } }),
     onSuccess: (r) => {
       invalidate();
       setSelectedId(r.id);
+    },
+  });
+  const moveItemM = useMutation({
+    mutationFn: (vars: { id: string; folderId: string | null }) =>
+      updateFn({ data: { tenantId, id: vars.id, folderId: vars.folderId } }),
+    onMutate: (vars) => {
+      const prev = qc.getQueryData<ItemRow[]>(["items", tenantId]);
+      if (prev) {
+        qc.setQueryData<ItemRow[]>(
+          ["items", tenantId],
+          prev.map((it) => (it.id === vars.id ? { ...it, folderId: vars.folderId } : it)),
+        );
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["items", tenantId], ctx.prev);
+    },
+    onSuccess: () => invalidate(),
+  });
+  const invalidateFolders = () => qc.invalidateQueries({ queryKey: ["folders", tenantId] });
+  const createFolderM = useMutation({
+    mutationFn: (vars: { name: string; parentId: string | null }) =>
+      createFolderFn({ data: { tenantId, name: vars.name, parentId: vars.parentId } }),
+    onSuccess: invalidateFolders,
+  });
+  const renameFolderM = useMutation({
+    mutationFn: (vars: { id: string; name: string }) =>
+      updateFolderFn({ data: { tenantId, id: vars.id, name: vars.name } }),
+    onSuccess: invalidateFolders,
+  });
+  const deleteFolderM = useMutation({
+    mutationFn: (id: string) => deleteFolderFn({ data: { tenantId, id } }),
+    onSuccess: () => {
+      invalidateFolders();
+      invalidate();
     },
   });
   const deleteM = useMutation({
