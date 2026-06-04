@@ -155,8 +155,22 @@ function AuditPage() {
     return true;
   });
 
-  if (tenantsQ.isLoading || !currentTenant || currentTenant.role !== "admin") {
+  if (tenantsQ.isLoading || !tenantsQ.data) {
     return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+  }
+  if (!currentTenant) {
+    return (
+      <div className="p-6 text-sm text-destructive">
+        Tenant not found ({tenantId}).
+      </div>
+    );
+  }
+  if (currentTenant.role !== "admin") {
+    return (
+      <div className="p-6 text-sm text-destructive">
+        Admin access required (your role: {currentTenant.role}).
+      </div>
+    );
   }
 
   return (
