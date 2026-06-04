@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -15,15 +15,6 @@ import {
 
 export const Route = createFileRoute("/_authenticated/members/$tenantId")({
   head: () => ({ meta: [{ title: "Users — Tracker" }] }),
-  beforeLoad: async ({ params }) => {
-    const tenants = await listMyTenants();
-    const current = tenants.find((t) => t.id === params.tenantId);
-    if (!current) throw redirect({ to: "/onboarding" });
-    if (current.role !== "admin") {
-      throw redirect({ to: "/app/$tenantId", params: { tenantId: current.id } });
-    }
-    return { currentTenant: current };
-  },
   component: MembersPage,
   errorComponent: ({ error }) => (
     <div className="p-6 text-sm text-destructive">{error.message}</div>
@@ -34,19 +25,27 @@ export const Route = createFileRoute("/_authenticated/members/$tenantId")({
 function MembersPage() {
   const { t } = useTranslation();
   const { tenantId } = Route.useParams();
-  const { currentTenant } = Route.useRouteContext();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
+  const tenantsFn = useServerFn(listMyTenants);
   const listFn = useServerFn(listTenantMembers);
   const updateRoleFn = useServerFn(updateMemberRole);
   const updateNameFn = useServerFn(updateMemberName);
   const removeFn = useServerFn(removeMember);
   const addByEmailFn = useServerFn(addMemberByEmail);
 
+  const tenantsQ = useQuery({
+    queryKey: ["my-tenants"],
+    queryFn: () => tenantsFn(),
+    retry: 1,
+  });
+  const currentTenant = tenantsQ.data?.find((t) => t.id === tenantId) ?? null;
+
   const membersQ = useQuery({
     queryKey: ["members", tenantId],
     queryFn: () => listFn({ data: { tenantId } }),
+    enabled: currentTenant?.role === "admin",
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["members", tenantId] });
