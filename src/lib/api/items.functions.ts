@@ -107,7 +107,13 @@ export const listItems = createServerFn({ method: "GET" })
 export const createItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
-    z.object({ tenantId: z.string().uuid(), title: z.string().min(1).max(200) }).parse(d),
+    z
+      .object({
+        tenantId: z.string().uuid(),
+        title: z.string().min(1).max(200),
+        folderId: z.string().uuid().nullable().optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ context, data }) => {
     const { data: maxRow } = await context.supabase
@@ -125,6 +131,7 @@ export const createItem = createServerFn({ method: "POST" })
         title: data.title.trim(),
         created_by: context.userId,
         sort_order: nextOrder,
+        folder_id: data.folderId ?? null,
       })
       .select("id")
       .single();
@@ -140,6 +147,7 @@ const updateInput = z.object({
   assigneeIds: z.array(z.string().uuid()).max(50).optional(),
   notes: z.string().max(20_000).optional(),
   amount: z.number().min(-1_000_000_000).max(1_000_000_000).nullable().optional(),
+  folderId: z.string().uuid().nullable().optional(),
 });
 
 export const updateItem = createServerFn({ method: "POST" })
