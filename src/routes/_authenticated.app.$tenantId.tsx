@@ -22,7 +22,9 @@ import {
 import {
   createFolder,
   deleteFolder,
+  getFolderVisibility,
   listFolders,
+  setFolderVisibility,
   updateFolder,
   type FolderRow,
 } from "@/lib/api/folders.functions";
