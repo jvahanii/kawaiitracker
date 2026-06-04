@@ -1176,6 +1176,9 @@ function FolderTreePane({
             {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
           <span className="flex-1 truncate font-medium">{folder.name}</span>
+          {folder.restricted ? (
+            <Lock size={11} className="text-muted-foreground" aria-label="restricted" />
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -1195,6 +1198,16 @@ function FolderTreePane({
           >
             +
           </button>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => onManageVisibility(folder.id)}
+              className="p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+              title={t("workspace.folderVisibility")}
+            >
+              <Lock size={12} />
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
