@@ -18,6 +18,7 @@ export type ItemRow = {
   assigneeName: string | null;
   notes: string;
   amount: number | null;
+  folderId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -29,9 +30,11 @@ type RawItem = {
   assignee_id: string | null;
   notes: string;
   amount: number | string | null;
+  folder_id: string | null;
   created_at: string;
   updated_at: string;
 };
+
 
 export const listItems = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
