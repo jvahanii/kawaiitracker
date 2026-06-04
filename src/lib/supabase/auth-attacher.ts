@@ -1,5 +1,5 @@
 import { createMiddleware } from "@tanstack/react-start";
-import { tryGetSupabase } from "./client";
+import { ensureSupabase, tryGetSupabase } from "./client";
 
 /**
  * Client server-fn middleware: pulls the current Supabase session and attaches
@@ -8,10 +8,16 @@ import { tryGetSupabase } from "./client";
  * is expired or missing.
  */
 export const attachSupabaseAuth = createMiddleware({ type: "function" }).client(
-  async ({ next }) => {
+  async ({ next, serverFnMeta }) => {
     if (typeof window === "undefined") return next();
     try {
-      const supabase = tryGetSupabase();
+      const filename = serverFnMeta?.filename ?? "";
+      const exportName = serverFnMeta?.functionName ?? "";
+      if (filename.includes("/supabase/config.functions.ts") || exportName.includes("getSupabaseConfig")) {
+        return next();
+      }
+
+      const supabase = tryGetSupabase() ?? (await ensureSupabase());
       if (!supabase) return next();
       let { data } = await supabase.auth.getSession();
       let token = data.session?.access_token;
