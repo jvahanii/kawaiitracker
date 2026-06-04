@@ -7,7 +7,7 @@ import { listMyTenants } from "@/lib/api/tenants.functions";
 import { listAuditLog, type AuditEntry } from "@/lib/api/audit.functions";
 
 export const Route = createFileRoute("/_authenticated/audit/$tenantId")({
-  head: () => ({ meta: [{ title: "Audit log — Tracker" }] }),
+  head: () => ({ meta: [{ title: "Muutoshistoria — Tracker" }] }),
   component: AuditPage,
   errorComponent: ({ error }) => (
     <div className="p-6 text-sm text-destructive">{error.message}</div>
@@ -169,7 +169,7 @@ function AuditPage() {
           >
             ← Back
           </Link>
-          <h1 className="text-lg font-semibold">Audit log · {currentTenant.name}</h1>
+          <h1 className="text-lg font-semibold">Muutoshistoria · {currentTenant.name}</h1>
         </div>
       </header>
 
