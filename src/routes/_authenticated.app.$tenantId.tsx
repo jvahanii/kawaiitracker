@@ -106,7 +106,7 @@ function WorkspacePage() {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "ROOT">(null);
   const [visibilityFolderId, setVisibilityFolderId] = useState<string | null>(null);
   const folders = foldersQ.data ?? [];
-  const isAdmin = currentTenant.role === "admin";
+  const isAdmin = currentTenant?.role === "admin";
 
   const items = itemsQ.data ?? [];
   const filtered = useMemo(() => {
@@ -205,13 +205,46 @@ function WorkspacePage() {
 
   const copyJoinCode = async () => {
     try {
-      await navigator.clipboard?.writeText(currentTenant.joinCode);
+      await navigator.clipboard?.writeText(currentTenant?.joinCode ?? "");
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
       /* ignore */
     }
   };
+
+  if (pageError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
+        <div className="max-w-md text-center">
+          <h1 className="text-lg font-semibold">{t("common.error")}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {pageError instanceof Error ? pageError.message : String(pageError)}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              tenantsQ.refetch();
+              itemsQ.refetch();
+              membersQ.refetch();
+              foldersQ.refetch();
+            }}
+            className="mt-4 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+          >
+            {t("common.retry")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (tenantsQ.isLoading || !currentTenant) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+        {t("common.loading")}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
