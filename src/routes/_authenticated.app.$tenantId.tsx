@@ -1317,3 +1317,125 @@ function FolderTreePane({
     </div>
   );
 }
+
+function FolderVisibilityDialog({
+  tenantId,
+  folderId,
+  folderName,
+  members,
+  onClose,
+  onSaved,
+}: {
+  tenantId: string;
+  folderId: string;
+  folderName: string;
+  members: { id: string; displayName: string; email: string; role: string }[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const getFn = useServerFn(getFolderVisibility);
+  const setFn = useServerFn(setFolderVisibility);
+  const visQ = useQuery({
+    queryKey: ["folder-visibility", tenantId, folderId],
+    queryFn: () => getFn({ data: { tenantId, folderId } }),
+  });
+  const [restricted, setRestricted] = useState(false);
+  const [allowed, setAllowed] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (visQ.data) {
+      setRestricted(visQ.data.restricted);
+      setAllowed(new Set(visQ.data.userIds));
+    }
+  }, [visQ.data]);
+
+  const saveM = useMutation({
+    mutationFn: () =>
+      setFn({
+        data: { tenantId, folderId, restricted, userIds: Array.from(allowed) },
+      }),
+    onSuccess: onSaved,
+    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-1 text-lg font-semibold">{t("workspace.folderVisibilityTitle")}</h2>
+        <p className="mb-3 text-sm text-muted-foreground">{folderName}</p>
+        <p className="mb-4 text-xs text-muted-foreground">{t("workspace.folderVisibilityBody")}</p>
+
+        <label className="mb-3 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={restricted}
+            onChange={(e) => setRestricted(e.target.checked)}
+          />
+          <span>{t("workspace.restrictAccess")}</span>
+        </label>
+
+        {restricted ? (
+          <div className="mb-4">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("workspace.allowedMembers")}
+            </div>
+            {visQ.isLoading ? (
+              <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
+            ) : (
+              <ul className="max-h-64 space-y-1 overflow-y-auto rounded border border-border p-2">
+                {members.map((m) => (
+                  <li key={m.id}>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        disabled={m.role === "admin"}
+                        checked={m.role === "admin" || allowed.has(m.id)}
+                        onChange={(e) => {
+                          setAllowed((prev) => {
+                            const next = new Set(prev);
+                            if (e.target.checked) next.add(m.id);
+                            else next.delete(m.id);
+                            return next;
+                          });
+                        }}
+                      />
+                      <span className="flex-1 truncate">{m.displayName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {m.role === "admin" ? t("members.admin") : ""}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md px-3 py-1.5 text-sm hover:bg-accent"
+          >
+            {t("common.cancel")}
+          </button>
+          <button
+            type="button"
+            disabled={saveM.isPending || visQ.isLoading}
+            onClick={() => saveM.mutate()}
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
+            {saveM.isPending ? t("common.saving") : t("workspace.save")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
