@@ -91,19 +91,19 @@ export const createFolder = createServerFn({ method: "POST" })
     const { data: maxRow } = await q.maybeSingle();
     const nextOrder = ((maxRow as { sort_order?: number } | null)?.sort_order ?? -1) + 1;
 
-    const { data: row, error } = await context.supabase
+    const folderId = crypto.randomUUID();
+    const { error } = await context.supabase
       .from("folders")
       .insert({
+        id: folderId,
         tenant_id: data.tenantId,
         parent_id: parentId,
         name: data.name.trim(),
         created_by: context.userId,
         sort_order: nextOrder,
-      })
-      .select("id")
-      .single();
+      });
     if (error) throw new Error(error.message);
-    return { id: row.id as string };
+    return { id: folderId };
   });
 
 export const updateFolder = createServerFn({ method: "POST" })
