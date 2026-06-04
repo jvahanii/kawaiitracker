@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { listMyTenants } from "@/lib/api/tenants.functions";
 import { listAuditLog, type AuditEntry } from "@/lib/api/audit.functions";
+import { formatDateTime } from "@/lib/format-date";
 
 export const Route = createFileRoute("/_authenticated/audit/$tenantId")({
   head: () => ({ meta: [{ title: "Muutoshistoria — Tracker" }] }),
@@ -64,7 +65,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
           ) : null}
         </div>
         <div className="text-xs text-muted-foreground" title={date.toISOString()}>
-          {date.toLocaleString()}
+          {formatDateTime(date)}
         </div>
       </div>
       {(entry.changes || entry.rowData) && (
