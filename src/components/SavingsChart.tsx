@@ -192,7 +192,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
           {t("workspace.chartTotal")}:{" "}
           <span className="font-mono font-semibold text-foreground">{fmt(total)}</span>
           <span className="ml-2">
-            · {i18n.language === "fi" ? "Toteuma" : "Actual"}:{" "}
+            · {t("workspace.actual")}:{" "}
             <span className="font-mono font-semibold text-foreground">{fmt(actualTotal)}</span>
           </span>
           {daysLeft !== null ? (
@@ -242,14 +242,14 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
             onClick={() => setGroupBy("item")}
             className={`px-2 py-0.5 text-xs ${groupBy === "item" ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50"}`}
           >
-            Kohteittain
+            {t("workspace.byItem")}
           </button>
           <button
             type="button"
             onClick={() => setGroupBy("assignee")}
             className={`px-2 py-0.5 text-xs ${groupBy === "assignee" ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50"}`}
           >
-            Vastuuhenkilöittäin
+            {t("workspace.byAssignee")}
           </button>
         </div>
       </div>
@@ -305,9 +305,9 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                         if (actual !== undefined && plan !== undefined) {
                           rows.push({ name, value: `${fmt(actual)} / ${fmt(plan)}` });
                         } else if (actual !== undefined) {
-                          rows.push({ name: `${name} (toteuma)`, value: fmt(actual) });
+                          rows.push({ name: `${name} (${t("workspace.actual").toLowerCase()})`, value: fmt(actual) });
                         } else if (plan !== undefined) {
-                          rows.push({ name: `${name} (suunnitelma)`, value: fmt(plan) });
+                          rows.push({ name: `${name} (${t("workspace.chartTotal").toLowerCase()})`, value: fmt(plan) });
                         }
                       }
                       return (
@@ -326,7 +326,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                           </div>
                           <div style={{ fontWeight: 700, marginBottom: rows.length > 0 ? 4 : 0, paddingBottom: rows.length > 0 ? 4 : 0, borderBottom: rows.length > 0 ? "1px solid var(--border)" : "none" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", gap: 16, lineHeight: 1.6 }}>
-                              <span style={{ color: "hsl(var(--muted-foreground))" }}>Toteuma / Suunnitelma</span>
+                              <span style={{ color: "hsl(var(--muted-foreground))" }}>{t("workspace.actualPlan")}</span>
                               <span style={{ fontFamily: "monospace", fontWeight: 700 }}>
                                 {totalActual !== undefined ? fmt(totalActual) : "—"} / {fmt(totalPlan)}
                               </span>

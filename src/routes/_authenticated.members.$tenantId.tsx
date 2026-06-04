@@ -14,7 +14,7 @@ import {
 } from "@/lib/api/tenants.functions";
 
 export const Route = createFileRoute("/_authenticated/members/$tenantId")({
-  head: () => ({ meta: [{ title: "Käyttäjät — Tracker" }] }),
+  head: () => ({ meta: [{ title: "Users — Tracker" }] }),
   beforeLoad: async ({ params }) => {
     const tenants = await listMyTenants();
     const current = tenants.find((t) => t.id === params.tenantId);
