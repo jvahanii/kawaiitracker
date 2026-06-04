@@ -12,7 +12,10 @@ export const attachSupabaseAuth = createMiddleware({ type: "function" }).client(
     if (typeof window === "undefined") return next();
     try {
       const functionId = serverFnMeta?.id ?? "";
-      const decodedFunctionId = functionId ? atob(functionId).toLowerCase() : "";
+      const paddedFunctionId = functionId.padEnd(functionId.length + ((4 - (functionId.length % 4)) % 4), "=");
+      const decodedFunctionId = functionId
+        ? atob(paddedFunctionId.replace(/-/g, "+").replace(/_/g, "/")).toLowerCase()
+        : "";
       if (decodedFunctionId.includes("/supabase/config.functions.ts")) {
         return next();
       }
