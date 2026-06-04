@@ -9,6 +9,7 @@ import {
   listMyTenants,
   listTenantMembers,
   removeMember,
+  setMemberPassword,
   updateMemberName,
   updateMemberRole,
 } from "@/lib/api/tenants.functions";
