@@ -7,15 +7,15 @@ create table if not exists public.folder_visibility (
   primary key (folder_id, user_id)
 );
 
-create unique index if not exists folder_visibility_folder_user_idx
-  on public.folder_visibility(folder_id, user_id);
-create index if not exists folder_visibility_folder_id_idx on public.folder_visibility(folder_id);
-create index if not exists folder_visibility_user_id_idx on public.folder_visibility(user_id);
-
 grant select, insert, update, delete on public.folder_visibility to authenticated;
 grant all on public.folder_visibility to service_role;
 
 alter table public.folder_visibility enable row level security;
+
+create unique index if not exists folder_visibility_folder_user_idx
+  on public.folder_visibility(folder_id, user_id);
+create index if not exists folder_visibility_folder_id_idx on public.folder_visibility(folder_id);
+create index if not exists folder_visibility_user_id_idx on public.folder_visibility(user_id);
 
 create or replace function public.can_user_see_folder(p_folder_id uuid, p_user_id uuid)
 returns boolean
