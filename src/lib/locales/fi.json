@@ -106,6 +106,12 @@
     "renameFolder": "Nimeä kansio uudelleen",
     "confirmDeleteFolder": "Poistetaanko tämä kansio? Sen kohteet siirtyvät kategorisoimattomiksi.",
     "uncategorized": "Kategorisoimattomat",
+    "folderVisibility": "Näkyvyys",
+    "folderVisibilityTitle": "Kansion näkyvyys",
+    "folderVisibilityBody": "Rajaa, ketkä näkevät tämän kansion ja sen kohteet. Ylläpitäjillä on aina pääsy. Alikansiot perivät säännön, ellei niillä ole omaa rajoitusta.",
+    "restrictAccess": "Rajaa näkyvyyttä",
+    "allowedMembers": "Sallitut jäsenet",
+    "save": "Tallenna",
     "manageUsers": "Käyttäjät"
   },
   "members": {
