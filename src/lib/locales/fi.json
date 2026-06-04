@@ -123,6 +123,9 @@
     "save": "Tallenna",
     "manageUsers": "Käyttäjät"
   },
+  "reset": {
+    "submit": "Lähetä"
+  },
   "members": {
     "title": "Käyttäjät",
     "empty": "Ei käyttäjiä.",

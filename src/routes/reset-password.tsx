@@ -136,7 +136,7 @@ function ResetPasswordPage() {
           disabled={m.isPending}
           className="kawaii-button w-full disabled:opacity-60"
         >
-          {m.isPending ? t("common.saving") : `${t("reset.submit")} ♡`}
+          {m.isPending ? t("common.saving") : t("reset.submit")}
         </button>
       </form>
     </AuthShell>
