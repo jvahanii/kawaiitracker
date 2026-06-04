@@ -69,6 +69,8 @@ function MembersPage() {
   const [addRole, setAddRole] = useState<"admin" | "member">("member");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [pwUserId, setPwUserId] = useState<string | null>(null);
+  const [pwValue, setPwValue] = useState("");
 
   const copyJoinCode = async () => {
     try {
