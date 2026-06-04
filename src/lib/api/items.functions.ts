@@ -159,6 +159,7 @@ export const updateItem = createServerFn({ method: "POST" })
     if (data.status !== undefined) patch.status = data.status;
     if (data.notes !== undefined) patch.notes = data.notes;
     if (data.amount !== undefined) patch.amount = data.amount;
+    if (data.folderId !== undefined) patch.folder_id = data.folderId;
 
     // Always touch updated_at when something changes; skip if only that
     const onlyTimestamp = Object.keys(patch).length === 1 && data.assigneeIds === undefined;
