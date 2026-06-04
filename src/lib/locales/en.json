@@ -98,6 +98,14 @@
     "daysLeft": "{{count}} days left",
     "updated": "Updated {{when}}",
     "confirmDelete": "Delete this entry?",
+    "folder": "Folder",
+    "folders": "Folders",
+    "newFolder": "New folder",
+    "newFolderPrompt": "Folder name",
+    "addSubfolder": "Add subfolder",
+    "renameFolder": "Rename folder",
+    "confirmDeleteFolder": "Delete this folder? Items will become uncategorized.",
+    "uncategorized": "Uncategorized",
     "manageUsers": "Users"
   },
   "members": {
