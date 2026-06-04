@@ -42,7 +42,7 @@ export const listItems = createServerFn({ method: "GET" })
   .handler(async ({ context, data }) => {
     const { data: rows, error } = await context.supabase
       .from("items")
-      .select("id, title, status, assignee_id, notes, amount, created_at, updated_at")
+      .select("id, title, status, assignee_id, notes, amount, folder_id, created_at, updated_at")
       .eq("tenant_id", data.tenantId)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
