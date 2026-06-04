@@ -17,6 +17,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated.onboarding'
 import { Route as AuthenticatedMembersTenantIdRouteImport } from './routes/_authenticated.members.$tenantId'
+import { Route as AuthenticatedAuditTenantIdRouteImport } from './routes/_authenticated.audit.$tenantId'
 import { Route as AuthenticatedAppTenantIdRouteImport } from './routes/_authenticated.app.$tenantId'
 
 const SignupRoute = SignupRouteImport.update({
@@ -59,6 +60,12 @@ const AuthenticatedMembersTenantIdRoute =
     path: '/members/$tenantId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAuditTenantIdRoute =
+  AuthenticatedAuditTenantIdRouteImport.update({
+    id: '/audit/$tenantId',
+    path: '/audit/$tenantId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAppTenantIdRoute =
   AuthenticatedAppTenantIdRouteImport.update({
     id: '/app/$tenantId',
@@ -74,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/app/$tenantId': typeof AuthenticatedAppTenantIdRoute
+  '/audit/$tenantId': typeof AuthenticatedAuditTenantIdRoute
   '/members/$tenantId': typeof AuthenticatedMembersTenantIdRoute
 }
 export interface FileRoutesByTo {
@@ -84,6 +92,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/app/$tenantId': typeof AuthenticatedAppTenantIdRoute
+  '/audit/$tenantId': typeof AuthenticatedAuditTenantIdRoute
   '/members/$tenantId': typeof AuthenticatedMembersTenantIdRoute
 }
 export interface FileRoutesById {
@@ -96,6 +105,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/app/$tenantId': typeof AuthenticatedAppTenantIdRoute
+  '/_authenticated/audit/$tenantId': typeof AuthenticatedAuditTenantIdRoute
   '/_authenticated/members/$tenantId': typeof AuthenticatedMembersTenantIdRoute
 }
 export interface FileRouteTypes {
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/onboarding'
     | '/app/$tenantId'
+    | '/audit/$tenantId'
     | '/members/$tenantId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/onboarding'
     | '/app/$tenantId'
+    | '/audit/$tenantId'
     | '/members/$tenantId'
   id:
     | '__root__'
@@ -129,6 +141,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authenticated/onboarding'
     | '/_authenticated/app/$tenantId'
+    | '/_authenticated/audit/$tenantId'
     | '/_authenticated/members/$tenantId'
   fileRoutesById: FileRoutesById
 }
@@ -199,6 +212,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMembersTenantIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/audit/$tenantId': {
+      id: '/_authenticated/audit/$tenantId'
+      path: '/audit/$tenantId'
+      fullPath: '/audit/$tenantId'
+      preLoaderRoute: typeof AuthenticatedAuditTenantIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/app/$tenantId': {
       id: '/_authenticated/app/$tenantId'
       path: '/app/$tenantId'
@@ -212,12 +232,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedAppTenantIdRoute: typeof AuthenticatedAppTenantIdRoute
+  AuthenticatedAuditTenantIdRoute: typeof AuthenticatedAuditTenantIdRoute
   AuthenticatedMembersTenantIdRoute: typeof AuthenticatedMembersTenantIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedAppTenantIdRoute: AuthenticatedAppTenantIdRoute,
+  AuthenticatedAuditTenantIdRoute: AuthenticatedAuditTenantIdRoute,
   AuthenticatedMembersTenantIdRoute: AuthenticatedMembersTenantIdRoute,
 }
 

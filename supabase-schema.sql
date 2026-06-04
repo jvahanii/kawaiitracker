@@ -545,3 +545,106 @@ create policy "items: members update" on public.items for update to authenticate
 drop policy if exists "items: members delete" on public.items;
 create policy "items: members delete" on public.items for delete to authenticated
   using (public.is_tenant_member(tenant_id));
+
+-- ============ AUDIT LOG ============
+create table if not exists public.audit_log (
+  id bigserial primary key,
+  tenant_id uuid references public.tenants(id) on delete cascade,
+  actor_id uuid references auth.users(id) on delete set null,
+  table_name text not null,
+  record_id text,
+  action text not null check (action in ('INSERT','UPDATE','DELETE')),
+  changes jsonb,
+  row_data jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists audit_log_tenant_idx on public.audit_log(tenant_id, created_at desc);
+create index if not exists audit_log_actor_idx on public.audit_log(actor_id);
+
+grant select on public.audit_log to authenticated;
+grant all on public.audit_log to service_role;
+
+alter table public.audit_log enable row level security;
+
+drop policy if exists "audit_log: admins read" on public.audit_log;
+create policy "audit_log: admins read"
+  on public.audit_log for select to authenticated
+  using (tenant_id is not null and public.is_tenant_admin(tenant_id));
+
+create or replace function public.fn_audit_trigger()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_tenant uuid;
+  v_record text;
+  v_old jsonb;
+  v_new jsonb;
+  v_changes jsonb := '{}'::jsonb;
+  v_key text;
+begin
+  if tg_op = 'DELETE' then
+    v_old := to_jsonb(old); v_new := null;
+  elsif tg_op = 'INSERT' then
+    v_old := null; v_new := to_jsonb(new);
+  else
+    v_old := to_jsonb(old); v_new := to_jsonb(new);
+  end if;
+
+  if tg_table_name in ('items','folders','tenant_members') then
+    v_tenant := coalesce((v_new->>'tenant_id')::uuid, (v_old->>'tenant_id')::uuid);
+  elsif tg_table_name in ('item_tasks','item_entries','item_assignees') then
+    select i.tenant_id into v_tenant from public.items i
+      where i.id = coalesce((v_new->>'item_id')::uuid, (v_old->>'item_id')::uuid);
+  elsif tg_table_name = 'folder_visibility' then
+    select f.tenant_id into v_tenant from public.folders f
+      where f.id = coalesce((v_new->>'folder_id')::uuid, (v_old->>'folder_id')::uuid);
+  end if;
+
+  if tg_op = 'UPDATE' then
+    for v_key in select jsonb_object_keys(v_new) loop
+      if v_key = 'updated_at' then continue; end if;
+      if (v_new->v_key) is distinct from (v_old->v_key) then
+        v_changes := v_changes || jsonb_build_object(v_key, jsonb_build_object('old', v_old->v_key, 'new', v_new->v_key));
+      end if;
+    end loop;
+    if v_changes = '{}'::jsonb then return null; end if;
+  end if;
+
+  v_record := coalesce(v_new->>'id', v_old->>'id', v_new->>'item_id', v_old->>'item_id');
+
+  insert into public.audit_log (tenant_id, actor_id, table_name, record_id, action, changes, row_data)
+  values (v_tenant, auth.uid(), tg_table_name, v_record, tg_op,
+          case when tg_op = 'UPDATE' then v_changes else null end,
+          case when tg_op = 'INSERT' then v_new
+               when tg_op = 'DELETE' then v_old
+               else null end);
+  return null;
+end;
+$$;
+
+do $$
+declare t text;
+begin
+  foreach t in array array['items','item_tasks','item_entries','item_assignees','folders','folder_visibility','tenant_members']
+  loop
+    execute format('drop trigger if exists trg_audit_%I on public.%I', t, t);
+    execute format('create trigger trg_audit_%I after insert or update or delete on public.%I for each row execute function public.fn_audit_trigger()', t, t);
+  end loop;
+end $$;
+
+create or replace function public.list_audit_log(p_tenant_id uuid, p_limit int default 200)
+returns table (
+  id bigint, created_at timestamptz, actor_id uuid, actor_name text, actor_email text,
+  table_name text, record_id text, action text, changes jsonb, row_data jsonb
+) language sql stable security definer set search_path = public as $$
+  select a.id, a.created_at, a.actor_id, p.display_name, p.email,
+         a.table_name, a.record_id, a.action, a.changes, a.row_data
+  from public.audit_log a
+  left join public.profiles p on p.id = a.actor_id
+  where a.tenant_id = p_tenant_id
+    and public.is_tenant_admin(p_tenant_id)
+  order by a.created_at desc
+  limit greatest(1, least(coalesce(p_limit, 200), 1000))
+$$;
+
+grant execute on function public.list_audit_log(uuid, int) to authenticated;
