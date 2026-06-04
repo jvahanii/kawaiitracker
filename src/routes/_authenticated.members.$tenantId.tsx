@@ -262,6 +262,16 @@ function MembersPage() {
                     </select>
                     <button
                       type="button"
+                      onClick={() => {
+                        setPwUserId(m.id);
+                        setPwValue("");
+                      }}
+                      className="rounded-md px-2 py-1 text-sm hover:bg-accent"
+                    >
+                      Set password
+                    </button>
+                    <button
+                      type="button"
                       disabled={removeM.isPending}
                       onClick={() => {
                         if (confirm(t("members.confirmRemove", { name: m.displayName }))) {
@@ -273,6 +283,7 @@ function MembersPage() {
                       {t("members.remove")}
                     </button>
                   </div>
+
                 </li>
               );
             })}
