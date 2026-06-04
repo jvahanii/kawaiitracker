@@ -280,84 +280,34 @@ function WorkspacePage() {
               </button>
             </form>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {itemsQ.isLoading ? (
-              <p className="p-4 text-sm text-muted-foreground">{t("common.loading")}</p>
-            ) : filtered.length === 0 ? (
-              <p className="p-4 text-sm text-muted-foreground">{t("workspace.noItems")}</p>
-            ) : (
-              <ul>
-                {filtered.map((it) => (
-                  <li
-                    key={it.id}
-                    draggable={!search}
-                    onDragStart={(e) => {
-                      setDraggingItemId(it.id);
-                      e.dataTransfer.effectAllowed = "move";
-                    }}
-                    onDragEnd={() => {
-                      setDraggingItemId(null);
-                      setDragOverItemId(null);
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
-                      if (dragOverItemId !== it.id) setDragOverItemId(it.id);
-                    }}
-                    onDragLeave={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                        setDragOverItemId(null);
-                      }
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (!draggingItemId || draggingItemId === it.id) {
-                        setDraggingItemId(null);
-                        setDragOverItemId(null);
-                        return;
-                      }
-                      const list = [...items];
-                      const fromIdx = list.findIndex((i) => i.id === draggingItemId);
-                      const toIdx = list.findIndex((i) => i.id === it.id);
-                      const [removed] = list.splice(fromIdx, 1);
-                      list.splice(toIdx, 0, removed);
-                      reorderM.mutate(list.map((i) => i.id));
-                      setDraggingItemId(null);
-                      setDragOverItemId(null);
-                    }}
-                    className={`flex items-stretch border-b border-border transition-opacity ${
-                      draggingItemId === it.id ? "opacity-40" : ""
-                    } ${
-                      dragOverItemId === it.id && draggingItemId !== it.id
-                        ? "border-t-2 border-t-primary"
-                        : ""
-                    }`}
-                  >
-                    {!search && (
-                      <span
-                        className="flex cursor-grab items-center px-1.5 text-muted-foreground hover:text-foreground active:cursor-grabbing"
-                        title="Järjestä vetämällä"
-                      >
-                        <GripVertical size={14} />
-                      </span>
-                    )}
-                    <button
-                      onClick={() => setSelectedId(it.id)}
-                      className={`flex min-w-0 flex-1 flex-col items-start gap-1 py-2 pr-3 text-left text-sm hover:bg-accent ${
-                        selectedId === it.id ? "bg-accent" : ""
-                      } ${!search ? "" : "pl-3"}`}
-                    >
-                      <span className="line-clamp-1 font-medium">{it.title}</span>
-                      {it.assigneeName ? (
-                        <span className="text-xs text-muted-foreground">{it.assigneeName}</span>
-                      ) : null}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <FolderTreePane
+            tenantId={tenantId}
+            t={t}
+            search={search}
+            items={items}
+            filtered={filtered}
+            folders={folders}
+            loading={itemsQ.isLoading || foldersQ.isLoading}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+            draggingItemId={draggingItemId}
+            setDraggingItemId={setDraggingItemId}
+            dragOverItemId={dragOverItemId}
+            setDragOverItemId={setDragOverItemId}
+            dragOverFolderId={dragOverFolderId}
+            setDragOverFolderId={setDragOverFolderId}
+            onReorder={(ids) => reorderM.mutate(ids)}
+            onMoveItem={(id, folderId) => moveItemM.mutate({ id, folderId })}
+            onCreateFolder={(name, parentId) => createFolderM.mutate({ name, parentId })}
+            onRenameFolder={(id, name) => renameFolderM.mutate({ id, name })}
+            onDeleteFolder={(id) => deleteFolderM.mutate(id)}
+            onCreateItemInFolder={(folderId) => {
+              const title = prompt(t("workspace.newItemPlaceholder"));
+              if (title?.trim()) createM.mutate({ title: title.trim(), folderId });
+            }}
+          />
         </aside>
+
 
         {/* Right pane */}
         <main className="flex min-h-0 flex-1 flex-col">
