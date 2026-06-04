@@ -148,10 +148,15 @@ function SupabaseAuthSync() {
           if (event === "SIGNED_OUT") {
             queryClient.cancelQueries();
             queryClient.clear();
+            router.invalidate();
+          } else if (event === "PASSWORD_RECOVERY") {
+            // Navigate to the reset-password page so the recovery session is
+            // available there regardless of which page the user is currently on.
+            router.navigate({ to: "/reset-password" });
           } else {
             queryClient.invalidateQueries();
+            router.invalidate();
           }
-          router.invalidate();
         });
         unsub = () => data.subscription.unsubscribe();
       })
