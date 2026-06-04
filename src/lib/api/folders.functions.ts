@@ -8,6 +8,7 @@ export type FolderRow = {
   parentId: string | null;
   name: string;
   sortOrder: number;
+  restricted: boolean;
 };
 
 type RawFolder = {
@@ -15,6 +16,7 @@ type RawFolder = {
   parent_id: string | null;
   name: string;
   sort_order: number;
+  restricted: boolean | null;
 };
 
 export const listFolders = createServerFn({ method: "GET" })
