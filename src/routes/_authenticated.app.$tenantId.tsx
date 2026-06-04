@@ -1132,7 +1132,7 @@ function FolderTreePane({
     </li>
   );
 
-  const renderFolder = (folder: FolderRow, depth: number): React.ReactNode => {
+  const renderFolder = (folder: FolderRow, depth: number): ReactNode => {
     const open = isOpen(folder.id);
     const children = childrenByParent.get(folder.id) ?? [];
     const folderItems = itemsByFolder.get(folder.id) ?? [];
