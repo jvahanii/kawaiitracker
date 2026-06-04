@@ -590,6 +590,7 @@ function ItemDetail({
   tenantId,
   item,
   members,
+  folders,
   onSave,
   onEntriesChanged,
   onDelete,
@@ -597,7 +598,13 @@ function ItemDetail({
   tenantId: string;
   item: ItemRow;
   members: { id: string; displayName: string }[];
-  onSave: (patch: { title?: string; status?: ItemStatus; assigneeIds?: string[] }) => Promise<void>;
+  folders: FolderRow[];
+  onSave: (patch: {
+    title?: string;
+    status?: ItemStatus;
+    assigneeIds?: string[];
+    folderId?: string | null;
+  }) => Promise<void>;
 
   onEntriesChanged: () => void;
   onDelete: () => void;
