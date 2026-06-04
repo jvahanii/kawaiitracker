@@ -49,16 +49,16 @@ export const createFolder = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const parentId = data.parentId ?? null;
-    const { data: maxRow } = await context.supabase
+    let q = context.supabase
       .from("folders")
       .select("sort_order")
       .eq("tenant_id", data.tenantId)
-      .is("parent_id", parentId === null ? null : (undefined as never))
-      .eq(parentId === null ? "tenant_id" : "parent_id", parentId === null ? data.tenantId : parentId)
       .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    q = parentId === null ? q.is("parent_id", null) : q.eq("parent_id", parentId);
+    const { data: maxRow } = await q.maybeSingle();
     const nextOrder = ((maxRow as { sort_order?: number } | null)?.sort_order ?? -1) + 1;
+
     const { data: row, error } = await context.supabase
       .from("folders")
       .insert({
