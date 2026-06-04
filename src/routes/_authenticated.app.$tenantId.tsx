@@ -64,6 +64,10 @@ function WorkspacePage() {
   const updateFn = useServerFn(updateItem);
   const deleteFn = useServerFn(deleteItem);
   const reorderFn = useServerFn(reorderItems);
+  const listFoldersFn = useServerFn(listFolders);
+  const createFolderFn = useServerFn(createFolder);
+  const updateFolderFn = useServerFn(updateFolder);
+  const deleteFolderFn = useServerFn(deleteFolder);
 
   const itemsQ = useQuery({
     queryKey: ["items", tenantId],
@@ -73,11 +77,17 @@ function WorkspacePage() {
     queryKey: ["members", tenantId],
     queryFn: () => membersFn({ data: { tenantId } }),
   });
+  const foldersQ = useQuery({
+    queryKey: ["folders", tenantId],
+    queryFn: () => listFoldersFn({ data: { tenantId } }),
+  });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "ROOT">(null);
+  const folders = foldersQ.data ?? [];
 
   const items = itemsQ.data ?? [];
   const filtered = useMemo(() => {
