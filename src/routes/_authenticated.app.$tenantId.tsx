@@ -261,7 +261,7 @@ function WorkspacePage() {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!newTitle.trim()) return;
-                createM.mutate(newTitle.trim());
+                createM.mutate({ title: newTitle.trim(), folderId: null });
                 setNewTitle("");
               }}
               className="flex gap-1"
