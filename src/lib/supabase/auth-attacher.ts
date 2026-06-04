@@ -1,7 +1,5 @@
 import { createMiddleware } from "@tanstack/react-start";
-import { ensureSupabase, tryGetSupabase } from "./client";
-
-let isBootstrappingSupabase = false;
+import { tryGetSupabase } from "./client";
 
 /**
  * Client server-fn middleware: pulls the current Supabase session and attaches
@@ -13,15 +11,7 @@ export const attachSupabaseAuth = createMiddleware({ type: "function" }).client(
   async ({ next }) => {
     if (typeof window === "undefined") return next();
     try {
-      let supabase = tryGetSupabase();
-      if (!supabase && !isBootstrappingSupabase) {
-        isBootstrappingSupabase = true;
-        try {
-          supabase = await ensureSupabase();
-        } finally {
-          isBootstrappingSupabase = false;
-        }
-      }
+      const supabase = tryGetSupabase();
       if (!supabase) return next();
       let { data } = await supabase.auth.getSession();
       let token = data.session?.access_token;
