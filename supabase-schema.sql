@@ -404,3 +404,35 @@ do $$ begin
   end if;
 end $$;
 
+
+-- ============ FOLDERS (nested) ============
+create table if not exists public.folders (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references public.tenants(id) on delete cascade,
+  parent_id uuid references public.folders(id) on delete cascade,
+  name text not null,
+  sort_order integer not null default 0,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists folders_tenant_id_idx on public.folders(tenant_id);
+create index if not exists folders_parent_id_idx on public.folders(parent_id);
+
+grant select, insert, update, delete on public.folders to authenticated;
+grant all on public.folders to service_role;
+
+alter table public.folders enable row level security;
+
+drop policy if exists "folders: members rw" on public.folders;
+create policy "folders: members rw"
+  on public.folders for all to authenticated
+  using (public.is_tenant_member(tenant_id))
+  with check (public.is_tenant_member(tenant_id));
+
+-- items.folder_id: null = uncategorized (root)
+alter table public.items add column if not exists folder_id uuid
+  references public.folders(id) on delete set null;
+
+create index if not exists items_folder_id_idx on public.items(folder_id);
