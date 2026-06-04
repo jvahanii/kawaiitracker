@@ -1,4 +1,4 @@
-import { createFileRoute, getRouteApi, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -40,13 +40,6 @@ import {
 
 export const Route = createFileRoute("/_authenticated/app/$tenantId")({
   head: () => ({ meta: [{ title: "Workspace — Tracker" }] }),
-  beforeLoad: async ({ params }) => {
-    const tenants = await listMyTenants();
-    if (tenants.length === 0) throw redirect({ to: "/onboarding" });
-    const current = tenants.find((t) => t.id === params.tenantId);
-    if (!current) throw redirect({ to: "/app/$tenantId", params: { tenantId: tenants[0].id } });
-    return { tenants, currentTenant: current };
-  },
   component: WorkspacePage,
 });
 
@@ -55,11 +48,11 @@ const authenticatedRoute = getRouteApi("/_authenticated");
 function WorkspacePage() {
   const { t } = useTranslation();
   const { tenantId } = Route.useParams();
-  const { tenants, currentTenant } = Route.useRouteContext();
   const { user } = authenticatedRoute.useRouteContext();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
+  const tenantListFn = useServerFn(listMyTenants);
   const listFn = useServerFn(listItems);
   const membersFn = useServerFn(listTenantMembers);
   const createFn = useServerFn(createItem);
@@ -71,17 +64,39 @@ function WorkspacePage() {
   const updateFolderFn = useServerFn(updateFolder);
   const deleteFolderFn = useServerFn(deleteFolder);
 
+  const tenantsQ = useQuery({
+    queryKey: ["my-tenants"],
+    queryFn: () => tenantListFn(),
+    retry: 1,
+  });
+  const tenants = tenantsQ.data ?? [];
+  const currentTenant = tenants.find((tn) => tn.id === tenantId) ?? null;
+
+  useEffect(() => {
+    if (!tenantsQ.data) return;
+    if (tenantsQ.data.length === 0) {
+      navigate({ to: "/onboarding", replace: true });
+      return;
+    }
+    if (!currentTenant) {
+      navigate({ to: "/app/$tenantId", params: { tenantId: tenantsQ.data[0].id }, replace: true });
+    }
+  }, [currentTenant, navigate, tenantsQ.data]);
+
   const itemsQ = useQuery({
     queryKey: ["items", tenantId],
     queryFn: () => listFn({ data: { tenantId } }),
+    enabled: !!currentTenant,
   });
   const membersQ = useQuery({
     queryKey: ["members", tenantId],
     queryFn: () => membersFn({ data: { tenantId } }),
+    enabled: !!currentTenant,
   });
   const foldersQ = useQuery({
     queryKey: ["folders", tenantId],
     queryFn: () => listFoldersFn({ data: { tenantId } }),
+    enabled: !!currentTenant,
   });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -91,7 +106,7 @@ function WorkspacePage() {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "ROOT">(null);
   const [visibilityFolderId, setVisibilityFolderId] = useState<string | null>(null);
   const folders = foldersQ.data ?? [];
-  const isAdmin = currentTenant.role === "admin";
+  const isAdmin = currentTenant?.role === "admin";
 
   const items = itemsQ.data ?? [];
   const filtered = useMemo(() => {
@@ -107,6 +122,8 @@ function WorkspacePage() {
   }, [items, filtered, selectedId]);
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
+
+  const pageError = tenantsQ.error ?? itemsQ.error ?? membersQ.error ?? foldersQ.error;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["items", tenantId] });
 
@@ -188,13 +205,46 @@ function WorkspacePage() {
 
   const copyJoinCode = async () => {
     try {
-      await navigator.clipboard?.writeText(currentTenant.joinCode);
+      await navigator.clipboard?.writeText(currentTenant?.joinCode ?? "");
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
       /* ignore */
     }
   };
+
+  if (pageError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
+        <div className="max-w-md text-center">
+          <h1 className="text-lg font-semibold">{t("common.error")}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {pageError instanceof Error ? pageError.message : String(pageError)}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              tenantsQ.refetch();
+              itemsQ.refetch();
+              membersQ.refetch();
+              foldersQ.refetch();
+            }}
+            className="mt-4 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+          >
+            {t("common.retry")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (tenantsQ.isLoading || !currentTenant) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+        {t("common.loading")}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
