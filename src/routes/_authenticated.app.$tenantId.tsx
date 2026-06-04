@@ -342,9 +342,24 @@ function WorkspacePage() {
           </div>
         </main>
       </div>
+      {visibilityFolderId ? (
+        <FolderVisibilityDialog
+          tenantId={tenantId}
+          folderId={visibilityFolderId}
+          folderName={folders.find((f) => f.id === visibilityFolderId)?.name ?? ""}
+          members={membersQ.data ?? []}
+          onClose={() => setVisibilityFolderId(null)}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["folders", tenantId] });
+            qc.invalidateQueries({ queryKey: ["items", tenantId] });
+            setVisibilityFolderId(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
+
 
 function TaskLists({
   tenantId,
