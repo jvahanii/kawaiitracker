@@ -35,6 +35,7 @@ function MembersPage() {
   const updateNameFn = useServerFn(updateMemberName);
   const removeFn = useServerFn(removeMember);
   const addByEmailFn = useServerFn(addMemberByEmail);
+  const setPasswordFn = useServerFn(setMemberPassword);
 
   const tenantsQ = useQuery({
     queryKey: ["my-tenants"],
