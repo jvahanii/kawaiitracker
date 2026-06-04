@@ -973,3 +973,308 @@ function TotalEditor({ total, onCommit }: { total: number; onCommit: (newTotal: 
     />
   );
 }
+
+function folderPathLabel(f: FolderRow, all: FolderRow[]): string {
+  const parts: string[] = [f.name];
+  let cur: FolderRow | undefined = f;
+  const byId = new Map(all.map((x) => [x.id, x]));
+  const seen = new Set<string>([f.id]);
+  while (cur?.parentId) {
+    const p = byId.get(cur.parentId);
+    if (!p || seen.has(p.id)) break;
+    seen.add(p.id);
+    parts.unshift(p.name);
+    cur = p;
+  }
+  return parts.join(" / ");
+}
+
+type TFunc = (key: string, opts?: Record<string, unknown>) => string;
+
+function FolderTreePane({
+  t,
+  search,
+  items,
+  filtered,
+  folders,
+  loading,
+  selectedId,
+  setSelectedId,
+  draggingItemId,
+  setDraggingItemId,
+  dragOverItemId,
+  setDragOverItemId,
+  dragOverFolderId,
+  setDragOverFolderId,
+  onReorder,
+  onMoveItem,
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  onCreateItemInFolder,
+}: {
+  tenantId: string;
+  t: TFunc;
+  search: string;
+  items: ItemRow[];
+  filtered: ItemRow[];
+  folders: FolderRow[];
+  loading: boolean;
+  selectedId: string | null;
+  setSelectedId: (id: string) => void;
+  draggingItemId: string | null;
+  setDraggingItemId: (id: string | null) => void;
+  dragOverItemId: string | null;
+  setDragOverItemId: (id: string | null) => void;
+  dragOverFolderId: string | null | "ROOT";
+  setDragOverFolderId: (id: string | null | "ROOT") => void;
+  onReorder: (ids: string[]) => void;
+  onMoveItem: (id: string, folderId: string | null) => void;
+  onCreateFolder: (name: string, parentId: string | null) => void;
+  onRenameFolder: (id: string, name: string) => void;
+  onDeleteFolder: (id: string) => void;
+  onCreateItemInFolder: (folderId: string | null) => void;
+}) {
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+  const isOpen = (id: string) => openMap[id] !== false;
+  const toggle = (id: string) => setOpenMap((p) => ({ ...p, [id]: !isOpen(id) }));
+
+  const childrenByParent = useMemo(() => {
+    const m = new Map<string | null, FolderRow[]>();
+    for (const f of folders) {
+      const arr = m.get(f.parentId) ?? [];
+      arr.push(f);
+      m.set(f.parentId, arr);
+    }
+    return m;
+  }, [folders]);
+
+  const itemsByFolder = useMemo(() => {
+    const m = new Map<string | null, ItemRow[]>();
+    for (const it of filtered) {
+      const arr = m.get(it.folderId) ?? [];
+      arr.push(it);
+      m.set(it.folderId, arr);
+    }
+    return m;
+  }, [filtered]);
+
+  const renderItem = (it: ItemRow, depth: number) => (
+    <li
+      key={it.id}
+      draggable={!search}
+      onDragStart={(e) => {
+        setDraggingItemId(it.id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
+      onDragEnd={() => {
+        setDraggingItemId(null);
+        setDragOverItemId(null);
+        setDragOverFolderId(null);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (dragOverItemId !== it.id) setDragOverItemId(it.id);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverItemId(null);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!draggingItemId || draggingItemId === it.id) {
+          setDraggingItemId(null);
+          setDragOverItemId(null);
+          return;
+        }
+        const dragging = items.find((x) => x.id === draggingItemId);
+        if (dragging && dragging.folderId !== it.folderId) {
+          onMoveItem(draggingItemId, it.folderId);
+        } else {
+          const list = [...items];
+          const fromIdx = list.findIndex((i) => i.id === draggingItemId);
+          const toIdx = list.findIndex((i) => i.id === it.id);
+          if (fromIdx >= 0 && toIdx >= 0) {
+            const [removed] = list.splice(fromIdx, 1);
+            list.splice(toIdx, 0, removed);
+            onReorder(list.map((i) => i.id));
+          }
+        }
+        setDraggingItemId(null);
+        setDragOverItemId(null);
+      }}
+      className={`flex items-stretch border-b border-border transition-opacity ${
+        draggingItemId === it.id ? "opacity-40" : ""
+      } ${
+        dragOverItemId === it.id && draggingItemId !== it.id
+          ? "border-t-2 border-t-primary"
+          : ""
+      }`}
+      style={{ paddingLeft: `${depth * 12}px` }}
+    >
+      {!search && (
+        <span className="flex cursor-grab items-center px-1.5 text-muted-foreground hover:text-foreground active:cursor-grabbing">
+          <GripVertical size={14} />
+        </span>
+      )}
+      <button
+        onClick={() => setSelectedId(it.id)}
+        className={`flex min-w-0 flex-1 flex-col items-start gap-1 py-2 pr-3 text-left text-sm hover:bg-accent ${
+          selectedId === it.id ? "bg-accent" : ""
+        } ${!search ? "" : "pl-3"}`}
+      >
+        <span className="line-clamp-1 font-medium">{it.title}</span>
+        {it.assigneeName ? (
+          <span className="text-xs text-muted-foreground">{it.assigneeName}</span>
+        ) : null}
+      </button>
+    </li>
+  );
+
+  const renderFolder = (folder: FolderRow, depth: number): React.ReactNode => {
+    const open = isOpen(folder.id);
+    const children = childrenByParent.get(folder.id) ?? [];
+    const folderItems = itemsByFolder.get(folder.id) ?? [];
+    const dragHover = dragOverFolderId === folder.id;
+    return (
+      <li key={folder.id}>
+        <div
+          onDragOver={(e) => {
+            if (!draggingItemId) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            if (dragOverFolderId !== folder.id) setDragOverFolderId(folder.id);
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverFolderId(null);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (draggingItemId) onMoveItem(draggingItemId, folder.id);
+            setDraggingItemId(null);
+            setDragOverFolderId(null);
+          }}
+          className={`group flex items-center gap-1 border-b border-border py-1 pr-1 text-sm ${
+            dragHover ? "bg-primary/10" : "bg-muted/30"
+          }`}
+          style={{ paddingLeft: `${depth * 12 + 4}px` }}
+        >
+          <button onClick={() => toggle(folder.id)} className="p-0.5 text-muted-foreground hover:text-foreground" aria-label="toggle">
+            {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
+          <span className="flex-1 truncate font-medium">{folder.name}</span>
+          <button
+            type="button"
+            onClick={() => {
+              const name = window.prompt(t("workspace.newFolderPrompt"));
+              if (name?.trim()) onCreateFolder(name.trim(), folder.id);
+            }}
+            className="p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+            title={t("workspace.addSubfolder")}
+          >
+            <FolderPlus size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onCreateItemInFolder(folder.id)}
+            className="px-1 text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+            title={t("workspace.newItemPlaceholder")}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const name = window.prompt(t("workspace.folder"), folder.name);
+              if (name?.trim() && name.trim() !== folder.name) onRenameFolder(folder.id, name.trim());
+            }}
+            className="p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+            title={t("workspace.renameFolder")}
+          >
+            <Pencil size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(t("workspace.confirmDeleteFolder"))) onDeleteFolder(folder.id);
+            }}
+            className="p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+            title={t("common.delete")}
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+        {open && (
+          <ul>
+            {children.map((c) => renderFolder(c, depth + 1))}
+            {folderItems.map((it) => renderItem(it, depth + 1))}
+          </ul>
+        )}
+      </li>
+    );
+  };
+
+  const rootFolders = childrenByParent.get(null) ?? [];
+  const rootItems = itemsByFolder.get(null) ?? [];
+
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="flex items-center justify-between border-b border-border px-2 py-1">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+          {t("workspace.folders")}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            const name = window.prompt(t("workspace.newFolderPrompt"));
+            if (name?.trim()) onCreateFolder(name.trim(), null);
+          }}
+          className="flex items-center gap-1 rounded px-2 py-0.5 text-xs hover:bg-accent"
+          title={t("workspace.newFolder")}
+        >
+          <FolderPlus size={12} />
+          {t("workspace.newFolder")}
+        </button>
+      </div>
+      {loading ? (
+        <p className="p-4 text-sm text-muted-foreground">{t("common.loading")}</p>
+      ) : (
+        <ul>
+          {rootFolders.map((f) => renderFolder(f, 0))}
+          {/* Root (uncategorized) drop zone */}
+          <li>
+            <div
+              onDragOver={(e) => {
+                if (!draggingItemId) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (dragOverFolderId !== "ROOT") setDragOverFolderId("ROOT");
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverFolderId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (draggingItemId) onMoveItem(draggingItemId, null);
+                setDraggingItemId(null);
+                setDragOverFolderId(null);
+              }}
+              className={`border-b border-border py-1 pl-2 text-xs uppercase tracking-wide text-muted-foreground ${
+                dragOverFolderId === "ROOT" ? "bg-primary/10" : ""
+              }`}
+            >
+              {t("workspace.uncategorized")}
+            </div>
+            {rootItems.length === 0 && folders.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">{t("workspace.noItems")}</p>
+            ) : (
+              <ul>{rootItems.map((it) => renderItem(it, 0))}</ul>
+            )}
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
