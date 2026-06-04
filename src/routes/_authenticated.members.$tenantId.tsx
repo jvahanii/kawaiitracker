@@ -1,7 +1,7 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -15,15 +15,6 @@ import {
 
 export const Route = createFileRoute("/_authenticated/members/$tenantId")({
   head: () => ({ meta: [{ title: "Users — Tracker" }] }),
-  beforeLoad: async ({ params }) => {
-    const tenants = await listMyTenants();
-    const current = tenants.find((t) => t.id === params.tenantId);
-    if (!current) throw redirect({ to: "/onboarding" });
-    if (current.role !== "admin") {
-      throw redirect({ to: "/app/$tenantId", params: { tenantId: current.id } });
-    }
-    return { currentTenant: current };
-  },
   component: MembersPage,
   errorComponent: ({ error }) => (
     <div className="p-6 text-sm text-destructive">{error.message}</div>
@@ -34,19 +25,38 @@ export const Route = createFileRoute("/_authenticated/members/$tenantId")({
 function MembersPage() {
   const { t } = useTranslation();
   const { tenantId } = Route.useParams();
-  const { currentTenant } = Route.useRouteContext();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
+  const tenantsFn = useServerFn(listMyTenants);
   const listFn = useServerFn(listTenantMembers);
   const updateRoleFn = useServerFn(updateMemberRole);
   const updateNameFn = useServerFn(updateMemberName);
   const removeFn = useServerFn(removeMember);
   const addByEmailFn = useServerFn(addMemberByEmail);
 
+  const tenantsQ = useQuery({
+    queryKey: ["my-tenants"],
+    queryFn: () => tenantsFn(),
+    retry: 1,
+  });
+  const currentTenant = tenantsQ.data?.find((t) => t.id === tenantId) ?? null;
+
+  useEffect(() => {
+    if (!tenantsQ.data) return;
+    if (tenantsQ.data.length === 0) {
+      navigate({ to: "/onboarding", replace: true });
+      return;
+    }
+    if (!currentTenant || currentTenant.role !== "admin") {
+      navigate({ to: "/app/$tenantId", params: { tenantId: tenantsQ.data[0].id }, replace: true });
+    }
+  }, [currentTenant, navigate, tenantsQ.data]);
+
   const membersQ = useQuery({
     queryKey: ["members", tenantId],
     queryFn: () => listFn({ data: { tenantId } }),
+    enabled: currentTenant?.role === "admin",
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["members", tenantId] });
@@ -60,7 +70,7 @@ function MembersPage() {
 
   const copyJoinCode = async () => {
     try {
-      await navigator.clipboard?.writeText(currentTenant.joinCode);
+      await navigator.clipboard?.writeText(currentTenant?.joinCode ?? "");
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -111,6 +121,15 @@ function MembersPage() {
 
   const members = membersQ.data ?? [];
   const adminCount = members.filter((m) => m.role === "admin").length;
+  const pageError = tenantsQ.error ?? membersQ.error;
+
+  if (pageError) {
+    return <div className="p-6 text-sm text-destructive">{pageError instanceof Error ? pageError.message : String(pageError)}</div>;
+  }
+
+  if (tenantsQ.isLoading || !currentTenant || currentTenant.role !== "admin") {
+    return <div className="p-6 text-sm text-muted-foreground">{t("common.loading")}</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">

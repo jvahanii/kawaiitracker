@@ -7,7 +7,6 @@ import { ensureSupabase } from "@/lib/supabase/client";
 import { AuthShell, Field } from "./login";
 
 export const Route = createFileRoute("/signup")({
-  ssr: false,
   head: () => ({ meta: [{ title: "Sign up — Tracker" }] }),
   component: SignupPage,
 });

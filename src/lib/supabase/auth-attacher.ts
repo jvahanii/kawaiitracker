@@ -1,5 +1,5 @@
 import { createMiddleware } from "@tanstack/react-start";
-import { tryGetSupabase } from "./client";
+import { ensureSupabase, tryGetSupabase } from "./client";
 
 /**
  * Client server-fn middleware: pulls the current Supabase session and attaches
@@ -8,18 +8,31 @@ import { tryGetSupabase } from "./client";
  * is expired or missing.
  */
 export const attachSupabaseAuth = createMiddleware({ type: "function" }).client(
-  async ({ next }) => {
+  async ({ next, serverFnMeta }) => {
     if (typeof window === "undefined") return next();
     try {
-      const supabase = tryGetSupabase();
+      const functionId = serverFnMeta?.id ?? "";
+      const paddedFunctionId = functionId.padEnd(functionId.length + ((4 - (functionId.length % 4)) % 4), "=");
+      const decodedFunctionId = functionId
+        ? atob(paddedFunctionId.replace(/-/g, "+").replace(/_/g, "/")).toLowerCase()
+        : "";
+      if (decodedFunctionId.includes("/supabase/config.functions.ts")) {
+        return next();
+      }
+
+      const supabase = tryGetSupabase() ?? (await ensureSupabase());
       if (!supabase) return next();
       let { data } = await supabase.auth.getSession();
       let token = data.session?.access_token;
       const expiresAt = data.session?.expires_at ?? 0;
       const nowSec = Math.floor(Date.now() / 1000);
       if (!token || expiresAt - nowSec < 30) {
-        const { data: refreshed } = await supabase.auth.refreshSession();
-        token = refreshed.session?.access_token ?? token;
+        try {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          token = refreshed.session?.access_token ?? token;
+        } catch {
+          // Keep any existing token; the server middleware will validate it.
+        }
       }
       if (!token) return next();
       return next({ headers: { Authorization: `Bearer ${token}` } });

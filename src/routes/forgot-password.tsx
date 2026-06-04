@@ -7,7 +7,6 @@ import { ensureSupabase } from "@/lib/supabase/client";
 import { AuthShell, Field } from "./login";
 
 export const Route = createFileRoute("/forgot-password")({
-  ssr: false,
   head: () => ({ meta: [{ title: "Reset password — Tracker" }] }),
   component: ForgotPasswordPage,
 });
