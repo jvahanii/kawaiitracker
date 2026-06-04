@@ -319,6 +319,7 @@ function WorkspacePage() {
                 tenantId={tenantId}
                 item={selected}
                 members={membersQ.data ?? []}
+                folders={folders}
                 onSave={async (patch) => {
                   await updateFn({ data: { tenantId, id: selected.id, ...patch } });
                   invalidate();
