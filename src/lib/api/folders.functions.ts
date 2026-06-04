@@ -163,11 +163,17 @@ export const getFolderVisibility = createServerFn({ method: "GET" })
       .eq("id", data.folderId)
       .eq("tenant_id", data.tenantId)
       .maybeSingle();
+    if (isMissingFolderVisibilitySchemaError(fErr)) {
+      return { restricted: false, userIds: [] };
+    }
     if (fErr) throw new Error(fErr.message);
     const { data: rows, error } = await context.supabase
       .from("folder_visibility")
       .select("user_id")
       .eq("folder_id", data.folderId);
+    if (isMissingFolderVisibilitySchemaError(error)) {
+      return { restricted: false, userIds: [] };
+    }
     if (error) throw new Error(error.message);
     return {
       restricted: (f as { restricted?: boolean } | null)?.restricted === true,
@@ -193,12 +199,18 @@ export const setFolderVisibility = createServerFn({ method: "POST" })
       .update({ restricted: data.restricted, updated_at: new Date().toISOString() })
       .eq("id", data.folderId)
       .eq("tenant_id", data.tenantId);
+    if (isMissingFolderVisibilitySchemaError(upErr)) {
+      throw new Error(FOLDER_VISIBILITY_SCHEMA_MESSAGE);
+    }
     if (upErr) throw new Error(upErr.message);
 
     const { error: delErr } = await context.supabase
       .from("folder_visibility")
       .delete()
       .eq("folder_id", data.folderId);
+    if (isMissingFolderVisibilitySchemaError(delErr)) {
+      throw new Error(FOLDER_VISIBILITY_SCHEMA_MESSAGE);
+    }
     if (delErr) throw new Error(delErr.message);
 
     if (data.restricted && data.userIds.length > 0) {
