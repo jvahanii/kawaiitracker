@@ -19,6 +19,19 @@ type RawFolder = {
   restricted: boolean | null;
 };
 
+const FOLDER_VISIBILITY_SCHEMA_MESSAGE =
+  "Folder visibility is not available yet. Apply the latest database migration and try again.";
+
+function isMissingFolderVisibilitySchemaError(error: { code?: string; message?: string } | null) {
+  const message = error?.message ?? "";
+  return (
+    error?.code === "42703" ||
+    error?.code === "42P01" ||
+    message.includes("folders.restricted") ||
+    message.includes("folder_visibility")
+  );
+}
+
 export const listFolders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ tenantId: z.string().uuid() }).parse(d))
@@ -29,6 +42,22 @@ export const listFolders = createServerFn({ method: "GET" })
       .eq("tenant_id", data.tenantId)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
+    if (isMissingFolderVisibilitySchemaError(error)) {
+      const { data: legacyRows, error: legacyError } = await context.supabase
+        .from("folders")
+        .select("id, parent_id, name, sort_order")
+        .eq("tenant_id", data.tenantId)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (legacyError) throw new Error(legacyError.message);
+      return ((legacyRows ?? []) as Omit<RawFolder, "restricted">[]).map<FolderRow>((r) => ({
+        id: r.id,
+        parentId: r.parent_id,
+        name: r.name,
+        sortOrder: r.sort_order,
+        restricted: false,
+      }));
+    }
     if (error) throw new Error(error.message);
     return (rows ?? []).map<FolderRow>((r: RawFolder) => ({
       id: r.id,
@@ -134,11 +163,17 @@ export const getFolderVisibility = createServerFn({ method: "GET" })
       .eq("id", data.folderId)
       .eq("tenant_id", data.tenantId)
       .maybeSingle();
+    if (isMissingFolderVisibilitySchemaError(fErr)) {
+      return { restricted: false, userIds: [] };
+    }
     if (fErr) throw new Error(fErr.message);
     const { data: rows, error } = await context.supabase
       .from("folder_visibility")
       .select("user_id")
       .eq("folder_id", data.folderId);
+    if (isMissingFolderVisibilitySchemaError(error)) {
+      return { restricted: false, userIds: [] };
+    }
     if (error) throw new Error(error.message);
     return {
       restricted: (f as { restricted?: boolean } | null)?.restricted === true,
@@ -164,12 +199,18 @@ export const setFolderVisibility = createServerFn({ method: "POST" })
       .update({ restricted: data.restricted, updated_at: new Date().toISOString() })
       .eq("id", data.folderId)
       .eq("tenant_id", data.tenantId);
+    if (isMissingFolderVisibilitySchemaError(upErr)) {
+      throw new Error(FOLDER_VISIBILITY_SCHEMA_MESSAGE);
+    }
     if (upErr) throw new Error(upErr.message);
 
     const { error: delErr } = await context.supabase
       .from("folder_visibility")
       .delete()
       .eq("folder_id", data.folderId);
+    if (isMissingFolderVisibilitySchemaError(delErr)) {
+      throw new Error(FOLDER_VISIBILITY_SCHEMA_MESSAGE);
+    }
     if (delErr) throw new Error(delErr.message);
 
     if (data.restricted && data.userIds.length > 0) {
