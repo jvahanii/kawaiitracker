@@ -1,7 +1,7 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useMutation } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createTenant, joinTenant, listMyTenants } from "@/lib/api/tenants.functions";
@@ -9,22 +9,30 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   head: () => ({ meta: [{ title: "Get started — Tracker" }] }),
-  beforeLoad: async () => {
-    const tenants = await listMyTenants();
-    if (tenants.length > 0) {
-      throw redirect({ to: "/app/$tenantId", params: { tenantId: tenants[0].id } });
-    }
-  },
   component: Onboarding,
 });
 
 function Onboarding() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const listFn = useServerFn(listMyTenants);
   const createFn = useServerFn(createTenant);
   const joinFn = useServerFn(joinTenant);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+
+  const tenantsQ = useQuery({
+    queryKey: ["my-tenants"],
+    queryFn: () => listFn(),
+    retry: 1,
+  });
+
+  useEffect(() => {
+    const firstTenant = tenantsQ.data?.[0];
+    if (firstTenant) {
+      navigate({ to: "/app/$tenantId", params: { tenantId: firstTenant.id }, replace: true });
+    }
+  }, [navigate, tenantsQ.data]);
 
   const createM = useMutation({
     mutationFn: (n: string) => createFn({ data: { name: n } }),
