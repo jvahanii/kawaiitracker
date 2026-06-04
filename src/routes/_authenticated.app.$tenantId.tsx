@@ -460,6 +460,7 @@ function TaskGroup({
   onDelete: (id: string) => void;
   onReorder: (orderedIds: string[]) => void;
 }) {
+  const { t } = useTranslation();
   const [newTitle, setNewTitle] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
@@ -482,12 +483,12 @@ function TaskGroup({
     <div className="rounded-md border border-border p-3">
       <h4 className="mb-2 text-sm font-semibold text-foreground">{name}</h4>
       <ul className="space-y-1">
-        {tasks.map((t) => (
+        {tasks.map((task) => (
           <li
-            key={t.id}
+            key={task.id}
             draggable
             onDragStart={(e) => {
-              setDraggingTaskId(t.id);
+              setDraggingTaskId(task.id);
               e.dataTransfer.effectAllowed = "move";
             }}
             onDragEnd={() => {
@@ -497,7 +498,7 @@ function TaskGroup({
             onDragOver={(e) => {
               e.preventDefault();
               e.dataTransfer.dropEffect = "move";
-              if (dragOverTaskId !== t.id) setDragOverTaskId(t.id);
+              if (dragOverTaskId !== task.id) setDragOverTaskId(task.id);
             }}
             onDragLeave={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget as Node)) {
@@ -506,14 +507,14 @@ function TaskGroup({
             }}
             onDrop={(e) => {
               e.preventDefault();
-              if (!draggingTaskId || draggingTaskId === t.id) {
+              if (!draggingTaskId || draggingTaskId === task.id) {
                 setDraggingTaskId(null);
                 setDragOverTaskId(null);
                 return;
               }
               const list = [...tasks];
               const fromIdx = list.findIndex((x) => x.id === draggingTaskId);
-              const toIdx = list.findIndex((x) => x.id === t.id);
+              const toIdx = list.findIndex((x) => x.id === task.id);
               const [removed] = list.splice(fromIdx, 1);
               list.splice(toIdx, 0, removed);
               onReorder(list.map((x) => x.id));
@@ -521,26 +522,26 @@ function TaskGroup({
               setDragOverTaskId(null);
             }}
             className={`flex items-center gap-2 transition-opacity ${
-              draggingTaskId === t.id ? "opacity-40" : ""
+              draggingTaskId === task.id ? "opacity-40" : ""
             } ${
-              dragOverTaskId === t.id && draggingTaskId !== t.id
+              dragOverTaskId === task.id && draggingTaskId !== task.id
                 ? "border-t-2 border-t-primary"
                 : ""
             }`}
           >
             <span
               className="cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing"
-              title="Järjestä vetämällä"
+              title={t("workspace.dragToReorder")}
             >
               <GripVertical size={14} />
             </span>
             <input
               type="checkbox"
-              checked={t.done}
-              onChange={() => onToggle(t.id, !t.done)}
+              checked={task.done}
+              onChange={() => onToggle(task.id, !task.done)}
               className="shrink-0"
             />
-            {editingId === t.id ? (
+            {editingId === task.id ? (
               <input
                 autoFocus
                 value={editText}
@@ -554,28 +555,28 @@ function TaskGroup({
               />
             ) : (
               <span
-                onClick={() => startEdit(t)}
+                onClick={() => startEdit(task)}
                 className={`flex-1 cursor-pointer text-sm ${
-                  t.done ? "text-muted-foreground line-through" : "text-foreground"
+                  task.done ? "text-muted-foreground line-through" : "text-foreground"
                 }`}
-                title="Klikkaa muokataksesi"
+                title={t("workspace.clickToEdit")}
               >
-                {t.title}
+                {task.title}
               </span>
             )}
             <button
               type="button"
-              onClick={() => startEdit(t)}
+              onClick={() => startEdit(task)}
               className="rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-              title="Muokkaa"
+              title={t("workspace.edit")}
             >
               ✎
             </button>
             <button
               type="button"
-              onClick={() => onDelete(t.id)}
+              onClick={() => onDelete(task.id)}
               className="rounded px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/10"
-              title="Poista"
+              title={t("common.delete")}
             >
               ×
             </button>
@@ -594,14 +595,14 @@ function TaskGroup({
         <input
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Uusi tehtävä…"
+          placeholder={t("workspace.newTask")}
           className="input h-7 flex-1 text-sm"
         />
         <button
           type="submit"
           className="rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground"
         >
-          Lisää
+          {t("common.add")}
         </button>
       </form>
     </div>
@@ -849,7 +850,7 @@ function MonthlyEntries({
             </button>
           </div>
           <label className="flex items-center gap-1">
-            <span>Suunniteltu:</span>
+            <span>{t("workspace.planned")}:</span>
             <TotalEditor
               total={yearTotal}
               onCommit={(newTotal) => {
@@ -861,7 +862,7 @@ function MonthlyEntries({
             />
           </label>
           <label className="flex items-center gap-1">
-            <span>Toteuma:</span>
+            <span>{t("workspace.actual")}:</span>
             <TotalEditor
               total={actualTotal}
               onCommit={(newTotal) => {
@@ -911,6 +912,7 @@ function MonthCell({
   onCommitAmount: (amount: number) => void;
   onCommitActual: (actual: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex min-w-0 flex-col items-stretch gap-1 rounded-md border border-border bg-background px-1.5 py-1">
       <span className="truncate text-center text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -920,7 +922,7 @@ function MonthCell({
       <NumberInput
         value={actual}
         onCommit={onCommitActual}
-        placeholder="toteuma"
+        placeholder={t("workspace.actual").toLowerCase()}
         className="text-primary"
       />
     </div>
