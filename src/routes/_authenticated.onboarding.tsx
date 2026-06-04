@@ -1,14 +1,20 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { createTenant, joinTenant } from "@/lib/api/tenants.functions";
+import { createTenant, joinTenant, listMyTenants } from "@/lib/api/tenants.functions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   head: () => ({ meta: [{ title: "Get started — Tracker" }] }),
+  beforeLoad: async () => {
+    const tenants = await listMyTenants();
+    if (tenants.length > 0) {
+      throw redirect({ to: "/app/$tenantId", params: { tenantId: tenants[0].id } });
+    }
+  },
   component: Onboarding,
 });
 
