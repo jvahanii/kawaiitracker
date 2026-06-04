@@ -1018,7 +1018,9 @@ function FolderTreePane({
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
+  onManageVisibility,
   onCreateItemInFolder,
+  isAdmin,
 }: {
   tenantId: string;
   t: TFunc;
@@ -1040,7 +1042,9 @@ function FolderTreePane({
   onCreateFolder: (name: string, parentId: string | null) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
+  onManageVisibility: (id: string) => void;
   onCreateItemInFolder: (folderId: string | null) => void;
+  isAdmin: boolean;
 }) {
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const isOpen = (id: string) => openMap[id] !== false;
