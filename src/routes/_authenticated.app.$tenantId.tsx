@@ -300,17 +300,20 @@ function WorkspacePage() {
             setDragOverItemId={setDragOverItemId}
             dragOverFolderId={dragOverFolderId}
             setDragOverFolderId={setDragOverFolderId}
+            isAdmin={isAdmin}
             onReorder={(ids) => reorderM.mutate(ids)}
             onMoveItem={(id, folderId) => moveItemM.mutate({ id, folderId })}
             onCreateFolder={(name, parentId) => createFolderM.mutate({ name, parentId })}
             onRenameFolder={(id, name) => renameFolderM.mutate({ id, name })}
             onDeleteFolder={(id) => deleteFolderM.mutate(id)}
+            onManageVisibility={(id) => setVisibilityFolderId(id)}
             onCreateItemInFolder={(folderId) => {
               const title = prompt(t("workspace.newItemPlaceholder"));
               if (title?.trim()) createM.mutate({ title: title.trim(), folderId });
             }}
           />
         </aside>
+
 
 
         {/* Right pane */}
