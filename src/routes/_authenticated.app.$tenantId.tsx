@@ -287,7 +287,7 @@ function WorkspacePage() {
                 params={{ tenantId }}
                 className="rounded-md px-2 py-1 text-xs hover:bg-accent"
               >
-                Audit log
+                Muutoshistoria
               </Link>
               <button
                 type="button"
