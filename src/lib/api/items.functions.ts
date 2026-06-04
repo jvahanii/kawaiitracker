@@ -18,6 +18,7 @@ export type ItemRow = {
   assigneeName: string | null;
   notes: string;
   amount: number | null;
+  folderId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -29,9 +30,11 @@ type RawItem = {
   assignee_id: string | null;
   notes: string;
   amount: number | string | null;
+  folder_id: string | null;
   created_at: string;
   updated_at: string;
 };
+
 
 export const listItems = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -39,7 +42,7 @@ export const listItems = createServerFn({ method: "GET" })
   .handler(async ({ context, data }) => {
     const { data: rows, error } = await context.supabase
       .from("items")
-      .select("id, title, status, assignee_id, notes, amount, created_at, updated_at")
+      .select("id, title, status, assignee_id, notes, amount, folder_id, created_at, updated_at")
       .eq("tenant_id", data.tenantId)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
@@ -94,6 +97,7 @@ export const listItems = createServerFn({ method: "GET" })
         assigneeName: assignees.length > 0 ? assignees.map((a) => a.name).join(", ") : null,
         notes: r.notes ?? "",
         amount: r.amount === null ? null : Number(r.amount),
+        folderId: r.folder_id ?? null,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       };
@@ -103,7 +107,13 @@ export const listItems = createServerFn({ method: "GET" })
 export const createItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
-    z.object({ tenantId: z.string().uuid(), title: z.string().min(1).max(200) }).parse(d),
+    z
+      .object({
+        tenantId: z.string().uuid(),
+        title: z.string().min(1).max(200),
+        folderId: z.string().uuid().nullable().optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ context, data }) => {
     const { data: maxRow } = await context.supabase
@@ -121,6 +131,7 @@ export const createItem = createServerFn({ method: "POST" })
         title: data.title.trim(),
         created_by: context.userId,
         sort_order: nextOrder,
+        folder_id: data.folderId ?? null,
       })
       .select("id")
       .single();
@@ -136,6 +147,7 @@ const updateInput = z.object({
   assigneeIds: z.array(z.string().uuid()).max(50).optional(),
   notes: z.string().max(20_000).optional(),
   amount: z.number().min(-1_000_000_000).max(1_000_000_000).nullable().optional(),
+  folderId: z.string().uuid().nullable().optional(),
 });
 
 export const updateItem = createServerFn({ method: "POST" })
@@ -147,6 +159,7 @@ export const updateItem = createServerFn({ method: "POST" })
     if (data.status !== undefined) patch.status = data.status;
     if (data.notes !== undefined) patch.notes = data.notes;
     if (data.amount !== undefined) patch.amount = data.amount;
+    if (data.folderId !== undefined) patch.folder_id = data.folderId;
 
     // Always touch updated_at when something changes; skip if only that
     const onlyTimestamp = Object.keys(patch).length === 1 && data.assigneeIds === undefined;

@@ -1,9 +1,9 @@
 import { createFileRoute, getRouteApi, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, FolderPlus, GripVertical, Pencil, Trash2 } from "lucide-react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SavingsChart } from "@/components/SavingsChart";
@@ -19,6 +19,13 @@ import {
   type ItemRow,
   type ItemStatus,
 } from "@/lib/api/items.functions";
+import {
+  createFolder,
+  deleteFolder,
+  listFolders,
+  updateFolder,
+  type FolderRow,
+} from "@/lib/api/folders.functions";
 import { listEntriesForItem, upsertEntry } from "@/lib/api/entries.functions";
 import {
   listTasksForItem,
@@ -57,6 +64,10 @@ function WorkspacePage() {
   const updateFn = useServerFn(updateItem);
   const deleteFn = useServerFn(deleteItem);
   const reorderFn = useServerFn(reorderItems);
+  const listFoldersFn = useServerFn(listFolders);
+  const createFolderFn = useServerFn(createFolder);
+  const updateFolderFn = useServerFn(updateFolder);
+  const deleteFolderFn = useServerFn(deleteFolder);
 
   const itemsQ = useQuery({
     queryKey: ["items", tenantId],
@@ -66,11 +77,17 @@ function WorkspacePage() {
     queryKey: ["members", tenantId],
     queryFn: () => membersFn({ data: { tenantId } }),
   });
+  const foldersQ = useQuery({
+    queryKey: ["folders", tenantId],
+    queryFn: () => listFoldersFn({ data: { tenantId } }),
+  });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "ROOT">(null);
+  const folders = foldersQ.data ?? [];
 
   const items = itemsQ.data ?? [];
   const filtered = useMemo(() => {
@@ -90,10 +107,47 @@ function WorkspacePage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ["items", tenantId] });
 
   const createM = useMutation({
-    mutationFn: (title: string) => createFn({ data: { tenantId, title } }),
+    mutationFn: (vars: { title: string; folderId: string | null }) =>
+      createFn({ data: { tenantId, title: vars.title, folderId: vars.folderId } }),
     onSuccess: (r) => {
       invalidate();
       setSelectedId(r.id);
+    },
+  });
+  const moveItemM = useMutation({
+    mutationFn: (vars: { id: string; folderId: string | null }) =>
+      updateFn({ data: { tenantId, id: vars.id, folderId: vars.folderId } }),
+    onMutate: (vars) => {
+      const prev = qc.getQueryData<ItemRow[]>(["items", tenantId]);
+      if (prev) {
+        qc.setQueryData<ItemRow[]>(
+          ["items", tenantId],
+          prev.map((it) => (it.id === vars.id ? { ...it, folderId: vars.folderId } : it)),
+        );
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["items", tenantId], ctx.prev);
+    },
+    onSuccess: () => invalidate(),
+  });
+  const invalidateFolders = () => qc.invalidateQueries({ queryKey: ["folders", tenantId] });
+  const createFolderM = useMutation({
+    mutationFn: (vars: { name: string; parentId: string | null }) =>
+      createFolderFn({ data: { tenantId, name: vars.name, parentId: vars.parentId } }),
+    onSuccess: invalidateFolders,
+  });
+  const renameFolderM = useMutation({
+    mutationFn: (vars: { id: string; name: string }) =>
+      updateFolderFn({ data: { tenantId, id: vars.id, name: vars.name } }),
+    onSuccess: invalidateFolders,
+  });
+  const deleteFolderM = useMutation({
+    mutationFn: (id: string) => deleteFolderFn({ data: { tenantId, id } }),
+    onSuccess: () => {
+      invalidateFolders();
+      invalidate();
     },
   });
   const deleteM = useMutation({
@@ -207,7 +261,7 @@ function WorkspacePage() {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!newTitle.trim()) return;
-                createM.mutate(newTitle.trim());
+                createM.mutate({ title: newTitle.trim(), folderId: null });
                 setNewTitle("");
               }}
               className="flex gap-1"
@@ -226,84 +280,34 @@ function WorkspacePage() {
               </button>
             </form>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {itemsQ.isLoading ? (
-              <p className="p-4 text-sm text-muted-foreground">{t("common.loading")}</p>
-            ) : filtered.length === 0 ? (
-              <p className="p-4 text-sm text-muted-foreground">{t("workspace.noItems")}</p>
-            ) : (
-              <ul>
-                {filtered.map((it) => (
-                  <li
-                    key={it.id}
-                    draggable={!search}
-                    onDragStart={(e) => {
-                      setDraggingItemId(it.id);
-                      e.dataTransfer.effectAllowed = "move";
-                    }}
-                    onDragEnd={() => {
-                      setDraggingItemId(null);
-                      setDragOverItemId(null);
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
-                      if (dragOverItemId !== it.id) setDragOverItemId(it.id);
-                    }}
-                    onDragLeave={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                        setDragOverItemId(null);
-                      }
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (!draggingItemId || draggingItemId === it.id) {
-                        setDraggingItemId(null);
-                        setDragOverItemId(null);
-                        return;
-                      }
-                      const list = [...items];
-                      const fromIdx = list.findIndex((i) => i.id === draggingItemId);
-                      const toIdx = list.findIndex((i) => i.id === it.id);
-                      const [removed] = list.splice(fromIdx, 1);
-                      list.splice(toIdx, 0, removed);
-                      reorderM.mutate(list.map((i) => i.id));
-                      setDraggingItemId(null);
-                      setDragOverItemId(null);
-                    }}
-                    className={`flex items-stretch border-b border-border transition-opacity ${
-                      draggingItemId === it.id ? "opacity-40" : ""
-                    } ${
-                      dragOverItemId === it.id && draggingItemId !== it.id
-                        ? "border-t-2 border-t-primary"
-                        : ""
-                    }`}
-                  >
-                    {!search && (
-                      <span
-                        className="flex cursor-grab items-center px-1.5 text-muted-foreground hover:text-foreground active:cursor-grabbing"
-                        title="Järjestä vetämällä"
-                      >
-                        <GripVertical size={14} />
-                      </span>
-                    )}
-                    <button
-                      onClick={() => setSelectedId(it.id)}
-                      className={`flex min-w-0 flex-1 flex-col items-start gap-1 py-2 pr-3 text-left text-sm hover:bg-accent ${
-                        selectedId === it.id ? "bg-accent" : ""
-                      } ${!search ? "" : "pl-3"}`}
-                    >
-                      <span className="line-clamp-1 font-medium">{it.title}</span>
-                      {it.assigneeName ? (
-                        <span className="text-xs text-muted-foreground">{it.assigneeName}</span>
-                      ) : null}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <FolderTreePane
+            tenantId={tenantId}
+            t={t}
+            search={search}
+            items={items}
+            filtered={filtered}
+            folders={folders}
+            loading={itemsQ.isLoading || foldersQ.isLoading}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+            draggingItemId={draggingItemId}
+            setDraggingItemId={setDraggingItemId}
+            dragOverItemId={dragOverItemId}
+            setDragOverItemId={setDragOverItemId}
+            dragOverFolderId={dragOverFolderId}
+            setDragOverFolderId={setDragOverFolderId}
+            onReorder={(ids) => reorderM.mutate(ids)}
+            onMoveItem={(id, folderId) => moveItemM.mutate({ id, folderId })}
+            onCreateFolder={(name, parentId) => createFolderM.mutate({ name, parentId })}
+            onRenameFolder={(id, name) => renameFolderM.mutate({ id, name })}
+            onDeleteFolder={(id) => deleteFolderM.mutate(id)}
+            onCreateItemInFolder={(folderId) => {
+              const title = prompt(t("workspace.newItemPlaceholder"));
+              if (title?.trim()) createM.mutate({ title: title.trim(), folderId });
+            }}
+          />
         </aside>
+
 
         {/* Right pane */}
         <main className="flex min-h-0 flex-1 flex-col">
@@ -315,6 +319,7 @@ function WorkspacePage() {
                 tenantId={tenantId}
                 item={selected}
                 members={membersQ.data ?? []}
+                folders={folders}
                 onSave={async (patch) => {
                   await updateFn({ data: { tenantId, id: selected.id, ...patch } });
                   invalidate();
@@ -585,6 +590,7 @@ function ItemDetail({
   tenantId,
   item,
   members,
+  folders,
   onSave,
   onEntriesChanged,
   onDelete,
@@ -592,7 +598,13 @@ function ItemDetail({
   tenantId: string;
   item: ItemRow;
   members: { id: string; displayName: string }[];
-  onSave: (patch: { title?: string; status?: ItemStatus; assigneeIds?: string[] }) => Promise<void>;
+  folders: FolderRow[];
+  onSave: (patch: {
+    title?: string;
+    status?: ItemStatus;
+    assigneeIds?: string[];
+    folderId?: string | null;
+  }) => Promise<void>;
 
   onEntriesChanged: () => void;
   onDelete: () => void;
@@ -687,9 +699,28 @@ function ItemDetail({
             ) : null}
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground">{t("workspace.folder")}</span>
+          <select
+            value={item.folderId ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              void onSave({ folderId: v === "" ? null : v });
+            }}
+            className="input h-8 min-w-[12rem] py-0 text-sm"
+          >
+            <option value="">{t("workspace.uncategorized")}</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {folderPathLabel(f, folders)}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <TaskLists tenantId={tenantId} itemId={item.id} />
+
 
       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
         <span>
@@ -940,5 +971,310 @@ function TotalEditor({ total, onCommit }: { total: number; onCommit: (newTotal: 
       }}
       className="h-6 w-24 rounded border border-border bg-background px-1 text-right font-mono text-xs font-semibold text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
     />
+  );
+}
+
+function folderPathLabel(f: FolderRow, all: FolderRow[]): string {
+  const parts: string[] = [f.name];
+  let cur: FolderRow | undefined = f;
+  const byId = new Map(all.map((x) => [x.id, x]));
+  const seen = new Set<string>([f.id]);
+  while (cur?.parentId) {
+    const p = byId.get(cur.parentId);
+    if (!p || seen.has(p.id)) break;
+    seen.add(p.id);
+    parts.unshift(p.name);
+    cur = p;
+  }
+  return parts.join(" / ");
+}
+
+type TFunc = (key: string, opts?: Record<string, unknown>) => string;
+
+function FolderTreePane({
+  t,
+  search,
+  items,
+  filtered,
+  folders,
+  loading,
+  selectedId,
+  setSelectedId,
+  draggingItemId,
+  setDraggingItemId,
+  dragOverItemId,
+  setDragOverItemId,
+  dragOverFolderId,
+  setDragOverFolderId,
+  onReorder,
+  onMoveItem,
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  onCreateItemInFolder,
+}: {
+  tenantId: string;
+  t: TFunc;
+  search: string;
+  items: ItemRow[];
+  filtered: ItemRow[];
+  folders: FolderRow[];
+  loading: boolean;
+  selectedId: string | null;
+  setSelectedId: (id: string) => void;
+  draggingItemId: string | null;
+  setDraggingItemId: (id: string | null) => void;
+  dragOverItemId: string | null;
+  setDragOverItemId: (id: string | null) => void;
+  dragOverFolderId: string | null | "ROOT";
+  setDragOverFolderId: (id: string | null | "ROOT") => void;
+  onReorder: (ids: string[]) => void;
+  onMoveItem: (id: string, folderId: string | null) => void;
+  onCreateFolder: (name: string, parentId: string | null) => void;
+  onRenameFolder: (id: string, name: string) => void;
+  onDeleteFolder: (id: string) => void;
+  onCreateItemInFolder: (folderId: string | null) => void;
+}) {
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+  const isOpen = (id: string) => openMap[id] !== false;
+  const toggle = (id: string) => setOpenMap((p) => ({ ...p, [id]: !isOpen(id) }));
+
+  const childrenByParent = useMemo(() => {
+    const m = new Map<string | null, FolderRow[]>();
+    for (const f of folders) {
+      const arr = m.get(f.parentId) ?? [];
+      arr.push(f);
+      m.set(f.parentId, arr);
+    }
+    return m;
+  }, [folders]);
+
+  const itemsByFolder = useMemo(() => {
+    const m = new Map<string | null, ItemRow[]>();
+    for (const it of filtered) {
+      const arr = m.get(it.folderId) ?? [];
+      arr.push(it);
+      m.set(it.folderId, arr);
+    }
+    return m;
+  }, [filtered]);
+
+  const renderItem = (it: ItemRow, depth: number) => (
+    <li
+      key={it.id}
+      draggable={!search}
+      onDragStart={(e) => {
+        setDraggingItemId(it.id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
+      onDragEnd={() => {
+        setDraggingItemId(null);
+        setDragOverItemId(null);
+        setDragOverFolderId(null);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (dragOverItemId !== it.id) setDragOverItemId(it.id);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverItemId(null);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!draggingItemId || draggingItemId === it.id) {
+          setDraggingItemId(null);
+          setDragOverItemId(null);
+          return;
+        }
+        const dragging = items.find((x) => x.id === draggingItemId);
+        if (dragging && dragging.folderId !== it.folderId) {
+          onMoveItem(draggingItemId, it.folderId);
+        } else {
+          const list = [...items];
+          const fromIdx = list.findIndex((i) => i.id === draggingItemId);
+          const toIdx = list.findIndex((i) => i.id === it.id);
+          if (fromIdx >= 0 && toIdx >= 0) {
+            const [removed] = list.splice(fromIdx, 1);
+            list.splice(toIdx, 0, removed);
+            onReorder(list.map((i) => i.id));
+          }
+        }
+        setDraggingItemId(null);
+        setDragOverItemId(null);
+      }}
+      className={`flex items-stretch border-b border-border transition-opacity ${
+        draggingItemId === it.id ? "opacity-40" : ""
+      } ${
+        dragOverItemId === it.id && draggingItemId !== it.id
+          ? "border-t-2 border-t-primary"
+          : ""
+      }`}
+      style={{ paddingLeft: `${depth * 12}px` }}
+    >
+      {!search && (
+        <span className="flex cursor-grab items-center px-1.5 text-muted-foreground hover:text-foreground active:cursor-grabbing">
+          <GripVertical size={14} />
+        </span>
+      )}
+      <button
+        onClick={() => setSelectedId(it.id)}
+        className={`flex min-w-0 flex-1 flex-col items-start gap-1 py-2 pr-3 text-left text-sm hover:bg-accent ${
+          selectedId === it.id ? "bg-accent" : ""
+        } ${!search ? "" : "pl-3"}`}
+      >
+        <span className="line-clamp-1 font-medium">{it.title}</span>
+        {it.assigneeName ? (
+          <span className="text-xs text-muted-foreground">{it.assigneeName}</span>
+        ) : null}
+      </button>
+    </li>
+  );
+
+  const renderFolder = (folder: FolderRow, depth: number): ReactNode => {
+    const open = isOpen(folder.id);
+    const children = childrenByParent.get(folder.id) ?? [];
+    const folderItems = itemsByFolder.get(folder.id) ?? [];
+    const dragHover = dragOverFolderId === folder.id;
+    return (
+      <li key={folder.id}>
+        <div
+          onDragOver={(e) => {
+            if (!draggingItemId) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            if (dragOverFolderId !== folder.id) setDragOverFolderId(folder.id);
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverFolderId(null);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (draggingItemId) onMoveItem(draggingItemId, folder.id);
+            setDraggingItemId(null);
+            setDragOverFolderId(null);
+          }}
+          className={`group flex items-center gap-1 border-b border-border py-1 pr-1 text-sm ${
+            dragHover ? "bg-primary/10" : "bg-muted/30"
+          }`}
+          style={{ paddingLeft: `${depth * 12 + 4}px` }}
+        >
+          <button onClick={() => toggle(folder.id)} className="p-0.5 text-muted-foreground hover:text-foreground" aria-label="toggle">
+            {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
+          <span className="flex-1 truncate font-medium">{folder.name}</span>
+          <button
+            type="button"
+            onClick={() => {
+              const name = window.prompt(t("workspace.newFolderPrompt"));
+              if (name?.trim()) onCreateFolder(name.trim(), folder.id);
+            }}
+            className="p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+            title={t("workspace.addSubfolder")}
+          >
+            <FolderPlus size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onCreateItemInFolder(folder.id)}
+            className="px-1 text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+            title={t("workspace.newItemPlaceholder")}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const name = window.prompt(t("workspace.folder"), folder.name);
+              if (name?.trim() && name.trim() !== folder.name) onRenameFolder(folder.id, name.trim());
+            }}
+            className="p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+            title={t("workspace.renameFolder")}
+          >
+            <Pencil size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(t("workspace.confirmDeleteFolder"))) onDeleteFolder(folder.id);
+            }}
+            className="p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+            title={t("common.delete")}
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+        {open && (
+          <ul>
+            {children.map((c) => renderFolder(c, depth + 1))}
+            {folderItems.map((it) => renderItem(it, depth + 1))}
+          </ul>
+        )}
+      </li>
+    );
+  };
+
+  const rootFolders = childrenByParent.get(null) ?? [];
+  const rootItems = itemsByFolder.get(null) ?? [];
+
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="flex items-center justify-between border-b border-border px-2 py-1">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+          {t("workspace.folders")}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            const name = window.prompt(t("workspace.newFolderPrompt"));
+            if (name?.trim()) onCreateFolder(name.trim(), null);
+          }}
+          className="flex items-center gap-1 rounded px-2 py-0.5 text-xs hover:bg-accent"
+          title={t("workspace.newFolder")}
+        >
+          <FolderPlus size={12} />
+          {t("workspace.newFolder")}
+        </button>
+      </div>
+      {loading ? (
+        <p className="p-4 text-sm text-muted-foreground">{t("common.loading")}</p>
+      ) : (
+        <ul>
+          {rootFolders.map((f) => renderFolder(f, 0))}
+          {/* Root (uncategorized) drop zone */}
+          <li>
+            <div
+              onDragOver={(e) => {
+                if (!draggingItemId) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (dragOverFolderId !== "ROOT") setDragOverFolderId("ROOT");
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverFolderId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (draggingItemId) onMoveItem(draggingItemId, null);
+                setDraggingItemId(null);
+                setDragOverFolderId(null);
+              }}
+              className={`border-b border-border py-1 pl-2 text-xs uppercase tracking-wide text-muted-foreground ${
+                dragOverFolderId === "ROOT" ? "bg-primary/10" : ""
+              }`}
+            >
+              {t("workspace.uncategorized")}
+            </div>
+            {rootItems.length === 0 && folders.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">{t("workspace.noItems")}</p>
+            ) : (
+              <ul>{rootItems.map((it) => renderItem(it, 0))}</ul>
+            )}
+          </li>
+        </ul>
+      )}
+    </div>
   );
 }

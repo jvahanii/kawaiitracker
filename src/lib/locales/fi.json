@@ -98,6 +98,14 @@
     "daysLeft": "{{count}} päivää jäljellä",
     "updated": "Päivitetty {{when}}",
     "confirmDelete": "Poistetaanko tämä?",
+    "folder": "Kansio",
+    "folders": "Kansiot",
+    "newFolder": "Uusi kansio",
+    "newFolderPrompt": "Kansion nimi",
+    "addSubfolder": "Lisää alikansio",
+    "renameFolder": "Nimeä kansio uudelleen",
+    "confirmDeleteFolder": "Poistetaanko tämä kansio? Sen kohteet siirtyvät kategorisoimattomiksi.",
+    "uncategorized": "Kategorisoimattomat",
     "manageUsers": "Käyttäjät"
   },
   "members": {
