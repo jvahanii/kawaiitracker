@@ -9,6 +9,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SavingsChart } from "@/components/SavingsChart";
 
 import { ensureSupabase } from "@/lib/supabase/client";
+import { formatDateTime } from "@/lib/format-date";
 import { listMyTenants, listTenantMembers } from "@/lib/api/tenants.functions";
 import {
   createItem,
@@ -810,7 +811,7 @@ function ItemDetail({
               ? t("common.unsaved")
               : savedAt
                 ? t("common.saved")
-                : t("workspace.updated", { when: new Date(item.updatedAt).toLocaleString() })}
+                : t("workspace.updated", { when: formatDateTime(item.updatedAt) })}
         </span>
         <button
           onClick={() => {
