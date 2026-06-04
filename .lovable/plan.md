@@ -1,33 +1,28 @@
-## Fix red goal line in SavingsChart
+## Plan: Automatic audit log retention
 
-**Problems**
-1. The line doesn't render. The chart wraps the destructive token as `hsl(var(--destructive))`, but in `src/styles.css` `--destructive` is defined as `oklch(...)`. Wrapping an oklch value in `hsl(...)` yields an invalid color, so Recharts draws nothing. (The existing goal-date `ReferenceLine` has the same bug but is less visible.)
-2. The current implementation draws a diagonal "target pace" `<Line dataKey="__target">` from 0 → goal across the year. The user wants a horizontal line at the goal amount.
+Prune `audit_log` rows older than **12 months** on a nightly schedule.
 
-**Changes (only `src/components/SavingsChart.tsx`)**
+### 1. Database migration
+New migration `supabase/migrations/<ts>_audit_log_retention.sql`:
+- `prune_audit_log(retention_days int default 365)` SECURITY DEFINER function that deletes from `public.audit_log` where `created_at < now() - interval`. Returns row count.
+- Enable `pg_cron` extension (if not already).
+- Schedule nightly job `audit-log-prune` at `15 3 * * *` UTC calling `select public.prune_audit_log(365);`.
 
-1. Remove the diagonal target line:
-   - Drop the `__target` computation in the `useMemo` (lines ~149–153 `goalTime`/`targetSpan` and lines ~171–174 `row.__target = …`).
-   - Remove the `<Line dataKey="__target" …>` block (lines ~457–469).
+### 2. Manual trigger endpoint (optional fallback)
+`src/routes/api/public/prune-audit-log.ts` — POST handler that:
+- Verifies `x-cron-secret` header against `CRON_SECRET` env var.
+- Calls `supabaseAdmin.rpc('prune_audit_log', { retention_days: 365 })`.
+- Returns `{ deleted: <count> }`.
 
-2. Add a horizontal `<ReferenceLine y={goal.amount}>` inside the `ComposedChart`, rendered only when `goal.amount > 0`:
-   ```tsx
-   <ReferenceLine
-     y={goal.amount}
-     stroke="var(--destructive)"
-     strokeDasharray="4 4"
-     strokeWidth={1.5}
-     ifOverflow="extendDomain"
-     label={{
-       value: t("workspace.goalAmountShort") ?? "Goal",
-       fill: "var(--destructive)",
-       fontSize: 11,
-       position: "insideTopRight",
-     }}
-   />
-   ```
-   `ifOverflow="extendDomain"` ensures the line is visible even when the goal exceeds the current Y max.
+This gives a way to manually run pruning or use external schedulers if pg_cron is ever disabled. Requires adding `CRON_SECRET` to secrets.
 
-3. Fix the existing goal-date `ReferenceLine` stroke/label to use `var(--destructive)` instead of `hsl(var(--destructive))` so it also renders correctly.
+### 3. Update `supabase-schema.sql`
+Append the retention function + cron schedule to the reference schema file so it matches.
 
-No other files or business logic touched.
+### Notes
+- Retention: 12 months. Adjustable via the function arg if needed later.
+- No UI changes; existing audit page already fetches latest 500 rows.
+- No changes to triggers or `list_audit_log` RPC.
+
+### Question
+Skip the manual `/api/public` endpoint and rely solely on pg_cron? Saves adding a secret. Let me know — otherwise I'll include both.
