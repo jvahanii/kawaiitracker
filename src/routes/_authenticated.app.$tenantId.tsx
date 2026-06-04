@@ -282,6 +282,13 @@ function WorkspacePage() {
               >
                 {t("workspace.manageUsers")}
               </Link>
+              <Link
+                to="/audit/$tenantId"
+                params={{ tenantId }}
+                className="rounded-md px-2 py-1 text-xs hover:bg-accent"
+              >
+                Audit log
+              </Link>
               <button
                 type="button"
                 onClick={copyJoinCode}
