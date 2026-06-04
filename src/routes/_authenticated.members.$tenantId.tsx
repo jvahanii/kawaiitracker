@@ -123,6 +123,18 @@ function MembersPage() {
     onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
   });
 
+  const setPwM = useMutation({
+    mutationFn: (v: { userId: string; password: string }) =>
+      setPasswordFn({ data: { tenantId, ...v } }),
+    onSuccess: () => {
+      setPwUserId(null);
+      setPwValue("");
+      alert("Password updated.");
+    },
+    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+  });
+
+
   const members = membersQ.data ?? [];
   const adminCount = members.filter((m) => m.role === "admin").length;
   const pageError = tenantsQ.error ?? membersQ.error;
