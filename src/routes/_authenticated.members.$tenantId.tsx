@@ -9,6 +9,7 @@ import {
   listMyTenants,
   listTenantMembers,
   removeMember,
+  setMemberPassword,
   updateMemberName,
   updateMemberRole,
 } from "@/lib/api/tenants.functions";
@@ -34,6 +35,7 @@ function MembersPage() {
   const updateNameFn = useServerFn(updateMemberName);
   const removeFn = useServerFn(removeMember);
   const addByEmailFn = useServerFn(addMemberByEmail);
+  const setPasswordFn = useServerFn(setMemberPassword);
 
   const tenantsQ = useQuery({
     queryKey: ["my-tenants"],
@@ -67,6 +69,8 @@ function MembersPage() {
   const [addRole, setAddRole] = useState<"admin" | "member">("member");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [pwUserId, setPwUserId] = useState<string | null>(null);
+  const [pwValue, setPwValue] = useState("");
 
   const copyJoinCode = async () => {
     try {
@@ -118,6 +122,18 @@ function MembersPage() {
     },
     onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
   });
+
+  const setPwM = useMutation({
+    mutationFn: (v: { userId: string; password: string }) =>
+      setPasswordFn({ data: { tenantId, ...v } }),
+    onSuccess: () => {
+      setPwUserId(null);
+      setPwValue("");
+      alert("Password updated.");
+    },
+    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+  });
+
 
   const members = membersQ.data ?? [];
   const adminCount = members.filter((m) => m.role === "admin").length;
@@ -246,6 +262,16 @@ function MembersPage() {
                     </select>
                     <button
                       type="button"
+                      onClick={() => {
+                        setPwUserId(m.id);
+                        setPwValue("");
+                      }}
+                      className="rounded-md px-2 py-1 text-sm hover:bg-accent"
+                    >
+                      Set password
+                    </button>
+                    <button
+                      type="button"
                       disabled={removeM.isPending}
                       onClick={() => {
                         if (confirm(t("members.confirmRemove", { name: m.displayName }))) {
@@ -257,6 +283,7 @@ function MembersPage() {
                       {t("members.remove")}
                     </button>
                   </div>
+
                 </li>
               );
             })}
@@ -350,6 +377,62 @@ function MembersPage() {
           </div>
         </div>
       ) : null}
+
+      {pwUserId ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setPwUserId(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg border border-border bg-background p-6 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="mb-2 text-lg font-semibold">Set password</h2>
+            <p className="mb-3 text-xs text-muted-foreground">
+              {members.find((m) => m.id === pwUserId)?.email}
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (pwValue.length < 8) {
+                  alert("Password must be at least 8 characters.");
+                  return;
+                }
+                setPwM.mutate({ userId: pwUserId, password: pwValue });
+              }}
+              className="flex flex-col gap-3"
+            >
+              <input
+                type="text"
+                autoFocus
+                value={pwValue}
+                onChange={(e) => setPwValue(e.target.value)}
+                placeholder="New password (min 8 chars)"
+                className="input h-9 text-sm"
+                minLength={8}
+                maxLength={72}
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPwUserId(null)}
+                  className="rounded-md px-3 py-1.5 text-sm hover:bg-accent"
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={setPwM.isPending || pwValue.length < 8}
+                  className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {setPwM.isPending ? t("common.saving") : "Save"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
+
   );
 }
