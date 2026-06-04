@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronRight, FolderPlus, GripVertical, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, FolderPlus, GripVertical, Lock, Pencil, Trash2 } from "lucide-react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SavingsChart } from "@/components/SavingsChart";
@@ -22,7 +22,9 @@ import {
 import {
   createFolder,
   deleteFolder,
+  getFolderVisibility,
   listFolders,
+  setFolderVisibility,
   updateFolder,
   type FolderRow,
 } from "@/lib/api/folders.functions";
@@ -87,7 +89,9 @@ function WorkspacePage() {
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "ROOT">(null);
+  const [visibilityFolderId, setVisibilityFolderId] = useState<string | null>(null);
   const folders = foldersQ.data ?? [];
+  const isAdmin = currentTenant.role === "admin";
 
   const items = itemsQ.data ?? [];
   const filtered = useMemo(() => {
@@ -296,17 +300,20 @@ function WorkspacePage() {
             setDragOverItemId={setDragOverItemId}
             dragOverFolderId={dragOverFolderId}
             setDragOverFolderId={setDragOverFolderId}
+            isAdmin={isAdmin}
             onReorder={(ids) => reorderM.mutate(ids)}
             onMoveItem={(id, folderId) => moveItemM.mutate({ id, folderId })}
             onCreateFolder={(name, parentId) => createFolderM.mutate({ name, parentId })}
             onRenameFolder={(id, name) => renameFolderM.mutate({ id, name })}
             onDeleteFolder={(id) => deleteFolderM.mutate(id)}
+            onManageVisibility={(id) => setVisibilityFolderId(id)}
             onCreateItemInFolder={(folderId) => {
               const title = prompt(t("workspace.newItemPlaceholder"));
               if (title?.trim()) createM.mutate({ title: title.trim(), folderId });
             }}
           />
         </aside>
+
 
 
         {/* Right pane */}
@@ -335,9 +342,24 @@ function WorkspacePage() {
           </div>
         </main>
       </div>
+      {visibilityFolderId ? (
+        <FolderVisibilityDialog
+          tenantId={tenantId}
+          folderId={visibilityFolderId}
+          folderName={folders.find((f) => f.id === visibilityFolderId)?.name ?? ""}
+          members={membersQ.data ?? []}
+          onClose={() => setVisibilityFolderId(null)}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["folders", tenantId] });
+            qc.invalidateQueries({ queryKey: ["items", tenantId] });
+            setVisibilityFolderId(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
+
 
 function TaskLists({
   tenantId,
@@ -1011,7 +1033,9 @@ function FolderTreePane({
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
+  onManageVisibility,
   onCreateItemInFolder,
+  isAdmin,
 }: {
   tenantId: string;
   t: TFunc;
@@ -1033,7 +1057,9 @@ function FolderTreePane({
   onCreateFolder: (name: string, parentId: string | null) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
+  onManageVisibility: (id: string) => void;
   onCreateItemInFolder: (folderId: string | null) => void;
+  isAdmin: boolean;
 }) {
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const isOpen = (id: string) => openMap[id] !== false;
@@ -1165,6 +1191,9 @@ function FolderTreePane({
             {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
           <span className="flex-1 truncate font-medium">{folder.name}</span>
+          {folder.restricted ? (
+            <Lock size={11} className="text-muted-foreground" aria-label="restricted" />
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -1184,6 +1213,16 @@ function FolderTreePane({
           >
             +
           </button>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => onManageVisibility(folder.id)}
+              className="p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
+              title={t("workspace.folderVisibility")}
+            >
+              <Lock size={12} />
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -1275,6 +1314,128 @@ function FolderTreePane({
           </li>
         </ul>
       )}
+    </div>
+  );
+}
+
+function FolderVisibilityDialog({
+  tenantId,
+  folderId,
+  folderName,
+  members,
+  onClose,
+  onSaved,
+}: {
+  tenantId: string;
+  folderId: string;
+  folderName: string;
+  members: { id: string; displayName: string; email: string; role: string }[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const getFn = useServerFn(getFolderVisibility);
+  const setFn = useServerFn(setFolderVisibility);
+  const visQ = useQuery({
+    queryKey: ["folder-visibility", tenantId, folderId],
+    queryFn: () => getFn({ data: { tenantId, folderId } }),
+  });
+  const [restricted, setRestricted] = useState(false);
+  const [allowed, setAllowed] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (visQ.data) {
+      setRestricted(visQ.data.restricted);
+      setAllowed(new Set(visQ.data.userIds));
+    }
+  }, [visQ.data]);
+
+  const saveM = useMutation({
+    mutationFn: () =>
+      setFn({
+        data: { tenantId, folderId, restricted, userIds: Array.from(allowed) },
+      }),
+    onSuccess: onSaved,
+    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-1 text-lg font-semibold">{t("workspace.folderVisibilityTitle")}</h2>
+        <p className="mb-3 text-sm text-muted-foreground">{folderName}</p>
+        <p className="mb-4 text-xs text-muted-foreground">{t("workspace.folderVisibilityBody")}</p>
+
+        <label className="mb-3 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={restricted}
+            onChange={(e) => setRestricted(e.target.checked)}
+          />
+          <span>{t("workspace.restrictAccess")}</span>
+        </label>
+
+        {restricted ? (
+          <div className="mb-4">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("workspace.allowedMembers")}
+            </div>
+            {visQ.isLoading ? (
+              <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
+            ) : (
+              <ul className="max-h-64 space-y-1 overflow-y-auto rounded border border-border p-2">
+                {members.map((m) => (
+                  <li key={m.id}>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        disabled={m.role === "admin"}
+                        checked={m.role === "admin" || allowed.has(m.id)}
+                        onChange={(e) => {
+                          setAllowed((prev) => {
+                            const next = new Set(prev);
+                            if (e.target.checked) next.add(m.id);
+                            else next.delete(m.id);
+                            return next;
+                          });
+                        }}
+                      />
+                      <span className="flex-1 truncate">{m.displayName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {m.role === "admin" ? t("members.admin") : ""}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md px-3 py-1.5 text-sm hover:bg-accent"
+          >
+            {t("common.cancel")}
+          </button>
+          <button
+            type="button"
+            disabled={saveM.isPending || visQ.isLoading}
+            onClick={() => saveM.mutate()}
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
+            {saveM.isPending ? t("common.saving") : t("workspace.save")}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

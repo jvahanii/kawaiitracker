@@ -8,6 +8,7 @@ export type FolderRow = {
   parentId: string | null;
   name: string;
   sortOrder: number;
+  restricted: boolean;
 };
 
 type RawFolder = {
@@ -15,6 +16,7 @@ type RawFolder = {
   parent_id: string | null;
   name: string;
   sort_order: number;
+  restricted: boolean | null;
 };
 
 export const listFolders = createServerFn({ method: "GET" })
@@ -23,7 +25,7 @@ export const listFolders = createServerFn({ method: "GET" })
   .handler(async ({ context, data }) => {
     const { data: rows, error } = await context.supabase
       .from("folders")
-      .select("id, parent_id, name, sort_order")
+      .select("id, parent_id, name, sort_order, restricted")
       .eq("tenant_id", data.tenantId)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
@@ -33,6 +35,7 @@ export const listFolders = createServerFn({ method: "GET" })
       parentId: r.parent_id,
       name: r.name,
       sortOrder: r.sort_order,
+      restricted: r.restricted === true,
     }));
   });
 
@@ -116,5 +119,68 @@ export const deleteFolder = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("tenant_id", data.tenantId);
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getFolderVisibility = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ tenantId: z.string().uuid(), folderId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { data: f, error: fErr } = await context.supabase
+      .from("folders")
+      .select("restricted")
+      .eq("id", data.folderId)
+      .eq("tenant_id", data.tenantId)
+      .maybeSingle();
+    if (fErr) throw new Error(fErr.message);
+    const { data: rows, error } = await context.supabase
+      .from("folder_visibility")
+      .select("user_id")
+      .eq("folder_id", data.folderId);
+    if (error) throw new Error(error.message);
+    return {
+      restricted: (f as { restricted?: boolean } | null)?.restricted === true,
+      userIds: ((rows ?? []) as { user_id: string }[]).map((r) => r.user_id),
+    };
+  });
+
+export const setFolderVisibility = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        tenantId: z.string().uuid(),
+        folderId: z.string().uuid(),
+        restricted: z.boolean(),
+        userIds: z.array(z.string().uuid()).max(500),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { error: upErr } = await context.supabase
+      .from("folders")
+      .update({ restricted: data.restricted, updated_at: new Date().toISOString() })
+      .eq("id", data.folderId)
+      .eq("tenant_id", data.tenantId);
+    if (upErr) throw new Error(upErr.message);
+
+    const { error: delErr } = await context.supabase
+      .from("folder_visibility")
+      .delete()
+      .eq("folder_id", data.folderId);
+    if (delErr) throw new Error(delErr.message);
+
+    if (data.restricted && data.userIds.length > 0) {
+      const rows = Array.from(new Set(data.userIds)).map((uid) => ({
+        folder_id: data.folderId,
+        user_id: uid,
+      }));
+      const { error: insErr } = await context.supabase
+        .from("folder_visibility")
+        .insert(rows);
+      if (insErr) throw new Error(insErr.message);
+    }
     return { ok: true };
   });
