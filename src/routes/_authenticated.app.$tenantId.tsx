@@ -699,9 +699,28 @@ function ItemDetail({
             ) : null}
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground">{t("workspace.folder")}</span>
+          <select
+            value={item.folderId ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              void onSave({ folderId: v === "" ? null : v });
+            }}
+            className="input h-8 min-w-[12rem] py-0 text-sm"
+          >
+            <option value="">{t("workspace.uncategorized")}</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {folderPathLabel(f, folders)}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <TaskLists tenantId={tenantId} itemId={item.id} />
+
 
       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
         <span>
