@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, FolderPlus, GripVertical, Pencil, Trash2 } from "lucide-react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SavingsChart } from "@/components/SavingsChart";
@@ -19,6 +19,13 @@ import {
   type ItemRow,
   type ItemStatus,
 } from "@/lib/api/items.functions";
+import {
+  createFolder,
+  deleteFolder,
+  listFolders,
+  updateFolder,
+  type FolderRow,
+} from "@/lib/api/folders.functions";
 import { listEntriesForItem, upsertEntry } from "@/lib/api/entries.functions";
 import {
   listTasksForItem,
