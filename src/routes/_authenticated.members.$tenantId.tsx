@@ -249,7 +249,7 @@ function MembersPage() {
                   className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                 >
                   <div className="min-w-0 flex-1">
-                    {editingId === m.id ? (
+                    {isAdmin && editingId === m.id ? (
                       <form
                         onSubmit={(e) => {
                           e.preventDefault();
@@ -288,56 +288,69 @@ function MembersPage() {
                       <>
                         <div className="flex items-center gap-2">
                           <div className="font-medium">{m.displayName}</div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingId(m.id);
-                              setEditingName(m.displayName);
-                            }}
-                            className="rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
-                          >
-                            {t("members.editName")}
-                          </button>
+                          {isAdmin ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingId(m.id);
+                                setEditingName(m.displayName);
+                              }}
+                              className="rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
+                            >
+                              {t("members.editName")}
+                            </button>
+                          ) : null}
                         </div>
                         <div className="text-xs text-muted-foreground">{m.email}</div>
                       </>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <select
-                      value={m.role}
-                      disabled={roleLocked || updateM.isPending}
-                      onChange={(e) =>
-                        updateM.mutate({
-                          userId: m.id,
-                          role: e.target.value as "admin" | "member",
-                        })
-                      }
-                      className="input h-8 py-0 text-sm"
-                      title={roleLockReason}
-                    >
-                      <option value="admin">{t("members.admin")}</option>
-                      <option value="member">{t("members.member")}</option>
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPwUserId(m.id);
-                        setPwValue("");
-                      }}
-                      className="rounded-md px-2 py-1 text-sm hover:bg-accent"
-                    >
-                      Set password
-                    </button>
-                    <button
-                      type="button"
-                      disabled={removeM.isPending}
-                      onClick={() => setRemoveId(m.id)}
-                      className="rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                    >
-                      {t("members.remove")}
-                    </button>
+                    {isAdmin ? (
+                      <select
+                        value={m.role}
+                        disabled={roleLocked || updateM.isPending}
+                        onChange={(e) =>
+                          updateM.mutate({
+                            userId: m.id,
+                            role: e.target.value as "admin" | "member",
+                          })
+                        }
+                        className="input h-8 py-0 text-sm"
+                        title={roleLockReason}
+                      >
+                        <option value="admin">{t("members.admin")}</option>
+                        <option value="member">{t("members.member")}</option>
+                      </select>
+                    ) : (
+                      <span className="rounded-md bg-accent px-2 py-1 text-xs font-medium">
+                        {m.role === "admin" ? t("members.admin") : t("members.member")}
+                      </span>
+                    )}
+                    {isAdmin ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPwUserId(m.id);
+                            setPwValue("");
+                          }}
+                          className="rounded-md px-2 py-1 text-sm hover:bg-accent"
+                        >
+                          Set password
+                        </button>
+                        <button
+                          type="button"
+                          disabled={removeM.isPending}
+                          onClick={() => setRemoveId(m.id)}
+                          className="rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                        >
+                          {t("members.remove")}
+                        </button>
+                      </>
+                    ) : null}
                   </div>
+
 
                 </li>
               );
