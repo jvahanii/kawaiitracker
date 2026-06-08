@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { ensureSupabase } from "@/lib/supabase/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import kawaiiKiwi from "@/assets/kawaii-kiwi.png";
+import { KiwiWithKey } from "@/components/KiwiWithKey";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Log in — Tracker" }] }),
@@ -143,29 +143,26 @@ export function AuthShell({
         <span className="absolute left-[14%] bottom-[18%]">🍡</span>
         <span className="absolute right-[12%] bottom-[14%] animate-pulse">💖</span>
         <span className="absolute left-[45%] top-[6%]">☁️</span>
-        <img
-          src={kawaiiKiwi}
-          alt=""
-          width={160}
-          height={160}
+        <KiwiWithKey
           className="absolute -left-6 bottom-10 h-28 w-28 rotate-[-12deg] opacity-90 sm:left-[6%] sm:h-36 sm:w-36"
+          imgClassName="h-full w-full"
+          keyClassName="h-10 w-10 sm:h-14 sm:w-14"
         />
-        <img
-          src={kawaiiKiwi}
-          alt=""
-          width={160}
-          height={160}
+        <KiwiWithKey
           className="absolute -right-4 top-24 h-24 w-24 rotate-[18deg] opacity-90 sm:right-[6%] sm:h-32 sm:w-32"
+          imgClassName="h-full w-full"
+          keyClassName="h-9 w-9 sm:h-12 sm:w-12"
         />
       </div>
       <div className="kawaii-card relative w-full max-w-sm p-8">
         <div className="absolute -top-10 left-1/2 -translate-x-1/2">
-          <img
-            src={kawaiiKiwi}
+          <KiwiWithKey
             alt="Kawaii kiwi"
             width={96}
             height={96}
             className="h-16 w-16 drop-shadow-md"
+            imgClassName="h-full w-full"
+            keyClassName="h-6 w-6"
           />
         </div>
         <div className="mt-4 flex items-center justify-between">
