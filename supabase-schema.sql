@@ -286,6 +286,7 @@ create or replace function public.update_member_role(
 language plpgsql security definer set search_path = public as $$
 declare
   v_uid uuid := auth.uid();
+  v_target_role text;
   v_admin_count int;
 begin
   if v_uid is null then raise exception 'Not authenticated'; end if;
@@ -295,11 +296,26 @@ begin
   if p_role not in ('admin','member') then
     raise exception 'Invalid role';
   end if;
+
+  select role into v_target_role
+    from public.tenant_members
+    where tenant_id = p_tenant_id and user_id = p_user_id;
+  if v_target_role is null then
+    raise exception 'User is not a member of this workspace';
+  end if;
+
+  -- Admins cannot modify another admin's role.
+  if v_target_role = 'admin' and p_user_id <> v_uid then
+    raise exception 'You cannot change another admin''s role';
+  end if;
+
+  -- Last admin cannot demote themselves.
   if p_role = 'member' and p_user_id = v_uid then
     select count(*) into v_admin_count
       from public.tenant_members where tenant_id = p_tenant_id and role = 'admin';
     if v_admin_count <= 1 then raise exception 'Cannot remove the last admin'; end if;
   end if;
+
   update public.tenant_members
     set role = p_role
     where tenant_id = p_tenant_id and user_id = p_user_id;
