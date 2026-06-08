@@ -124,8 +124,19 @@
     "save": "Save",
     "manageUsers": "Users"
   },
+  "forgot": {
+    "title": "Reset your password",
+    "subtitle": "Enter your email and we'll send you a reset link.",
+    "submit": "Send reset link"
+  },
   "reset": {
-    "submit": "Submit"
+    "title": "Set a new password",
+    "subtitle": "Enter a new password for your account.",
+    "submit": "Update password",
+    "doneTitle": "Password updated",
+    "doneSubtitle": "Redirecting you to log in…",
+    "linkInvalid": "This reset link is invalid or has expired.",
+    "requestNew": "Request a new link"
   },
   "members": {
     "title": "Users",
