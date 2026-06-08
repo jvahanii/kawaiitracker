@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import i18n, { applyDetectedLanguage } from "@/lib/i18n";
+import kawaiiKiwi from "@/assets/kawaii-kiwi.png";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
