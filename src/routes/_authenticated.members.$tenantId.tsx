@@ -116,13 +116,19 @@ function MembersPage() {
     mutationFn: (v: { userId: string; role: "admin" | "member" }) =>
       updateRoleFn({ data: { tenantId, ...v } }),
     onSuccess: invalidate,
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const removeM = useMutation({
     mutationFn: (userId: string) => removeFn({ data: { tenantId, userId } }),
-    onSuccess: invalidate,
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+    onSuccess: () => {
+      invalidate();
+      setRemoveId(null);
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof Error ? e.message : String(e));
+      setRemoveId(null);
+    },
   });
 
   const renameM = useMutation({
@@ -133,7 +139,7 @@ function MembersPage() {
       setEditingName("");
       invalidate();
     },
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const addM = useMutation({
@@ -141,16 +147,16 @@ function MembersPage() {
       addByEmailFn({ data: { tenantId, ...v } }),
     onSuccess: (res) => {
       if (res?.ok === false) {
-        alert(res.error);
+        toast.error(res.error);
         return;
       }
       invalidate();
       setAddEmail("");
       setAddRole("member");
-      if (res?.alreadyMember) alert(t("members.alreadyMember"));
-      else alert(t("members.addedOk"));
+      if (res?.alreadyMember) toast.success(t("members.alreadyMember"));
+      else toast.success(t("members.addedOk"));
     },
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const setPwM = useMutation({
@@ -159,9 +165,9 @@ function MembersPage() {
     onSuccess: () => {
       setPwUserId(null);
       setPwValue("");
-      alert("Password updated.");
+      toast.success("Password updated.");
     },
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
 
