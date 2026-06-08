@@ -474,7 +474,33 @@ function MembersPage() {
           </div>
         </div>
       ) : null}
-    </div>
 
+      <AlertDialog open={!!removeId} onOpenChange={(open) => !open && setRemoveId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {removeId
+                ? t("members.confirmRemove", {
+                    name: members.find((m) => m.id === removeId)?.displayName ?? "",
+                  })
+                : ""}
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRemoveId(null)}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (removeId) removeM.mutate(removeId);
+              }}
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
