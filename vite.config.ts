@@ -10,4 +10,10 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  // Force-enable Nitro outside the Lovable sandbox (e.g. Vercel CI) with the
+  // Vercel preset. Inside the Lovable sandbox, the preset is overridden back
+  // to Cloudflare automatically, so this is safe for both targets.
+  nitro: {
+    preset: "vercel",
+  },
 });
