@@ -63,15 +63,17 @@ function MembersPage() {
       navigate({ to: "/onboarding", replace: true });
       return;
     }
-    if (!currentTenant || currentTenant.role !== "admin") {
+    if (!currentTenant) {
       navigate({ to: "/app/$tenantId", params: { tenantId: tenantsQ.data[0].id }, replace: true });
     }
   }, [currentTenant, navigate, tenantsQ.data]);
 
+  const isAdmin = currentTenant?.role === "admin";
+
   const membersQ = useQuery({
     queryKey: ["members", tenantId],
     queryFn: () => listFn({ data: { tenantId } }),
-    enabled: currentTenant?.role === "admin",
+    enabled: !!currentTenant,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["members", tenantId] });
@@ -189,7 +191,7 @@ function MembersPage() {
     return <div className="p-6 text-sm text-destructive">{pageError instanceof Error ? pageError.message : String(pageError)}</div>;
   }
 
-  if (tenantsQ.isLoading || !currentTenant || currentTenant.role !== "admin") {
+  if (tenantsQ.isLoading || !currentTenant) {
     return <div className="p-6 text-sm text-muted-foreground">{t("common.loading")}</div>;
   }
 
@@ -211,13 +213,15 @@ function MembersPage() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setInviteOpen(true)}
-            className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            {t("workspace.addUser")}
-          </button>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => setInviteOpen(true)}
+              className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              {t("workspace.addUser")}
+            </button>
+          ) : null}
         </div>
       </header>
 
