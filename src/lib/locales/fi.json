@@ -122,7 +122,8 @@
     "restrictAccess": "Rajaa näkyvyyttä",
     "allowedMembers": "Sallitut jäsenet",
     "save": "Tallenna",
-    "manageUsers": "Käyttäjät"
+    "manageUsers": "Käyttäjät",
+    "changeHistory": "Muutoshistoria"
   },
   "forgot": {
     "title": "Nollaa salasanasi",
