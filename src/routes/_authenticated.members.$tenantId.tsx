@@ -201,7 +201,16 @@ function MembersPage() {
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border">
             {members.map((m) => {
+              const isSelf = currentUserId === m.id;
               const isLastAdmin = m.role === "admin" && adminCount <= 1;
+              // Admins cannot modify another admin; last admin cannot demote self.
+              const roleLocked =
+                (m.role === "admin" && !isSelf) || (isSelf && isLastAdmin);
+              const roleLockReason = roleLocked
+                ? isSelf
+                  ? t("members.lastAdmin")
+                  : t("members.peerAdmin")
+                : undefined;
               return (
                 <li
                   key={m.id}
