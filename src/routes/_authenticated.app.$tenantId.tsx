@@ -296,15 +296,15 @@ function WorkspacePage() {
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           {user ? <span className="font-medium text-foreground">{user.displayName}</span> : null}
           <LanguageSwitcher />
+          <Link
+            to="/members/$tenantId"
+            params={{ tenantId }}
+            className="rounded-md px-2 py-1 text-xs hover:bg-accent"
+          >
+            {t("workspace.manageUsers")}
+          </Link>
           {currentTenant.role === "admin" ? (
             <>
-              <Link
-                to="/members/$tenantId"
-                params={{ tenantId }}
-                className="rounded-md px-2 py-1 text-xs hover:bg-accent"
-              >
-                {t("workspace.manageUsers")}
-              </Link>
               <Link
                 to="/audit/$tenantId"
                 params={{ tenantId }}
