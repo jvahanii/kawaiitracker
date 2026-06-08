@@ -145,7 +145,16 @@ function MembersPage() {
 
   const addM = useMutation({
     mutationFn: (v: { email: string; role: "admin" | "member" }) =>
-      addByEmailFn({ data: { tenantId, ...v } }),
+      addByEmailFn({
+        data: {
+          tenantId,
+          ...v,
+          redirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/reset-password`
+              : undefined,
+        },
+      }),
     onSuccess: (res) => {
       if (res?.ok === false) {
         toast.error(res.error);
