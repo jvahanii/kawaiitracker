@@ -1,22 +1,30 @@
 ## Goal
-Add cute kawaii-style kiwi fruits to the landing page and login page, and use a kiwi emoji as the favicon.
+Place a simple key icon in the center of each kawaii kiwi image (landing hero kiwi, the two decorative kiwis on landing, the two decorative kiwis on login, and the small kiwi badge above the login card).
 
-## Changes
+## Approach
+Overlay a `lucide-react` `Key` icon on top of the kiwi `<img>` using a relative wrapper — keeps the generated PNG untouched and easy to tweak.
 
-### 1. Favicon — kiwi emoji (🥝)
-In `src/routes/__root.tsx`, add an SVG-emoji favicon link (data URL) so no asset file is needed:
+Create a small reusable component `src/components/KiwiWithKey.tsx`:
+```tsx
+import { Key } from "lucide-react";
+import kawaiiKiwi from "@/assets/kawaii-kiwi.png";
+
+export function KiwiWithKey({ className, imgClassName, keyClassName, alt = "" }) {
+  return (
+    <span className={`relative inline-block ${className ?? ""}`}>
+      <img src={kawaiiKiwi} alt={alt} className={imgClassName} />
+      <Key
+        aria-hidden
+        className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-foreground ${keyClassName ?? ""}`}
+      />
+    </span>
+  );
+}
 ```
-{ rel: "icon", href: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥝</text></svg>" }
-```
 
-### 2. Landing page (`src/routes/index.tsx`)
-Generate one kawaii kiwi illustration (cute face, blushing cheeks, transparent PNG) via imagegen and place it prominently in the hero area, plus sprinkle 🥝 emoji into the existing decorative emoji clusters (alongside 🍡🌷🐰, not replacing them).
-
-### 3. Login page (`src/routes/login.tsx`)
-Reuse the same kawaii kiwi PNG as a decorative element near the login card (e.g., top-right or peeking from a corner), and add a small 🥝 next to the heading.
-
-## Assets
-- `src/assets/kawaii-kiwi.png` — generated via imagegen (transparent background, kawaii style: round kiwi slice with a smiling face, pink cheeks, sparkles).
+Replace each existing `<img src={kawaiiKiwi} … />` in `src/routes/index.tsx` and `src/routes/login.tsx` with `<KiwiWithKey …/>`, preserving size/rotation classes, and pick a `Key` size proportional to each kiwi (e.g. ~40% of the kiwi dimensions).
 
 ## Out of scope
-No layout/copy changes, no logic changes, no signup/forgot-password decorations (user specified landing + login).
+- Favicon (stays as the 🥝 emoji)
+- No changes to the kiwi PNG itself
+- No color/layout changes elsewhere
