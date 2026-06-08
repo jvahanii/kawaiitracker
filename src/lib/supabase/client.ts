@@ -23,7 +23,9 @@ export function initSupabase(config: { url: string; publishableKey: string }): S
     auth: {
       persistSession: typeof window !== "undefined",
       autoRefreshToken: true,
-      detectSessionInUrl: true,
+      // Disable automatic URL detection so the reset-password page can
+      // exchange the PKCE recovery code itself without a race condition.
+      detectSessionInUrl: false,
       storage: typeof window !== "undefined" ? window.localStorage : undefined,
     },
   });
