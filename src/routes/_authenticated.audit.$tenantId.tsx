@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { listMyTenants } from "@/lib/api/tenants.functions";
 import { listAuditLog, type AuditEntry } from "@/lib/api/audit.functions";
@@ -111,6 +112,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
 }
 
 function AuditPage() {
+  const { t } = useTranslation();
   const { tenantId } = Route.useParams();
   const navigate = useNavigate();
 
@@ -184,7 +186,7 @@ function AuditPage() {
           >
             ← Back
           </Link>
-          <h1 className="text-lg font-semibold">Muutoshistoria · {currentTenant.name}</h1>
+          <h1 className="text-lg font-semibold">{t("workspace.changeHistory")} · {currentTenant.name}</h1>
         </div>
       </header>
 

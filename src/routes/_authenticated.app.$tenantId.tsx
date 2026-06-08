@@ -310,7 +310,7 @@ function WorkspacePage() {
                 params={{ tenantId }}
                 className="rounded-md px-2 py-1 text-xs hover:bg-accent"
               >
-                Muutoshistoria
+                {t("workspace.changeHistory")}
               </Link>
               <button
                 type="button"

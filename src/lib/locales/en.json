@@ -122,7 +122,8 @@
     "restrictAccess": "Restrict access",
     "allowedMembers": "Allowed members",
     "save": "Save",
-    "manageUsers": "Users"
+    "manageUsers": "Users",
+    "changeHistory": "Change history"
   },
   "forgot": {
     "title": "Reset your password",
