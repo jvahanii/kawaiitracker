@@ -162,6 +162,7 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
         tenantId: z.string().uuid(),
         email: z.string().email().max(255),
         role: z.enum(["admin", "member"]).default("member"),
+        redirectTo: z.string().url().max(500).optional(),
       })
       .parse(d),
   )
