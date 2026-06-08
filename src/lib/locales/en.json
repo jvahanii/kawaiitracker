@@ -146,6 +146,7 @@
     "remove": "Remove",
     "confirmRemove": "Remove {{name}} from this workspace?",
     "lastAdmin": "A workspace must have at least one admin.",
+    "peerAdmin": "You cannot change another admin's role.",
     "addDirectTitle": "Add user by email",
     "addDirectBody": "If the user already has an account, they're added directly. Otherwise, an invite email is sent.",
     "addDirectBtn": "Add",
