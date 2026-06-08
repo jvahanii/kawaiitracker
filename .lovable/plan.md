@@ -1,56 +1,22 @@
-# Fix Vercel 404 by enabling Nitro's Vercel preset
-
-## Root cause
-
-`@lovable.dev/vite-tanstack-config` (v2.3.2) only runs Nitro automatically inside Lovable's sandbox. On Vercel's CI, no Lovable context is detected, so the build skips Nitro entirely and produces a client-only bundle with no SSR handler. Vercel then has no function to route requests to, so any non-asset URL returns `404 NOT_FOUND`.
-
-`nitro` is already installed (`nitro@3.0.260603-beta` in `devDependencies`), so no new dependency is needed.
+## Goal
+Add cute kawaii-style kiwi fruits to the landing page and login page, and use a kiwi emoji as the favicon.
 
 ## Changes
 
-### 1. `vite.config.ts` — force-enable Nitro with the Vercel preset
-
-Update the existing `defineConfig` call to add a `nitro` option. The preset's `cloudflare` overrides only apply inside the Lovable sandbox, so on Vercel this hard-pins the Vercel target; in Lovable's sandbox the Cloudflare target is still forced automatically.
-
-```ts
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-
-export default defineConfig({
-  tanstackStart: {
-    server: { entry: "server" },
-  },
-  nitro: {
-    preset: "vercel",
-  },
-});
+### 1. Favicon — kiwi emoji (🥝)
+In `src/routes/__root.tsx`, add an SVG-emoji favicon link (data URL) so no asset file is needed:
+```
+{ rel: "icon", href: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥝</text></svg>" }
 ```
 
-That's the entire code change. Do NOT add a top-level `plugins: [nitro(...)]` array — the preset already wires Nitro internally, and adding it manually duplicates the plugin (which is what the header comment in `vite.config.ts` warns about).
+### 2. Landing page (`src/routes/index.tsx`)
+Generate one kawaii kiwi illustration (cute face, blushing cheeks, transparent PNG) via imagegen and place it prominently in the hero area, plus sprinkle 🥝 emoji into the existing decorative emoji clusters (alongside 🍡🌷🐰, not replacing them).
 
-### 2. Vercel project settings
+### 3. Login page (`src/routes/login.tsx`)
+Reuse the same kawaii kiwi PNG as a decorative element near the login card (e.g., top-right or peeking from a corner), and add a small 🥝 next to the heading.
 
-- Framework Preset: **Other** (or leave Vercel's auto-detection).
-- Build Command: `npm run build` (default).
-- Output Directory: leave blank — Nitro's Vercel preset writes to `.vercel/output/` which Vercel picks up automatically via the Build Output API.
-- Environment variables: ensure `EXT_SUPABASE_URL`, `EXT_SUPABASE_PUBLISHABLE_KEY`, `EXT_SUPABASE_SERVICE_ROLE_KEY` are set for Production (and Preview if you want preview deploys).
-- Install Command: default. If Vercel ever complains about the `nitro` beta version, set `NPM_CONFIG_LEGACY_PEER_DEPS=true`.
+## Assets
+- `src/assets/kawaii-kiwi.png` — generated via imagegen (transparent background, kawaii style: round kiwi slice with a smiling face, pink cheeks, sparkles).
 
-### 3. `vercel.json`
-
-There is no `vercel.json` in the repo today (checked the file tree). Do not create one. A SPA rewrite (`/(.*)` → `/index.html`) would actively break SSR by hijacking server routes.
-
-## What this does NOT change
-
-- Lovable's own publish flow (`kawaiitracker.lovable.app`) keeps working — inside the sandbox, the preset overrides `preset`/`output`/`cloudflare` back to Cloudflare regardless of what's in `vite.config.ts`.
-- No source files in `src/` change.
-- The `/api/public/supabase-config` route and all `createServerFn` calls continue to work on both targets; they just need a server runtime to host them, which is exactly what was missing on Vercel.
-
-## Verification after deploying
-
-1. Trigger a fresh Vercel deploy.
-2. Hit the deployed URL at `/` — should render the index page.
-3. Hard-refresh on `/login` — should render the login page (no 404).
-4. `curl https://<your-vercel-domain>/api/public/supabase-config` — should return the JSON config (this proves the server handler is mounted).
-5. Try logging in end-to-end.
-
-If step 4 still 404s, the Nitro build didn't run — check the Vercel build log for a line containing `nitro` and the resolved preset.
+## Out of scope
+No layout/copy changes, no logic changes, no signup/forgot-password decorations (user specified landing + login).
