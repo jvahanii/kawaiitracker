@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Area,
@@ -17,20 +17,10 @@ import {
 
 import { listAllEntries } from "@/lib/api/entries.functions";
 import { listItems } from "@/lib/api/items.functions";
+import { getGoal, upsertGoal } from "@/lib/api/goals.functions";
+import { ensureSupabase } from "@/lib/supabase/client";
 
 type Goal = { amount: number | null; date: string | null };
-
-function loadGoal(tenantId: string, year: number): Goal {
-  if (typeof window === "undefined") return { amount: null, date: null };
-  try {
-    const raw = localStorage.getItem(`savings-goal:${tenantId}:${year}`);
-    if (!raw) return { amount: null, date: null };
-    const v = JSON.parse(raw) as Goal;
-    return { amount: v.amount ?? null, date: v.date ?? null };
-  } catch {
-    return { amount: null, date: null };
-  }
-}
 
 function monthKey(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
@@ -53,24 +43,72 @@ function darkColorFor(id: string, idx: number): string {
 export function SavingsChart({ tenantId }: { tenantId: string }) {
   const { t, i18n } = useTranslation();
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
-  const [goal, setGoal] = useState<Goal>({ amount: null, date: null });
   const [groupBy, setGroupBy] = useState<"item" | "assignee">("item");
-
-  useEffect(() => {
-    setGoal(loadGoal(tenantId, year));
-  }, [tenantId, year]);
-
-  const saveGoal = (g: Goal) => {
-    setGoal(g);
-    try {
-      localStorage.setItem(`savings-goal:${tenantId}:${year}`, JSON.stringify(g));
-    } catch {
-      /* ignore */
-    }
-  };
+  const queryClient = useQueryClient();
 
   const listFn = useServerFn(listAllEntries);
   const itemsFn = useServerFn(listItems);
+  const getGoalFn = useServerFn(getGoal);
+  const upsertGoalFn = useServerFn(upsertGoal);
+
+  const goalKey = ["savings-goal", tenantId, year] as const;
+  const goalQ = useQuery({
+    queryKey: goalKey,
+    queryFn: () => getGoalFn({ data: { tenantId, year } }),
+  });
+  const goal: Goal = goalQ.data ?? { amount: null, date: null };
+
+  const upsertM = useMutation({
+    mutationFn: (g: Goal) =>
+      upsertGoalFn({ data: { tenantId, year, amount: g.amount, date: g.date } }),
+    onMutate: async (g) => {
+      await queryClient.cancelQueries({ queryKey: goalKey });
+      const prev = queryClient.getQueryData<Goal>(goalKey);
+      queryClient.setQueryData<Goal>(goalKey, g);
+      return { prev };
+    },
+    onError: (_e, _g, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(goalKey, ctx.prev);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: goalKey });
+    },
+  });
+
+  const saveGoal = (g: Goal) => upsertM.mutate(g);
+
+  // Realtime: when any client updates the goal for this tenant, refetch.
+  useEffect(() => {
+    let cancelled = false;
+    let cleanup: (() => void) | null = null;
+    (async () => {
+      const supabase = await ensureSupabase().catch(() => null);
+      if (!supabase || cancelled) return;
+      const channel = supabase
+        .channel(`savings_goals:${tenantId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "savings_goals",
+            filter: `tenant_id=eq.${tenantId}`,
+          },
+          () => {
+            queryClient.invalidateQueries({ queryKey: ["savings-goal", tenantId] });
+          },
+        )
+        .subscribe();
+      cleanup = () => {
+        supabase.removeChannel(channel);
+      };
+    })();
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, [tenantId, queryClient]);
+
   const entriesQ = useQuery({
     queryKey: ["entries", tenantId],
     queryFn: () => listFn({ data: { tenantId } }),
