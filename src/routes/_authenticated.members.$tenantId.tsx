@@ -437,7 +437,7 @@ function MembersPage() {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (pwValue.length < 8) {
-                  alert("Password must be at least 8 characters.");
+                  toast.error("Password must be at least 8 characters.");
                   return;
                 }
                 setPwM.mutate({ userId: pwUserId, password: pwValue });
