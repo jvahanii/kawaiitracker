@@ -1,7 +1,7 @@
 import { createFileRoute, getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, FolderPlus, GripVertical, Lock, Pencil, Trash2 } from "lucide-react";
 
@@ -1172,8 +1172,6 @@ function FolderTreePane({
 
   const [folderModal, setFolderModal] = useState<FolderModal>(null);
   const [folderNameInput, setFolderNameInput] = useState("");
-  const folderNameRef = useRef<HTMLInputElement>(null);
-
   const openFolderModal = (modal: NonNullable<FolderModal>) => {
     setFolderNameInput(modal.type === "rename" ? modal.currentName : "");
     setFolderModal(modal);
@@ -1437,7 +1435,7 @@ function FolderTreePane({
       {/* Folder name dialog (create / rename) */}
       <Dialog
         open={folderModal?.type === "create" || folderModal?.type === "rename"}
-        onOpenChange={(open) => { if (!open) closeFolderModal(); }}
+        onOpenChange={closeFolderModal}
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -1453,7 +1451,6 @@ function FolderTreePane({
             </DialogDescription>
           </DialogHeader>
           <input
-            ref={folderNameRef}
             autoFocus
             type="text"
             value={folderNameInput}
@@ -1485,7 +1482,7 @@ function FolderTreePane({
       {/* Folder delete confirmation */}
       <AlertDialog
         open={folderModal?.type === "delete"}
-        onOpenChange={(open) => { if (!open) closeFolderModal(); }}
+        onOpenChange={closeFolderModal}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
