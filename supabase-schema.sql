@@ -696,3 +696,42 @@ select cron.schedule(
   '15 3 * * *',
   $$select public.prune_audit_log(365);$$
 );
+
+-- ============================================================
+-- Per-workspace savings goal (shared by all tenant members)
+-- ============================================================
+create table if not exists public.savings_goals (
+  tenant_id uuid not null references public.tenants(id) on delete cascade,
+  year int not null,
+  amount numeric,
+  goal_date date,
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null,
+  primary key (tenant_id, year)
+);
+
+grant select, insert, update, delete on public.savings_goals to authenticated;
+grant all on public.savings_goals to service_role;
+
+alter table public.savings_goals enable row level security;
+
+drop policy if exists "savings_goals: members read" on public.savings_goals;
+create policy "savings_goals: members read"
+  on public.savings_goals for select to authenticated
+  using (public.is_tenant_member(tenant_id));
+
+drop policy if exists "savings_goals: members write" on public.savings_goals;
+create policy "savings_goals: members write"
+  on public.savings_goals for all to authenticated
+  using (public.is_tenant_member(tenant_id))
+  with check (public.is_tenant_member(tenant_id));
+
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    begin
+      alter publication supabase_realtime add table public.savings_goals;
+    exception when duplicate_object then null;
+    end;
+  end if;
+end$$;
