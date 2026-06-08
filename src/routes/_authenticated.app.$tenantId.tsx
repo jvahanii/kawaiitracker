@@ -1,12 +1,30 @@
 import { createFileRoute, getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, FolderPlus, GripVertical, Lock, Pencil, Trash2 } from "lucide-react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SavingsChart } from "@/components/SavingsChart";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { ensureSupabase } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/format-date";
@@ -700,6 +718,7 @@ function ItemDetail({
   const initialAssigneeIds = item.assignees.map((a) => a.id);
   const [assigneeIds, setAssigneeIds] = useState<string[]>(initialAssigneeIds);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -818,14 +837,30 @@ function ItemDetail({
                 : t("workspace.updated", { when: formatDateTime(item.updatedAt) })}
         </span>
         <button
-          onClick={() => {
-            if (confirm(t("workspace.confirmDelete"))) onDelete();
-          }}
+          onClick={() => setDeleteOpen(true)}
           className="rounded-md px-2 py-1 text-destructive hover:bg-destructive/10"
         >
           {t("common.delete")}
         </button>
       </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("workspace.confirmDelete")}</AlertDialogTitle>
+            <AlertDialogDescription>{item.title}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={onDelete}
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -1125,9 +1160,38 @@ function FolderTreePane({
   onCreateItemInFolder: (folderId: string | null) => void;
   isAdmin: boolean;
 }) {
+  type FolderModal =
+    | { type: "create"; parentId: string | null }
+    | { type: "rename"; id: string; currentName: string }
+    | { type: "delete"; id: string; name: string }
+    | null;
+
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const isOpen = (id: string) => openMap[id] !== false;
   const toggle = (id: string) => setOpenMap((p) => ({ ...p, [id]: !isOpen(id) }));
+
+  const [folderModal, setFolderModal] = useState<FolderModal>(null);
+  const [folderNameInput, setFolderNameInput] = useState("");
+  const folderNameRef = useRef<HTMLInputElement>(null);
+
+  const openFolderModal = (modal: NonNullable<FolderModal>) => {
+    setFolderNameInput(modal.type === "rename" ? modal.currentName : "");
+    setFolderModal(modal);
+  };
+
+  const closeFolderModal = () => setFolderModal(null);
+
+  const handleFolderNameSubmit = () => {
+    if (!folderModal || !folderNameInput.trim()) return;
+    if (folderModal.type === "create") {
+      onCreateFolder(folderNameInput.trim(), folderModal.parentId);
+    } else if (folderModal.type === "rename") {
+      if (folderNameInput.trim() !== folderModal.currentName) {
+        onRenameFolder(folderModal.id, folderNameInput.trim());
+      }
+    }
+    closeFolderModal();
+  };
 
   const childrenByParent = useMemo(() => {
     const m = new Map<string | null, FolderRow[]>();
@@ -1260,10 +1324,7 @@ function FolderTreePane({
           ) : null}
           <button
             type="button"
-            onClick={() => {
-              const name = window.prompt(t("workspace.newFolderPrompt"));
-              if (name?.trim()) onCreateFolder(name.trim(), folder.id);
-            }}
+            onClick={() => openFolderModal({ type: "create", parentId: folder.id })}
             className="p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
             title={t("workspace.addSubfolder")}
           >
@@ -1289,10 +1350,7 @@ function FolderTreePane({
           ) : null}
           <button
             type="button"
-            onClick={() => {
-              const name = window.prompt(t("workspace.folder"), folder.name);
-              if (name?.trim() && name.trim() !== folder.name) onRenameFolder(folder.id, name.trim());
-            }}
+            onClick={() => openFolderModal({ type: "rename", id: folder.id, currentName: folder.name })}
             className="p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground"
             title={t("workspace.renameFolder")}
           >
@@ -1300,9 +1358,7 @@ function FolderTreePane({
           </button>
           <button
             type="button"
-            onClick={() => {
-              if (window.confirm(t("workspace.confirmDeleteFolder"))) onDeleteFolder(folder.id);
-            }}
+            onClick={() => openFolderModal({ type: "delete", id: folder.id, name: folder.name })}
             className="p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
             title={t("common.delete")}
           >
@@ -1323,6 +1379,7 @@ function FolderTreePane({
   const rootItems = itemsByFolder.get(null) ?? [];
 
   return (
+    <>
     <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="flex items-center justify-between border-b border-border px-2 py-1">
         <span className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -1330,10 +1387,7 @@ function FolderTreePane({
         </span>
         <button
           type="button"
-          onClick={() => {
-            const name = window.prompt(t("workspace.newFolderPrompt"));
-            if (name?.trim()) onCreateFolder(name.trim(), null);
-          }}
+          onClick={() => openFolderModal({ type: "create", parentId: null })}
           className="flex items-center gap-1 rounded px-2 py-0.5 text-xs hover:bg-accent"
           title={t("workspace.newFolder")}
         >
@@ -1379,6 +1433,88 @@ function FolderTreePane({
         </ul>
       )}
     </div>
+
+      {/* Folder name dialog (create / rename) */}
+      <Dialog
+        open={folderModal?.type === "create" || folderModal?.type === "rename"}
+        onOpenChange={(open) => { if (!open) closeFolderModal(); }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {folderModal?.type === "rename"
+                ? t("workspace.renameFolder")
+                : folderModal?.type === "create" && folderModal.parentId
+                  ? t("workspace.addSubfolder")
+                  : t("workspace.newFolder")}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("workspace.newFolderPrompt")}
+            </DialogDescription>
+          </DialogHeader>
+          <input
+            ref={folderNameRef}
+            autoFocus
+            type="text"
+            value={folderNameInput}
+            onChange={(e) => setFolderNameInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleFolderNameSubmit(); }}
+            placeholder={t("workspace.newFolderPrompt")}
+            className="input w-full"
+          />
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={closeFolderModal}
+              className="rounded-md px-3 py-1.5 text-sm hover:bg-accent"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={handleFolderNameSubmit}
+              disabled={!folderNameInput.trim()}
+              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {folderModal?.type === "rename" ? t("workspace.save") : t("common.create")}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Folder delete confirmation */}
+      <AlertDialog
+        open={folderModal?.type === "delete"}
+        onOpenChange={(open) => { if (!open) closeFolderModal(); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("common.delete")} &ldquo;{folderModal?.type === "delete" ? folderModal.name : ""}&rdquo;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("workspace.confirmDeleteFolder")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={closeFolderModal}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (folderModal?.type === "delete") {
+                  onDeleteFolder(folderModal.id);
+                }
+                closeFolderModal();
+              }}
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
