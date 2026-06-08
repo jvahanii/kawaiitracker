@@ -1,23 +1,28 @@
 ## Goal
-Fix login on `kawaiitracker.lovable.app` by populating the **Production** secret store with your Supabase credentials. Preview already works because those values exist in the Dev store; Production has its own isolated store that is still missing/stale.
+Two independent fixes in one pass:
+1. Production login on `kawaiitracker.lovable.app` is broken because the **Production** secret store is missing the Supabase env vars.
+2. After login, `/onboarding` briefly flashes the "Create / Join workspace" form before redirecting users who already have a tenant.
 
-## Steps
-1. Switch to build mode.
-2. Trigger the secure secrets form for the Production environment with these three names:
-   - `EXT_SUPABASE_URL`
-   - `EXT_SUPABASE_PUBLISHABLE_KEY`
-   - `EXT_SUPABASE_SERVICE_ROLE_KEY`
-3. You paste the same values you used for preview (from Supabase → Project Settings → API).
-4. In Supabase → Authentication → URL Configuration, confirm:
-   - Site URL: `https://kawaiitracker.lovable.app`
-   - Redirect URLs include both `https://kawaiitracker.lovable.app` and the preview URL.
-5. Click **Publish → Update** so production picks up the new env.
-6. Hard-refresh the published site and log in to verify.
+## Step 1 — Production Supabase secrets
+Trigger the secure secrets form for the **Production** environment and have the user paste values for:
+- `EXT_SUPABASE_URL`
+- `EXT_SUPABASE_PUBLISHABLE_KEY`
+- `EXT_SUPABASE_SERVICE_ROLE_KEY`
+
+Same values used for Preview (from Supabase → Project Settings → API). Then user clicks **Publish → Update** to redeploy production with the new env.
+
+## Step 2 — Eliminate onboarding flash
+Edit `src/routes/_authenticated.onboarding.tsx`:
+- While `tenantsQ.isLoading` (or not yet `isFetched`), render a centered loading state instead of the Create/Join form.
+- Only render the Create/Join form once the query has resolved AND `tenantsQ.data` is empty.
+- Keep the existing `useEffect` redirect to `/app/$tenantId` for users who already have a tenant — but because we no longer render the form during loading, no flash is possible.
+
+No changes to API, business logic, or styling beyond the loading state.
 
 ## Out of scope
-- No code changes. The integration already reads `EXT_SUPABASE_*` from `process.env` per request.
-- No data migration.
+- No schema changes, no auth flow changes.
+- Not touching `login.tsx` — the redirect target stays `/onboarding`; onboarding itself handles the decision.
 
-## Notes
-- Make sure the Lovable secrets form is on the **Production** environment toggle when you submit — submitting on Dev would overwrite preview instead.
-- `EXT_SUPABASE_SERVICE_ROLE_KEY` is server-only and never shipped to the browser.
+## Verification
+- Preview: log in with an account that already has a tenant → should go straight to `/app/$tenantId` with a brief spinner, no Create/Join form flash.
+- Production: after secrets + republish, hard-refresh `kawaiitracker.lovable.app` and log in successfully.
