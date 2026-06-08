@@ -146,12 +146,12 @@ export function AuthShell({
         <KiwiWithKey
           className="absolute -left-6 bottom-10 h-28 w-28 rotate-[-12deg] opacity-90 sm:left-[6%] sm:h-36 sm:w-36"
           imgClassName="h-full w-full"
-          keyClassName="h-10 w-10 sm:h-14 sm:w-14"
+          keyClassName="h-6 w-6 sm:h-8 sm:w-8"
         />
         <KiwiWithKey
           className="absolute -right-4 top-24 h-24 w-24 rotate-[18deg] opacity-90 sm:right-[6%] sm:h-32 sm:w-32"
           imgClassName="h-full w-full"
-          keyClassName="h-9 w-9 sm:h-12 sm:w-12"
+          keyClassName="h-5 w-5 sm:h-7 sm:w-7"
         />
       </div>
       <div className="kawaii-card relative w-full max-w-sm p-8">
@@ -162,7 +162,7 @@ export function AuthShell({
             height={96}
             className="h-16 w-16 drop-shadow-md"
             imgClassName="h-full w-full"
-            keyClassName="h-6 w-6"
+            keyClassName="h-4 w-4"
           />
         </div>
         <div className="mt-4 flex items-center justify-between">
