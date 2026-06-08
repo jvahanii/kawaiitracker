@@ -111,6 +111,7 @@
     "folders": "Folders",
     "newFolder": "New folder",
     "newFolderPrompt": "Folder name",
+    "folderCreated": "Folder created",
     "addSubfolder": "Add subfolder",
     "renameFolder": "Rename folder",
     "confirmDeleteFolder": "Delete this folder? Items will become uncategorized.",

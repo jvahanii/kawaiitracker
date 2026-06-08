@@ -38,6 +38,7 @@ import {
   reorderTasks,
   type TaskRow,
 } from "@/lib/api/tasks.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/app/$tenantId")({
   head: () => ({ meta: [{ title: "Workspace — Tracker" }] }),
@@ -158,7 +159,10 @@ function WorkspacePage() {
   const createFolderM = useMutation({
     mutationFn: (vars: { name: string; parentId: string | null }) =>
       createFolderFn({ data: { tenantId, name: vars.name, parentId: vars.parentId } }),
-    onSuccess: invalidateFolders,
+    onSuccess: () => {
+      invalidateFolders();
+      toast.success(t("workspace.folderCreated"));
+    },
   });
   const renameFolderM = useMutation({
     mutationFn: (vars: { id: string; name: string }) =>

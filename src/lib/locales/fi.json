@@ -111,6 +111,7 @@
     "folders": "Kansiot",
     "newFolder": "Uusi kansio",
     "newFolderPrompt": "Kansion nimi",
+    "folderCreated": "Kansio luotu",
     "addSubfolder": "Lisää alikansio",
     "renameFolder": "Nimeä kansio uudelleen",
     "confirmDeleteFolder": "Poistetaanko tämä kansio? Sen kohteet siirtyvät kategorisoimattomiksi.",
