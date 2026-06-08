@@ -182,7 +182,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     const cumA = new Map<string, number>(ids.map((id) => [id, 0]));
     let cumActual = 0;
     const now = monthKey(new Date());
-    
+
     const rows: Array<Record<string, number | undefined>> = months.map((tm) => {
       const row: Record<string, number | undefined> = { t: tm };
       for (const id of ids) {
@@ -203,7 +203,10 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
       return row;
     });
 
-    return { chartData: rows, seriesKeys: ids };
+    const activeIds = ids.filter((id) =>
+      rows.some((r) => (r[id] ?? 0) !== 0 || (r[`${id}__a`] ?? 0) !== 0)
+    );
+    return { chartData: rows, seriesKeys: activeIds };
   }, [entries, groupBy, itemAssigneeMap, year]);
 
 
