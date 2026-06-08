@@ -16,6 +16,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated.onboarding'
+import { Route as ApiPublicSupabaseConfigRouteImport } from './routes/api/public/supabase-config'
 import { Route as AuthenticatedMembersTenantIdRouteImport } from './routes/_authenticated.members.$tenantId'
 import { Route as AuthenticatedAuditTenantIdRouteImport } from './routes/_authenticated.audit.$tenantId'
 import { Route as AuthenticatedAppTenantIdRouteImport } from './routes/_authenticated.app.$tenantId'
@@ -54,6 +55,11 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const ApiPublicSupabaseConfigRoute = ApiPublicSupabaseConfigRouteImport.update({
+  id: '/api/public/supabase-config',
+  path: '/api/public/supabase-config',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedMembersTenantIdRoute =
   AuthenticatedMembersTenantIdRouteImport.update({
     id: '/members/$tenantId',
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/app/$tenantId': typeof AuthenticatedAppTenantIdRoute
   '/audit/$tenantId': typeof AuthenticatedAuditTenantIdRoute
   '/members/$tenantId': typeof AuthenticatedMembersTenantIdRoute
+  '/api/public/supabase-config': typeof ApiPublicSupabaseConfigRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/app/$tenantId': typeof AuthenticatedAppTenantIdRoute
   '/audit/$tenantId': typeof AuthenticatedAuditTenantIdRoute
   '/members/$tenantId': typeof AuthenticatedMembersTenantIdRoute
+  '/api/public/supabase-config': typeof ApiPublicSupabaseConfigRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/_authenticated/app/$tenantId': typeof AuthenticatedAppTenantIdRoute
   '/_authenticated/audit/$tenantId': typeof AuthenticatedAuditTenantIdRoute
   '/_authenticated/members/$tenantId': typeof AuthenticatedMembersTenantIdRoute
+  '/api/public/supabase-config': typeof ApiPublicSupabaseConfigRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/app/$tenantId'
     | '/audit/$tenantId'
     | '/members/$tenantId'
+    | '/api/public/supabase-config'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/app/$tenantId'
     | '/audit/$tenantId'
     | '/members/$tenantId'
+    | '/api/public/supabase-config'
   id:
     | '__root__'
     | '/'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/$tenantId'
     | '/_authenticated/audit/$tenantId'
     | '/_authenticated/members/$tenantId'
+    | '/api/public/supabase-config'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  ApiPublicSupabaseConfigRoute: typeof ApiPublicSupabaseConfigRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/supabase-config': {
+      id: '/api/public/supabase-config'
+      path: '/api/public/supabase-config'
+      fullPath: '/api/public/supabase-config'
+      preLoaderRoute: typeof ApiPublicSupabaseConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/members/$tenantId': {
       id: '/_authenticated/members/$tenantId'
       path: '/members/$tenantId'
@@ -254,17 +274,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  ApiPublicSupabaseConfigRoute: ApiPublicSupabaseConfigRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
