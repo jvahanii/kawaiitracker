@@ -1,20 +1,23 @@
 ## Goal
-Switch the app from the current Supabase project to yours by swapping credentials only. No code changes — the integration already reads custom env vars (`EXT_SUPABASE_*`).
-
-## Why login is stuck
-`ensureSupabase()` calls the server fn `getSupabaseConfig`, which throws if `EXT_SUPABASE_URL` / `EXT_SUPABASE_PUBLISHABLE_KEY` are missing or wrong. The login button stays on "Logging in…" because the client never initializes. Updating the secrets fixes it.
+Fix login on `kawaiitracker.lovable.app` by populating the **Production** secret store with your Supabase credentials. Preview already works because those values exist in the Dev store; Production has its own isolated store that is still missing/stale.
 
 ## Steps
-1. Prompt you (secure form) to enter/update three secrets:
-   - `EXT_SUPABASE_URL` — e.g. `https://<your-project-ref>.supabase.co`
-   - `EXT_SUPABASE_PUBLISHABLE_KEY` — anon/publishable key from Supabase → Project Settings → API
-   - `EXT_SUPABASE_SERVICE_ROLE_KEY` — service role key from the same page (server-only, never shipped to browser)
-2. You apply the existing migrations from `supabase/migrations/` to your Supabase project (Dashboard → SQL editor, or `supabase db push` locally). This is required so tables, RLS, and triggers exist.
-3. In your Supabase project, configure Auth:
-   - Authentication → URL Configuration: set Site URL to `https://kawaiitracker.lovable.app` and add `https://id-preview--81d75f47-0994-4548-a216-bf2d97a3d0e8.lovable.app` to Redirect URLs.
-   - Enable Email provider; enable Google if you want social sign-in.
-4. Restart preview; verify login works in preview and production.
+1. Switch to build mode.
+2. Trigger the secure secrets form for the Production environment with these three names:
+   - `EXT_SUPABASE_URL`
+   - `EXT_SUPABASE_PUBLISHABLE_KEY`
+   - `EXT_SUPABASE_SERVICE_ROLE_KEY`
+3. You paste the same values you used for preview (from Supabase → Project Settings → API).
+4. In Supabase → Authentication → URL Configuration, confirm:
+   - Site URL: `https://kawaiitracker.lovable.app`
+   - Redirect URLs include both `https://kawaiitracker.lovable.app` and the preview URL.
+5. Click **Publish → Update** so production picks up the new env.
+6. Hard-refresh the published site and log in to verify.
 
 ## Out of scope
-- No code edits.
-- Data is not migrated from the current Supabase to yours — you start with an empty database (plus whatever the migrations seed).
+- No code changes. The integration already reads `EXT_SUPABASE_*` from `process.env` per request.
+- No data migration.
+
+## Notes
+- Make sure the Lovable secrets form is on the **Production** environment toggle when you submit — submitting on Dev would overwrite preview instead.
+- `EXT_SUPABASE_SERVICE_ROLE_KEY` is server-only and never shipped to the browser.
