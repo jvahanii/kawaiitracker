@@ -71,6 +71,32 @@ export const updateMemberRole = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ context, data }) => {
+    // Defense-in-depth checks (RPC enforces the same rules):
+    // 1) Admins cannot modify another admin's role.
+    // 2) Last admin cannot demote themselves.
+    const { data: target, error: targetErr } = await context.supabase
+      .from("tenant_members")
+      .select("role")
+      .eq("tenant_id", data.tenantId)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (targetErr) throw new Error(targetErr.message);
+    if (!target) throw new Error("User is not a member of this workspace");
+
+    if (target.role === "admin" && data.userId !== context.userId) {
+      throw new Error("You cannot change another admin's role");
+    }
+
+    if (data.role === "member" && data.userId === context.userId) {
+      const { count, error: cntErr } = await context.supabase
+        .from("tenant_members")
+        .select("user_id", { count: "exact", head: true })
+        .eq("tenant_id", data.tenantId)
+        .eq("role", "admin");
+      if (cntErr) throw new Error(cntErr.message);
+      if ((count ?? 0) <= 1) throw new Error("Cannot remove the last admin");
+    }
+
     const { error } = await context.supabase.rpc("update_member_role", {
       p_tenant_id: data.tenantId,
       p_user_id: data.userId,
