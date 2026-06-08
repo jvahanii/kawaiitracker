@@ -132,7 +132,12 @@ function Onboarding() {
             </form>
           </section>
         </div>
+        )}
       </div>
+    </div>
+  );
+}
+
     </div>
   );
 }
