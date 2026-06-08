@@ -985,6 +985,8 @@ function MonthlyEntries({
                 label={monthLabel.format(new Date(2000, idx, 1))}
                 amount={cell?.amount ?? null}
                 actual={cell?.actual ?? null}
+                planTabIndex={idx + 1}
+                actualTabIndex={idx + 13}
                 onCommitAmount={(amount) => upsertM.mutate({ month: iso, amount })}
                 onCommitActual={(actual) => upsertM.mutate({ month: iso, actual })}
               />
