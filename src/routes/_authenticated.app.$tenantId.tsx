@@ -1038,11 +1038,13 @@ function NumberInput({
   onCommit,
   placeholder,
   className = "",
+  tabIndex,
 }: {
   value: number | null;
   onCommit: (n: number) => void;
   placeholder?: string;
   className?: string;
+  tabIndex?: number;
 }) {
   const [text, setText] = useState(value === null ? "0" : String(value));
   const [focused, setFocused] = useState(false);
@@ -1057,7 +1059,11 @@ function NumberInput({
       inputMode="decimal"
       step="0.01"
       value={text}
-      onFocus={() => setFocused(true)}
+      tabIndex={tabIndex}
+      onFocus={(e) => {
+        setFocused(true);
+        e.currentTarget.select();
+      }}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
         setFocused(false);
