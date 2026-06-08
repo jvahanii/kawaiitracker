@@ -124,8 +124,19 @@
     "save": "Tallenna",
     "manageUsers": "Käyttäjät"
   },
+  "forgot": {
+    "title": "Nollaa salasanasi",
+    "subtitle": "Syötä sähköpostisi, niin lähetämme nollauslinkin.",
+    "submit": "Lähetä nollauslinkki"
+  },
   "reset": {
-    "submit": "Lähetä"
+    "title": "Aseta uusi salasana",
+    "subtitle": "Syötä tilillesi uusi salasana.",
+    "submit": "Päivitä salasana",
+    "doneTitle": "Salasana päivitetty",
+    "doneSubtitle": "Sinut ohjataan kirjautumissivulle…",
+    "linkInvalid": "Tämä nollauslinkki on virheellinen tai vanhentunut.",
+    "requestNew": "Pyydä uusi linkki"
   },
   "members": {
     "title": "Käyttäjät",
