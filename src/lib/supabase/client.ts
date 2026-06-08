@@ -42,6 +42,19 @@ export async function ensureSupabase(): Promise<SupabaseClient> {
   bootstrapPromise = (async () => {
     const embedded = getEmbeddedSupabaseConfig();
     if (embedded) return initSupabase(embedded);
+    // Prefer the stable public API route over a generated server-fn id —
+    // resilient to stale-worker mismatches after a republish.
+    try {
+      const res = await fetch("/api/public/supabase-config", {
+        headers: { accept: "application/json" },
+      });
+      if (res.ok) {
+        const cfg = (await res.json()) as { url: string; publishableKey: string };
+        if (cfg?.url && cfg?.publishableKey) return initSupabase(cfg);
+      }
+    } catch {
+      // fall through to server fn
+    }
     const { getSupabaseConfig } = await import("./config.functions");
     const cfg = await getSupabaseConfig();
     return initSupabase(cfg);
@@ -51,6 +64,7 @@ export async function ensureSupabase(): Promise<SupabaseClient> {
   });
   return bootstrapPromise;
 }
+
 
 /** Synchronous accessor — only safe after ensureSupabase() has resolved. */
 export function getSupabase(): SupabaseClient {
