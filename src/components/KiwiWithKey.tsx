@@ -57,9 +57,9 @@ export function KiwiWithKey({
         height={height}
         className={imgClassName}
       />
-      {/* Centered horizontally, nudged up so it sits above the face */}
+      {/* Centered on the kiwi */}
       <KawaiiKey
-        className={`pointer-events-none absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 drop-shadow-sm ${keyClassName ?? ""}`}
+        className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-sm ${keyClassName ?? ""}`}
       />
     </span>
   );
