@@ -112,6 +112,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
 }
 
 function AuditPage() {
+  const { t } = useTranslation();
   const { tenantId } = Route.useParams();
   const navigate = useNavigate();
 
@@ -185,7 +186,7 @@ function AuditPage() {
           >
             ← Back
           </Link>
-          <h1 className="text-lg font-semibold">Muutoshistoria · {currentTenant.name}</h1>
+          <h1 className="text-lg font-semibold">{t("workspace.changeHistory")} · {currentTenant.name}</h1>
         </div>
       </header>
 
