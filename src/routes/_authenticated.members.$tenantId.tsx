@@ -5,6 +5,18 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ensureSupabase } from "@/lib/supabase/client";
 
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 import {
   addMemberByEmail,
   listMyTenants,
@@ -73,6 +85,7 @@ function MembersPage() {
   const [pwUserId, setPwUserId] = useState<string | null>(null);
   const [pwValue, setPwValue] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [removeId, setRemoveId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -104,13 +117,19 @@ function MembersPage() {
     mutationFn: (v: { userId: string; role: "admin" | "member" }) =>
       updateRoleFn({ data: { tenantId, ...v } }),
     onSuccess: invalidate,
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const removeM = useMutation({
     mutationFn: (userId: string) => removeFn({ data: { tenantId, userId } }),
-    onSuccess: invalidate,
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+    onSuccess: () => {
+      invalidate();
+      setRemoveId(null);
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof Error ? e.message : String(e));
+      setRemoveId(null);
+    },
   });
 
   const renameM = useMutation({
@@ -121,7 +140,7 @@ function MembersPage() {
       setEditingName("");
       invalidate();
     },
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const addM = useMutation({
@@ -129,16 +148,16 @@ function MembersPage() {
       addByEmailFn({ data: { tenantId, ...v } }),
     onSuccess: (res) => {
       if (res?.ok === false) {
-        alert(res.error);
+        toast.error(res.error);
         return;
       }
       invalidate();
       setAddEmail("");
       setAddRole("member");
-      if (res?.alreadyMember) alert(t("members.alreadyMember"));
-      else alert(t("members.addedOk"));
+      if (res?.alreadyMember) toast.success(t("members.alreadyMember"));
+      else toast.success(t("members.addedOk"));
     },
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const setPwM = useMutation({
@@ -147,9 +166,9 @@ function MembersPage() {
     onSuccess: () => {
       setPwUserId(null);
       setPwValue("");
-      alert("Password updated.");
+      toast.success("Password updated.");
     },
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
 
@@ -300,11 +319,7 @@ function MembersPage() {
                     <button
                       type="button"
                       disabled={removeM.isPending}
-                      onClick={() => {
-                        if (confirm(t("members.confirmRemove", { name: m.displayName }))) {
-                          removeM.mutate(m.id);
-                        }
-                      }}
+                      onClick={() => setRemoveId(m.id)}
                       className="rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
                     >
                       {t("members.remove")}
@@ -422,7 +437,7 @@ function MembersPage() {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (pwValue.length < 8) {
-                  alert("Password must be at least 8 characters.");
+                  toast.error("Password must be at least 8 characters.");
                   return;
                 }
                 setPwM.mutate({ userId: pwUserId, password: pwValue });
@@ -459,7 +474,33 @@ function MembersPage() {
           </div>
         </div>
       ) : null}
-    </div>
 
+      <AlertDialog open={!!removeId} onOpenChange={(open) => !open && setRemoveId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {removeId
+                ? t("members.confirmRemove", {
+                    name: members.find((m) => m.id === removeId)?.displayName ?? "",
+                  })
+                : ""}
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRemoveId(null)}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (removeId) removeM.mutate(removeId);
+              }}
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
