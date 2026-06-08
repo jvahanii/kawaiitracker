@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ensureSupabase } from "@/lib/supabase/client";
 
 import {
   addMemberByEmail,
@@ -71,6 +72,23 @@ function MembersPage() {
   const [editingName, setEditingName] = useState("");
   const [pwUserId, setPwUserId] = useState<string | null>(null);
   const [pwValue, setPwValue] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const sb = await ensureSupabase();
+        const { data } = await sb.auth.getUser();
+        if (active) setCurrentUserId(data.user?.id ?? null);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const copyJoinCode = async () => {
     try {
@@ -183,7 +201,16 @@ function MembersPage() {
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border">
             {members.map((m) => {
+              const isSelf = currentUserId === m.id;
               const isLastAdmin = m.role === "admin" && adminCount <= 1;
+              // Admins cannot modify another admin; last admin cannot demote self.
+              const roleLocked =
+                (m.role === "admin" && !isSelf) || (isSelf && isLastAdmin);
+              const roleLockReason = roleLocked
+                ? isSelf
+                  ? t("members.lastAdmin")
+                  : t("members.peerAdmin")
+                : undefined;
               return (
                 <li
                   key={m.id}
@@ -247,7 +274,7 @@ function MembersPage() {
                   <div className="flex items-center gap-2">
                     <select
                       value={m.role}
-                      disabled={isLastAdmin || updateM.isPending}
+                      disabled={roleLocked || updateM.isPending}
                       onChange={(e) =>
                         updateM.mutate({
                           userId: m.id,
@@ -255,7 +282,7 @@ function MembersPage() {
                         })
                       }
                       className="input h-8 py-0 text-sm"
-                      title={isLastAdmin ? t("members.lastAdmin") : undefined}
+                      title={roleLockReason}
                     >
                       <option value="admin">{t("members.admin")}</option>
                       <option value="member">{t("members.member")}</option>

@@ -146,6 +146,7 @@
     "remove": "Poista",
     "confirmRemove": "Poistetaanko käyttäjä {{name}} työtilasta?",
     "lastAdmin": "Työtilassa on oltava vähintään yksi ylläpitäjä.",
+    "peerAdmin": "Et voi muuttaa toisen ylläpitäjän roolia.",
     "addDirectTitle": "Lisää käyttäjä sähköpostilla",
     "addDirectBody": "Jos käyttäjällä on jo tili, hänet lisätään suoraan. Muussa tapauksessa hänelle lähetetään kutsu sähköpostitse.",
     "addDirectBtn": "Lisää",
