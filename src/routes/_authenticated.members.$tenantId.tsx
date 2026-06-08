@@ -5,6 +5,18 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ensureSupabase } from "@/lib/supabase/client";
 
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 import {
   addMemberByEmail,
   listMyTenants,
