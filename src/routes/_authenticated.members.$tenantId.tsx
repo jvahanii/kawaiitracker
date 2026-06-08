@@ -85,6 +85,7 @@ function MembersPage() {
   const [pwUserId, setPwUserId] = useState<string | null>(null);
   const [pwValue, setPwValue] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [removeId, setRemoveId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
