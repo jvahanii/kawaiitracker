@@ -9,6 +9,8 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 
+import { Toaster } from "@/components/ui/sonner";
+
 import appCss from "../styles.css?url";
 import "@/lib/i18n";
 import { ensureSupabase } from "@/lib/supabase/client";
@@ -125,6 +127,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <SupabaseAuthSync />
       <Outlet />
+      <Toaster />
     </QueryClientProvider>
   );
 }
