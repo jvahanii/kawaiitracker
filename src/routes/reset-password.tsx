@@ -57,6 +57,17 @@ function ResetPasswordPage() {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (cancelled) return;
           if (error) {
+            // The code may have already been exchanged (e.g. by a prior render
+            // or a concurrent call). Fall through to the session check before
+            // declaring the link invalid.
+            const { data: existingSession } = await supabase.auth.getSession();
+            if (cancelled) return;
+            if (existingSession.session) {
+              url.searchParams.delete("code");
+              window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+              setSessionReady(true);
+              return;
+            }
             markInvalid(error.message);
             return;
           }

@@ -5,6 +5,18 @@ import { ensureSupabase } from "@/lib/supabase/client";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
+    // During SSR the session lives in the browser's localStorage — there is no
+    // way to verify it server-side here.  The client-side re-run (after
+    // hydration) performs the real auth check, so we skip it on the server to
+    // avoid always redirecting to /login for the initial SSR pass.
+    if (typeof window === "undefined") {
+      // During SSR the Supabase session lives in the browser's localStorage —
+      // there is no way to verify it server-side here.  The component is not
+      // rendered (ssr: false), so returning a stub is safe; the real auth check
+      // runs client-side after hydration.
+      return { user: { id: "", email: "", displayName: "" } };
+    }
+
     const supabase = await ensureSupabase().catch(() => null);
     if (!supabase) throw redirect({ to: "/login" });
 
