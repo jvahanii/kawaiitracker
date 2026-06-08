@@ -137,7 +137,3 @@ function Onboarding() {
     </div>
   );
 }
-
-    </div>
-  );
-}
