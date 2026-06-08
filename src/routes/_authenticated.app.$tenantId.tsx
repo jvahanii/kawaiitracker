@@ -985,6 +985,8 @@ function MonthlyEntries({
                 label={monthLabel.format(new Date(2000, idx, 1))}
                 amount={cell?.amount ?? null}
                 actual={cell?.actual ?? null}
+                planTabIndex={idx + 1}
+                actualTabIndex={idx + 13}
                 onCommitAmount={(amount) => upsertM.mutate({ month: iso, amount })}
                 onCommitActual={(actual) => upsertM.mutate({ month: iso, actual })}
               />
@@ -1002,12 +1004,16 @@ function MonthCell({
   actual,
   onCommitAmount,
   onCommitActual,
+  planTabIndex,
+  actualTabIndex,
 }: {
   label: string;
   amount: number | null;
   actual: number | null;
   onCommitAmount: (amount: number) => void;
   onCommitActual: (actual: number) => void;
+  planTabIndex?: number;
+  actualTabIndex?: number;
 }) {
   const { t } = useTranslation();
   return (
@@ -1015,12 +1021,13 @@ function MonthCell({
       <span className="truncate text-center text-[10px] uppercase tracking-wide text-muted-foreground">
         {label.slice(0, 3)}
       </span>
-      <NumberInput value={amount} onCommit={onCommitAmount} placeholder="plan" />
+      <NumberInput value={amount} onCommit={onCommitAmount} placeholder="plan" tabIndex={planTabIndex} />
       <NumberInput
         value={actual}
         onCommit={onCommitActual}
         placeholder={t("workspace.actual").toLowerCase()}
         className="text-primary"
+        tabIndex={actualTabIndex}
       />
     </div>
   );
@@ -1031,11 +1038,13 @@ function NumberInput({
   onCommit,
   placeholder,
   className = "",
+  tabIndex,
 }: {
   value: number | null;
   onCommit: (n: number) => void;
   placeholder?: string;
   className?: string;
+  tabIndex?: number;
 }) {
   const [text, setText] = useState(value === null ? "0" : String(value));
   const [focused, setFocused] = useState(false);
@@ -1050,7 +1059,11 @@ function NumberInput({
       inputMode="decimal"
       step="0.01"
       value={text}
-      onFocus={() => setFocused(true)}
+      tabIndex={tabIndex}
+      onFocus={(e) => {
+        setFocused(true);
+        e.currentTarget.select();
+      }}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
         setFocused(false);
