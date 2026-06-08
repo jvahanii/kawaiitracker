@@ -319,11 +319,7 @@ function MembersPage() {
                     <button
                       type="button"
                       disabled={removeM.isPending}
-                      onClick={() => {
-                        if (confirm(t("members.confirmRemove", { name: m.displayName }))) {
-                          removeM.mutate(m.id);
-                        }
-                      }}
+                      onClick={() => setRemoveId(m.id)}
                       className="rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
                     >
                       {t("members.remove")}
