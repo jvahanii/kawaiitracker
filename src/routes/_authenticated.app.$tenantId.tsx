@@ -1553,7 +1553,7 @@ function FolderVisibilityDialog({
         data: { tenantId, folderId, restricted, userIds: Array.from(allowed) },
       }),
     onSuccess: onSaved,
-    onError: (e: unknown) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   return (
