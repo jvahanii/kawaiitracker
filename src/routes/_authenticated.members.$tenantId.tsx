@@ -72,6 +72,23 @@ function MembersPage() {
   const [editingName, setEditingName] = useState("");
   const [pwUserId, setPwUserId] = useState<string | null>(null);
   const [pwValue, setPwValue] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const sb = await ensureSupabase();
+        const { data } = await sb.auth.getUser();
+        if (active) setCurrentUserId(data.user?.id ?? null);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const copyJoinCode = async () => {
     try {
