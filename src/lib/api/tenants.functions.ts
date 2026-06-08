@@ -225,10 +225,14 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
       }
     }
 
+    const wasExisting = !!userId;
+
     if (!userId) {
       try {
         const { data: invited, error: inviteErr } =
-          await admin.auth.admin.inviteUserByEmail(email);
+          await admin.auth.admin.inviteUserByEmail(email, {
+            redirectTo: data.redirectTo,
+          });
         if (inviteErr) throw new Error(inviteErr.message);
         if (invited?.user) {
           userId = invited.user.id;
@@ -255,6 +259,13 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
         if (created?.user) {
           userId = created.user.id;
           resolvedEmail = created.user.email ?? email;
+          // createUser doesn't send mail — send a password-recovery email so
+          // the user can set their own password via /reset-password.
+          if (data.redirectTo) {
+            await context.supabase.auth.resetPasswordForEmail(email, {
+              redirectTo: data.redirectTo,
+            });
+          }
         }
       }
     }
@@ -277,6 +288,14 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
       .insert({ tenant_id: data.tenantId, user_id: userId, role: data.role });
     if (insErr && !/duplicate|unique/i.test(insErr.message)) {
       throw new Error(insErr.message);
+    }
+
+    // For users who already had an account, also send a recovery email so they
+    // get a link to set/refresh their password and land on /reset-password.
+    if (wasExisting && data.redirectTo) {
+      await context.supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: data.redirectTo,
+      });
     }
 
     return { ok: true as const, userId, alreadyMember: !!insErr };
