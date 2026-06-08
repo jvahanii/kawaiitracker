@@ -1,28 +1,20 @@
-## Plan: Automatic audit log retention
+## Goal
+Switch the app from the current Supabase project to yours by swapping credentials only. No code changes — the integration already reads custom env vars (`EXT_SUPABASE_*`).
 
-Prune `audit_log` rows older than **12 months** on a nightly schedule.
+## Why login is stuck
+`ensureSupabase()` calls the server fn `getSupabaseConfig`, which throws if `EXT_SUPABASE_URL` / `EXT_SUPABASE_PUBLISHABLE_KEY` are missing or wrong. The login button stays on "Logging in…" because the client never initializes. Updating the secrets fixes it.
 
-### 1. Database migration
-New migration `supabase/migrations/<ts>_audit_log_retention.sql`:
-- `prune_audit_log(retention_days int default 365)` SECURITY DEFINER function that deletes from `public.audit_log` where `created_at < now() - interval`. Returns row count.
-- Enable `pg_cron` extension (if not already).
-- Schedule nightly job `audit-log-prune` at `15 3 * * *` UTC calling `select public.prune_audit_log(365);`.
+## Steps
+1. Prompt you (secure form) to enter/update three secrets:
+   - `EXT_SUPABASE_URL` — e.g. `https://<your-project-ref>.supabase.co`
+   - `EXT_SUPABASE_PUBLISHABLE_KEY` — anon/publishable key from Supabase → Project Settings → API
+   - `EXT_SUPABASE_SERVICE_ROLE_KEY` — service role key from the same page (server-only, never shipped to browser)
+2. You apply the existing migrations from `supabase/migrations/` to your Supabase project (Dashboard → SQL editor, or `supabase db push` locally). This is required so tables, RLS, and triggers exist.
+3. In your Supabase project, configure Auth:
+   - Authentication → URL Configuration: set Site URL to `https://kawaiitracker.lovable.app` and add `https://id-preview--81d75f47-0994-4548-a216-bf2d97a3d0e8.lovable.app` to Redirect URLs.
+   - Enable Email provider; enable Google if you want social sign-in.
+4. Restart preview; verify login works in preview and production.
 
-### 2. Manual trigger endpoint (optional fallback)
-`src/routes/api/public/prune-audit-log.ts` — POST handler that:
-- Verifies `x-cron-secret` header against `CRON_SECRET` env var.
-- Calls `supabaseAdmin.rpc('prune_audit_log', { retention_days: 365 })`.
-- Returns `{ deleted: <count> }`.
-
-This gives a way to manually run pruning or use external schedulers if pg_cron is ever disabled. Requires adding `CRON_SECRET` to secrets.
-
-### 3. Update `supabase-schema.sql`
-Append the retention function + cron schedule to the reference schema file so it matches.
-
-### Notes
-- Retention: 12 months. Adjustable via the function arg if needed later.
-- No UI changes; existing audit page already fetches latest 500 rows.
-- No changes to triggers or `list_audit_log` RPC.
-
-### Question
-Skip the manual `/api/public` endpoint and rely solely on pg_cron? Saves adding a secret. Let me know — otherwise I'll include both.
+## Out of scope
+- No code edits.
+- Data is not migrated from the current Supabase to yours — you start with an empty database (plus whatever the migrations seed).
