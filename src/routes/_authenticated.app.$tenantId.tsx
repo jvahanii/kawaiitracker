@@ -1004,12 +1004,16 @@ function MonthCell({
   actual,
   onCommitAmount,
   onCommitActual,
+  planTabIndex,
+  actualTabIndex,
 }: {
   label: string;
   amount: number | null;
   actual: number | null;
   onCommitAmount: (amount: number) => void;
   onCommitActual: (actual: number) => void;
+  planTabIndex?: number;
+  actualTabIndex?: number;
 }) {
   const { t } = useTranslation();
   return (
@@ -1017,12 +1021,13 @@ function MonthCell({
       <span className="truncate text-center text-[10px] uppercase tracking-wide text-muted-foreground">
         {label.slice(0, 3)}
       </span>
-      <NumberInput value={amount} onCommit={onCommitAmount} placeholder="plan" />
+      <NumberInput value={amount} onCommit={onCommitAmount} placeholder="plan" tabIndex={planTabIndex} />
       <NumberInput
         value={actual}
         onCommit={onCommitActual}
         placeholder={t("workspace.actual").toLowerCase()}
         className="text-primary"
+        tabIndex={actualTabIndex}
       />
     </div>
   );
