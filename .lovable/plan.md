@@ -1,28 +1,57 @@
 ## Goal
-Two independent fixes in one pass:
-1. Production login on `kawaiitracker.lovable.app` is broken because the **Production** secret store is missing the Supabase env vars.
-2. After login, `/onboarding` briefly flashes the "Create / Join workspace" form before redirecting users who already have a tenant.
 
-## Step 1 — Production Supabase secrets
-Trigger the secure secrets form for the **Production** environment and have the user paste values for:
-- `EXT_SUPABASE_URL`
-- `EXT_SUPABASE_PUBLISHABLE_KEY`
-- `EXT_SUPABASE_SERVICE_ROLE_KEY`
+Move the savings goal from `localStorage` to the database so it's shared across all members of a workspace and updates in all open windows in real time.
 
-Same values used for Preview (from Supabase → Project Settings → API). Then user clicks **Publish → Update** to redeploy production with the new env.
+## Changes
 
-## Step 2 — Eliminate onboarding flash
-Edit `src/routes/_authenticated.onboarding.tsx`:
-- While `tenantsQ.isLoading` (or not yet `isFetched`), render a centered loading state instead of the Create/Join form.
-- Only render the Create/Join form once the query has resolved AND `tenantsQ.data` is empty.
-- Keep the existing `useEffect` redirect to `/app/$tenantId` for users who already have a tenant — but because we no longer render the form during loading, no flash is possible.
+### 1. Database (`supabase-schema.sql`)
 
-No changes to API, business logic, or styling beyond the loading state.
+Add a new `savings_goals` table, one row per `(tenant_id, year)`:
+
+```sql
+create table if not exists public.savings_goals (
+  tenant_id uuid not null references public.tenants(id) on delete cascade,
+  year int not null,
+  amount numeric,
+  goal_date date,
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null,
+  primary key (tenant_id, year)
+);
+
+grant select, insert, update, delete on public.savings_goals to authenticated;
+grant all on public.savings_goals to service_role;
+
+alter table public.savings_goals enable row level security;
+```
+
+RLS: members of the tenant can read and write (reuse existing `is_tenant_member(tenant_id, auth.uid())` helper, same pattern as `entries`/`items`).
+
+Enable realtime:
+```sql
+alter publication supabase_realtime add table public.savings_goals;
+```
+
+### 2. Server functions (`src/lib/api/goals.functions.ts`, new)
+
+- `getGoal({ tenantId, year })` → `{ amount, date }` (uses `requireSupabaseAuth`).
+- `upsertGoal({ tenantId, year, amount, date })` → upserts row, returns updated value.
+
+### 3. `SavingsChart.tsx`
+
+- Replace `loadGoal`/`saveGoal` localStorage with `useQuery(['goal', tenantId, year], getGoal)` and a `useMutation` for `upsertGoal`.
+- Inputs become controlled by query data; on change, call mutation and `queryClient.invalidate(['goal', tenantId, year])` on success.
+- Add a Supabase realtime subscription on `savings_goals` filtered by `tenant_id=eq.<tenantId>` that invalidates the goal query, so other windows update instantly without refresh.
+
+### 4. One-time migration note
+
+Existing per-browser localStorage values won't be migrated automatically — each workspace just sets the goal once via the UI and it then syncs everywhere.
 
 ## Out of scope
-- No schema changes, no auth flow changes.
-- Not touching `login.tsx` — the redirect target stays `/onboarding`; onboarding itself handles the decision.
 
-## Verification
-- Preview: log in with an account that already has a tenant → should go straight to `/app/$tenantId` with a brief spinner, no Create/Join form flash.
-- Production: after secrets + republish, hard-refresh `kawaiitracker.lovable.app` and log in successfully.
+- Per-user goals (this is per workspace, shared by all members).
+- Historical audit log for goal edits (only `updated_at`/`updated_by` are tracked).
+
+## What you'll need to do after
+
+Re-run `supabase-schema.sql` in the Supabase SQL Editor to create the table, RLS, and realtime publication.
