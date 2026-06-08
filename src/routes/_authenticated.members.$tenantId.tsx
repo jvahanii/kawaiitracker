@@ -274,7 +274,7 @@ function MembersPage() {
                   <div className="flex items-center gap-2">
                     <select
                       value={m.role}
-                      disabled={isLastAdmin || updateM.isPending}
+                      disabled={roleLocked || updateM.isPending}
                       onChange={(e) =>
                         updateM.mutate({
                           userId: m.id,
@@ -282,7 +282,7 @@ function MembersPage() {
                         })
                       }
                       className="input h-8 py-0 text-sm"
-                      title={isLastAdmin ? t("members.lastAdmin") : undefined}
+                      title={roleLockReason}
                     >
                       <option value="admin">{t("members.admin")}</option>
                       <option value="member">{t("members.member")}</option>
