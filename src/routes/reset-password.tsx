@@ -19,42 +19,95 @@ function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [sessionReady, setSessionReady] = useState(false);
   const [linkInvalid, setLinkInvalid] = useState(false);
+  const [invalidReason, setInvalidReason] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let unsub: (() => void) | undefined;
 
-    ensureSupabase()
-      .then(async (supabase) => {
+    const markInvalid = (reason?: string) => {
+      if (cancelled) return;
+      if (reason) setInvalidReason(reason);
+      setLinkInvalid(true);
+    };
+
+    (async () => {
+      try {
+        const supabase = await ensureSupabase();
         if (cancelled) return;
 
-        // If a recovery session is already present (e.g. Supabase processed the
-        // URL token before this effect ran), we can proceed immediately.
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData.session) {
-          if (!cancelled) setSessionReady(true);
+        const url = new URL(window.location.href);
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+
+        // 1. Explicit error in URL (expired / used link from Supabase).
+        const errParam =
+          url.searchParams.get("error_description") ??
+          url.searchParams.get("error") ??
+          hash.get("error_description") ??
+          hash.get("error");
+        if (errParam) {
+          markInvalid(errParam);
           return;
         }
 
-        // No session yet — wait for the PASSWORD_RECOVERY event that Supabase
-        // fires once it has exchanged the one-time code in the URL for tokens.
-        timeoutId = setTimeout(() => {
-          if (!cancelled) setLinkInvalid(true);
-        }, RECOVERY_SESSION_TIMEOUT_MS);
+        // 2. PKCE flow: `?code=...` — must exchange for a session.
+        const code = url.searchParams.get("code");
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (cancelled) return;
+          if (error) {
+            markInvalid(error.message);
+            return;
+          }
+          // Clean the code from the URL so a refresh does not re-exchange.
+          url.searchParams.delete("code");
+          window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+          setSessionReady(true);
+          return;
+        }
 
+        // 3. Implicit flow: tokens come in the URL hash.
+        const accessToken = hash.get("access_token");
+        const refreshToken = hash.get("refresh_token");
+        const type = hash.get("type");
+        if (accessToken && refreshToken && type === "recovery") {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (cancelled) return;
+          if (error) {
+            markInvalid(error.message);
+            return;
+          }
+          window.history.replaceState({}, "", url.pathname + url.search);
+          setSessionReady(true);
+          return;
+        }
+
+        // 4. Recovery session may already be present from a prior detectSessionInUrl run.
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (sessionData.session) {
+          setSessionReady(true);
+          return;
+        }
+
+        // 5. Last resort: wait briefly for PASSWORD_RECOVERY event.
+        timeoutId = setTimeout(() => markInvalid("timeout"), RECOVERY_SESSION_TIMEOUT_MS);
         const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-          if (event === "PASSWORD_RECOVERY") {
+          if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
             if (timeoutId !== undefined) clearTimeout(timeoutId);
             if (!cancelled) setSessionReady(true);
             unsub?.();
           }
         });
         unsub = () => listener.subscription.unsubscribe();
-      })
-      .catch(() => {
-        if (!cancelled) setLinkInvalid(true);
-      });
+      } catch (e) {
+        markInvalid(e instanceof Error ? e.message : String(e));
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -92,6 +145,9 @@ function ResetPasswordPage() {
           <p className="text-sm text-destructive">
             {t("reset.linkInvalid", "This reset link is invalid or has expired.")}
           </p>
+          {invalidReason ? (
+            <p className="text-xs text-muted-foreground break-words">{invalidReason}</p>
+          ) : null}
           <Link to="/forgot-password" className="kawaii-button block w-full text-center">
             {t("reset.requestNew", "Request a new link")} ✨
           </Link>
