@@ -142,10 +142,30 @@ export function AuthShell({
         <span className="absolute left-[14%] bottom-[18%]">🍡</span>
         <span className="absolute right-[12%] bottom-[14%] animate-pulse">💖</span>
         <span className="absolute left-[45%] top-[6%]">☁️</span>
+        <img
+          src={kawaiiKiwi}
+          alt=""
+          width={160}
+          height={160}
+          className="absolute -left-6 bottom-10 h-28 w-28 rotate-[-12deg] opacity-90 sm:left-[6%] sm:h-36 sm:w-36"
+        />
+        <img
+          src={kawaiiKiwi}
+          alt=""
+          width={160}
+          height={160}
+          className="absolute -right-4 top-24 h-24 w-24 rotate-[18deg] opacity-90 sm:right-[6%] sm:h-32 sm:w-32"
+        />
       </div>
       <div className="kawaii-card relative w-full max-w-sm p-8">
-        <div className="absolute -top-6 left-1/2 -translate-x-1/2 rounded-full border-2 border-border bg-white px-4 py-2 text-2xl shadow-sm">
-          (灬♥ω♥灬)
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2">
+          <img
+            src={kawaiiKiwi}
+            alt="Kawaii kiwi"
+            width={96}
+            height={96}
+            className="h-16 w-16 drop-shadow-md"
+          />
         </div>
         <div className="mt-4 flex items-center justify-between">
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
@@ -154,7 +174,7 @@ export function AuthShell({
           <LanguageSwitcher />
         </div>
         <h1 className="mt-5 text-center text-3xl font-bold tracking-tight text-foreground">
-          {title} <span className="inline-block">♡</span>
+          {title} <span className="inline-block">🥝</span>
         </h1>
         <p className="mt-2 text-center text-sm text-muted-foreground">{subtitle}</p>
         <div className="mt-6">{children}</div>
