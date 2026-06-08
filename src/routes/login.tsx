@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { ensureSupabase } from "@/lib/supabase/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import kawaiiKiwi from "@/assets/kawaii-kiwi.png";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Log in — Tracker" }] }),
