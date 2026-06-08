@@ -220,7 +220,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   const pct =
     goal.amount && goal.amount > 0 ? Math.min(100, Math.round((total / goal.amount) * 100)) : null;
 
-  const hasData = chartData.length > 0;
+  const hasData = entries.length > 0;
 
   return (
     <section className="border-b border-border bg-card/40 px-4 py-3">
