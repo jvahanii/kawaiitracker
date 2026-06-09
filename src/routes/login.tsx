@@ -54,7 +54,17 @@ function LoginPage() {
       return { ok: true as const };
     },
     onSuccess: () => {
-      navigate({ to: "/onboarding" });
+      let lastTenantId: string | null = null;
+      try {
+        lastTenantId = localStorage.getItem("lastTenantId");
+      } catch {
+        // ignore
+      }
+      if (lastTenantId) {
+        navigate({ to: "/app/$tenantId", params: { tenantId: lastTenantId } });
+      } else {
+        navigate({ to: "/onboarding" });
+      }
     },
   });
 
