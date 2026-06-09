@@ -23,6 +23,40 @@ export const listMyTenants = createServerFn({ method: "GET" })
     }));
   });
 
+export const getLastTenantId = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("profiles")
+      .select("last_tenant_id")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const lastId = (data?.last_tenant_id as string | null) ?? null;
+    if (!lastId) return { id: null as string | null };
+    // Verify user is still a member of that tenant.
+    const { data: member, error: mErr } = await context.supabase
+      .from("tenant_members")
+      .select("tenant_id")
+      .eq("tenant_id", lastId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (mErr) throw new Error(mErr.message);
+    return { id: member ? lastId : null };
+  });
+
+export const setLastTenantId = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ tenantId: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase
+      .from("profiles")
+      .update({ last_tenant_id: data.tenantId })
+      .eq("id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const createTenant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ name: z.string().min(1).max(80) }).parse(d))
