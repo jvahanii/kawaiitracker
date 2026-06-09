@@ -217,6 +217,25 @@ function WorkspacePage() {
       updateFolderFn({ data: { tenantId, id: vars.id, name: vars.name } }),
     onSuccess: invalidateFolders,
   });
+  const moveFolderM = useMutation({
+    mutationFn: (vars: { id: string; parentId: string | null }) =>
+      updateFolderFn({ data: { tenantId, id: vars.id, parentId: vars.parentId } }),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["folders", tenantId] });
+      const prev = qc.getQueryData<FolderRow[]>(["folders", tenantId]);
+      if (prev) {
+        qc.setQueryData<FolderRow[]>(
+          ["folders", tenantId],
+          prev.map((f) => (f.id === vars.id ? { ...f, parentId: vars.parentId } : f)),
+        );
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["folders", tenantId], ctx.prev);
+    },
+    onSuccess: invalidateFolders,
+  });
   const deleteFolderM = useMutation({
     mutationFn: (id: string) => deleteFolderFn({ data: { tenantId, id } }),
     onSuccess: () => {
