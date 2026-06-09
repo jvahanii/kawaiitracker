@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSuperusersRouteImport } from './routes/_authenticated.superusers'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated.onboarding'
 import { Route as ApiPublicSupabaseConfigRouteImport } from './routes/api/public/supabase-config'
 import { Route as AuthenticatedMembersTenantIdRouteImport } from './routes/_authenticated.members.$tenantId'
@@ -49,6 +50,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSuperusersRoute = AuthenticatedSuperusersRouteImport.update({
+  id: '/superusers',
+  path: '/superusers',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/superusers': typeof AuthenticatedSuperusersRoute
   '/app/$tenantId': typeof AuthenticatedAppTenantIdRoute
   '/audit/$tenantId': typeof AuthenticatedAuditTenantIdRoute
   '/members/$tenantId': typeof AuthenticatedMembersTenantIdRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/superusers': typeof AuthenticatedSuperusersRoute
   '/app/$tenantId': typeof AuthenticatedAppTenantIdRoute
   '/audit/$tenantId': typeof AuthenticatedAuditTenantIdRoute
   '/members/$tenantId': typeof AuthenticatedMembersTenantIdRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/superusers': typeof AuthenticatedSuperusersRoute
   '/_authenticated/app/$tenantId': typeof AuthenticatedAppTenantIdRoute
   '/_authenticated/audit/$tenantId': typeof AuthenticatedAuditTenantIdRoute
   '/_authenticated/members/$tenantId': typeof AuthenticatedMembersTenantIdRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/onboarding'
+    | '/superusers'
     | '/app/$tenantId'
     | '/audit/$tenantId'
     | '/members/$tenantId'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/onboarding'
+    | '/superusers'
     | '/app/$tenantId'
     | '/audit/$tenantId'
     | '/members/$tenantId'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/_authenticated/onboarding'
+    | '/_authenticated/superusers'
     | '/_authenticated/app/$tenantId'
     | '/_authenticated/audit/$tenantId'
     | '/_authenticated/members/$tenantId'
@@ -211,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/superusers': {
+      id: '/_authenticated/superusers'
+      path: '/superusers'
+      fullPath: '/superusers'
+      preLoaderRoute: typeof AuthenticatedSuperusersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/onboarding': {
       id: '/_authenticated/onboarding'
       path: '/onboarding'
@@ -251,6 +270,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedSuperusersRoute: typeof AuthenticatedSuperusersRoute
   AuthenticatedAppTenantIdRoute: typeof AuthenticatedAppTenantIdRoute
   AuthenticatedAuditTenantIdRoute: typeof AuthenticatedAuditTenantIdRoute
   AuthenticatedMembersTenantIdRoute: typeof AuthenticatedMembersTenantIdRoute
@@ -258,6 +278,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedSuperusersRoute: AuthenticatedSuperusersRoute,
   AuthenticatedAppTenantIdRoute: AuthenticatedAppTenantIdRoute,
   AuthenticatedAuditTenantIdRoute: AuthenticatedAuditTenantIdRoute,
   AuthenticatedMembersTenantIdRoute: AuthenticatedMembersTenantIdRoute,
