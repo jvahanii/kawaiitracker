@@ -238,16 +238,7 @@ function AuditRow({
           {formatDateTime(date)}
         </div>
       </div>
-      {(entry.changes || entry.rowData) && (
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="mt-1 text-xs text-muted-foreground underline hover:text-foreground"
-        >
-          {open ? "Hide details" : "Show details"}
-        </button>
-      )}
-      {open && entry.changes ? (
+      {entry.changes ? (
         <table className="mt-2 w-full text-xs">
           <thead className="text-muted-foreground">
             <tr>
@@ -271,7 +262,7 @@ function AuditRow({
           </tbody>
         </table>
       ) : null}
-      {open && entry.rowData ? (
+      {entry.rowData && !entry.changes ? (
         <pre className="mt-2 max-h-60 overflow-auto rounded bg-accent/40 p-2 text-xs">
           {JSON.stringify(entry.rowData, null, 2)}
         </pre>
