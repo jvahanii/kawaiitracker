@@ -46,16 +46,6 @@ function Landing() {
         </div>
       </header>
       <main className="relative mx-auto max-w-3xl px-6 py-20 text-center">
-        <KiwiWithKey
-          className="pointer-events-none absolute left-4 top-6 h-24 w-24 rotate-[-12deg] opacity-90 sm:left-10 sm:h-32 sm:w-32"
-          imgClassName="h-full w-full"
-          keyClassName="h-5 w-5 sm:h-7 sm:w-7"
-        />
-        <KiwiWithKey
-          className="pointer-events-none absolute right-4 top-16 h-20 w-20 rotate-[14deg] opacity-90 sm:right-10 sm:h-28 sm:w-28"
-          imgClassName="h-full w-full"
-          keyClassName="h-4 w-4 sm:h-6 sm:w-6"
-        />
         <div className="mb-6 inline-block rounded-full border-2 border-border bg-white/80 px-4 py-1.5 text-sm font-medium text-muted-foreground shadow-sm">
           ✨ 🥝 ʕ•ᴥ•ʔ 🥝 ✨
         </div>
