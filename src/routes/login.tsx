@@ -19,6 +19,7 @@ const REMEMBER_KEY = "rememberedEmail";
 function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const getLastTenantFn = useServerFn(getLastTenantId);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
