@@ -149,6 +149,7 @@ function WorkspacePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  const [draggingFolderId, setDraggingFolderId] = useState<string | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "ROOT">(null);
   const [visibilityFolderId, setVisibilityFolderId] = useState<string | null>(null);
@@ -214,6 +215,25 @@ function WorkspacePage() {
   const renameFolderM = useMutation({
     mutationFn: (vars: { id: string; name: string }) =>
       updateFolderFn({ data: { tenantId, id: vars.id, name: vars.name } }),
+    onSuccess: invalidateFolders,
+  });
+  const moveFolderM = useMutation({
+    mutationFn: (vars: { id: string; parentId: string | null }) =>
+      updateFolderFn({ data: { tenantId, id: vars.id, parentId: vars.parentId } }),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["folders", tenantId] });
+      const prev = qc.getQueryData<FolderRow[]>(["folders", tenantId]);
+      if (prev) {
+        qc.setQueryData<FolderRow[]>(
+          ["folders", tenantId],
+          prev.map((f) => (f.id === vars.id ? { ...f, parentId: vars.parentId } : f)),
+        );
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["folders", tenantId], ctx.prev);
+    },
     onSuccess: invalidateFolders,
   });
   const deleteFolderM = useMutation({
@@ -422,6 +442,8 @@ function WorkspacePage() {
             setSelectedId={setSelectedId}
             draggingItemId={draggingItemId}
             setDraggingItemId={setDraggingItemId}
+            draggingFolderId={draggingFolderId}
+            setDraggingFolderId={setDraggingFolderId}
             dragOverItemId={dragOverItemId}
             setDragOverItemId={setDragOverItemId}
             dragOverFolderId={dragOverFolderId}
@@ -429,6 +451,7 @@ function WorkspacePage() {
             isAdmin={isAdmin}
             onReorder={(ids) => reorderM.mutate(ids)}
             onMoveItem={(id, folderId) => moveItemM.mutate({ id, folderId })}
+            onMoveFolder={(id, parentId) => moveFolderM.mutate({ id, parentId })}
             onCreateFolder={(name, parentId) => createFolderM.mutate({ name, parentId })}
             onRenameFolder={(id, name) => renameFolderM.mutate({ id, name })}
             onDeleteFolder={(id) => deleteFolderM.mutate(id)}
@@ -1265,12 +1288,15 @@ function FolderTreePane({
   setSelectedId,
   draggingItemId,
   setDraggingItemId,
+  draggingFolderId,
+  setDraggingFolderId,
   dragOverItemId,
   setDragOverItemId,
   dragOverFolderId,
   setDragOverFolderId,
   onReorder,
   onMoveItem,
+  onMoveFolder,
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
@@ -1289,12 +1315,15 @@ function FolderTreePane({
   setSelectedId: (id: string) => void;
   draggingItemId: string | null;
   setDraggingItemId: (id: string | null) => void;
+  draggingFolderId: string | null;
+  setDraggingFolderId: (id: string | null) => void;
   dragOverItemId: string | null;
   setDragOverItemId: (id: string | null) => void;
   dragOverFolderId: string | null | "ROOT";
   setDragOverFolderId: (id: string | null | "ROOT") => void;
   onReorder: (ids: string[]) => void;
   onMoveItem: (id: string, folderId: string | null) => void;
+  onMoveFolder: (id: string, parentId: string | null) => void;
   onCreateFolder: (name: string, parentId: string | null) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
@@ -1426,16 +1455,37 @@ function FolderTreePane({
     </li>
   );
 
+  const isDescendantOf = (candidateId: string, ancestorId: string): boolean => {
+    if (candidateId === ancestorId) return true;
+    const kids = childrenByParent.get(ancestorId) ?? [];
+    for (const k of kids) {
+      if (isDescendantOf(candidateId, k.id)) return true;
+    }
+    return false;
+  };
+
   const renderFolder = (folder: FolderRow, depth: number): ReactNode => {
     const open = isOpen(folder.id);
     const children = childrenByParent.get(folder.id) ?? [];
     const folderItems = itemsByFolder.get(folder.id) ?? [];
     const dragHover = dragOverFolderId === folder.id;
+    const folderDropAllowed =
+      !draggingFolderId || !isDescendantOf(folder.id, draggingFolderId);
     return (
       <li key={folder.id}>
         <div
+          draggable
+          onDragStart={(e) => {
+            setDraggingFolderId(folder.id);
+            e.dataTransfer.effectAllowed = "move";
+          }}
+          onDragEnd={() => {
+            setDraggingFolderId(null);
+            setDragOverFolderId(null);
+          }}
           onDragOver={(e) => {
-            if (!draggingItemId) return;
+            if (!draggingItemId && !draggingFolderId) return;
+            if (draggingFolderId && !folderDropAllowed) return;
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             if (dragOverFolderId !== folder.id) setDragOverFolderId(folder.id);
@@ -1447,12 +1497,16 @@ function FolderTreePane({
             e.preventDefault();
             e.stopPropagation();
             if (draggingItemId) onMoveItem(draggingItemId, folder.id);
+            else if (draggingFolderId && folderDropAllowed && draggingFolderId !== folder.id) {
+              onMoveFolder(draggingFolderId, folder.id);
+            }
             setDraggingItemId(null);
+            setDraggingFolderId(null);
             setDragOverFolderId(null);
           }}
           className={`group flex items-center gap-1 border-b border-border py-1 pr-1 text-sm ${
             dragHover ? "bg-primary/10" : "bg-muted/30"
-          }`}
+          } ${draggingFolderId === folder.id ? "opacity-40" : ""}`}
           style={{ paddingLeft: `${depth * 12 + 4}px` }}
         >
           <button onClick={() => toggle(folder.id)} className="p-0.5 text-muted-foreground hover:text-foreground" aria-label="toggle">
@@ -1544,7 +1598,7 @@ function FolderTreePane({
           <li>
             <div
               onDragOver={(e) => {
-                if (!draggingItemId) return;
+                if (!draggingItemId && !draggingFolderId) return;
                 e.preventDefault();
                 e.dataTransfer.dropEffect = "move";
                 if (dragOverFolderId !== "ROOT") setDragOverFolderId("ROOT");
@@ -1555,7 +1609,9 @@ function FolderTreePane({
               onDrop={(e) => {
                 e.preventDefault();
                 if (draggingItemId) onMoveItem(draggingItemId, null);
+                else if (draggingFolderId) onMoveFolder(draggingFolderId, null);
                 setDraggingItemId(null);
+                setDraggingFolderId(null);
                 setDragOverFolderId(null);
               }}
               className={`border-b border-border py-1 pl-2 text-xs uppercase tracking-wide text-muted-foreground ${
