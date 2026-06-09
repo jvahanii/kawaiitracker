@@ -28,7 +28,7 @@ import {
 
 import { ensureSupabase } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/format-date";
-import { listMyTenants, listTenantMembers } from "@/lib/api/tenants.functions";
+import { listMyTenants, listTenantMembers, setLastTenantId } from "@/lib/api/tenants.functions";
 import {
   createItem,
   deleteItem,
