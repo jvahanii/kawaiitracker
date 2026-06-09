@@ -190,16 +190,18 @@ function parentItemRef(
 function AuditRow({
   entry,
   itemNames,
+  entriesById,
 }: {
   entry: AuditEntry;
   itemNames: Map<string, string>;
+  entriesById: Map<string, EntryMeta>;
 }) {
   const [open, setOpen] = useState(false);
   const date = new Date(entry.createdAt);
   const actor = entry.actorName || entry.actorEmail || "Unknown";
   const label = TABLE_LABELS[entry.tableName] ?? entry.tableName;
-  const name = entityName(entry, itemNames);
-  const parentRef = parentItemRef(entry, itemNames);
+  const name = entityName(entry, itemNames, entriesById);
+  const parentRef = parentItemRef(entry, itemNames, entriesById);
   const changeKeys = entry.changes ? Object.keys(entry.changes) : [];
 
   return (
