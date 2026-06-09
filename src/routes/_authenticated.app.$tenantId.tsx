@@ -29,6 +29,7 @@ import {
 import { ensureSupabase } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/format-date";
 import { listMyTenants, listTenantMembers, setLastTenantId } from "@/lib/api/tenants.functions";
+import { isSuperuser as isSuperuserFn } from "@/lib/api/superusers.functions";
 import {
   createItem,
   deleteItem,
@@ -84,11 +85,16 @@ function WorkspacePage() {
   const updateFolderFn = useServerFn(updateFolder);
   const deleteFolderFn = useServerFn(deleteFolder);
   const setLastTenantFn = useServerFn(setLastTenantId);
+  const isSuperuserSF = useServerFn(isSuperuserFn);
 
   const tenantsQ = useQuery({
     queryKey: ["my-tenants"],
     queryFn: () => tenantListFn(),
     retry: 1,
+  });
+  const isSuperuserQ = useQuery({
+    queryKey: ["is-superuser"],
+    queryFn: () => isSuperuserSF(),
   });
   const tenants = tenantsQ.data ?? [];
   const currentTenant = tenants.find((tn) => tn.id === tenantId) ?? null;
@@ -147,7 +153,7 @@ function WorkspacePage() {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "ROOT">(null);
   const [visibilityFolderId, setVisibilityFolderId] = useState<string | null>(null);
   const folders = foldersQ.data ?? [];
-  const isSuperuser = currentTenant?.role === "superuser";
+  const isSuperuser = !!isSuperuserQ.data?.is || currentTenant?.role === "superuser";
   const isAdmin = currentTenant?.role === "admin" || isSuperuser;
 
   const items = itemsQ.data ?? [];
