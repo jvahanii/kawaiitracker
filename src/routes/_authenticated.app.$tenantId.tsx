@@ -347,9 +347,12 @@ function WorkspacePage() {
             <span className="flex items-center gap-1.5">
               <span className="font-medium text-foreground">{user.displayName}</span>
               {isSuperuser ? (
-                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                <Link
+                  to="/superusers"
+                  className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-500/25 dark:text-amber-300"
+                >
                   {t("workspace.superuserBadge", "Superuser")}
-                </span>
+                </Link>
               ) : null}
             </span>
           ) : null}
@@ -383,14 +386,7 @@ function WorkspacePage() {
               </button>
             </>
           ) : null}
-          {isSuperuser ? (
-            <Link
-              to="/superusers"
-              className="rounded-md bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-500/25 dark:text-amber-300"
-            >
-              {t("workspace.superusers", "Superusers")}
-            </Link>
-          ) : null}
+
           <button onClick={() => logoutM.mutate()} className="rounded-md px-2 py-1 hover:bg-accent">
             {t("common.logout")}
           </button>
