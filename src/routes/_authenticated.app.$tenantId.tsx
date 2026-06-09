@@ -442,6 +442,8 @@ function WorkspacePage() {
             setSelectedId={setSelectedId}
             draggingItemId={draggingItemId}
             setDraggingItemId={setDraggingItemId}
+            draggingFolderId={draggingFolderId}
+            setDraggingFolderId={setDraggingFolderId}
             dragOverItemId={dragOverItemId}
             setDragOverItemId={setDragOverItemId}
             dragOverFolderId={dragOverFolderId}
@@ -449,6 +451,7 @@ function WorkspacePage() {
             isAdmin={isAdmin}
             onReorder={(ids) => reorderM.mutate(ids)}
             onMoveItem={(id, folderId) => moveItemM.mutate({ id, folderId })}
+            onMoveFolder={(id, parentId) => moveFolderM.mutate({ id, parentId })}
             onCreateFolder={(name, parentId) => createFolderM.mutate({ name, parentId })}
             onRenameFolder={(id, name) => renameFolderM.mutate({ id, name })}
             onDeleteFolder={(id) => deleteFolderM.mutate(id)}
