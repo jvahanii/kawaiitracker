@@ -125,7 +125,7 @@
     "allowedMembers": "Allowed members",
     "save": "Save",
     "manageUsers": "Users",
-    "changeHistory": "Change history"
+    "changeHistory": "Audit log"
   },
   "forgot": {
     "title": "Reset your password",
