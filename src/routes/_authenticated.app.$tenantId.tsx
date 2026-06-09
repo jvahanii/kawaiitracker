@@ -1598,7 +1598,7 @@ function FolderTreePane({
           <li>
             <div
               onDragOver={(e) => {
-                if (!draggingItemId) return;
+                if (!draggingItemId && !draggingFolderId) return;
                 e.preventDefault();
                 e.dataTransfer.dropEffect = "move";
                 if (dragOverFolderId !== "ROOT") setDragOverFolderId("ROOT");
@@ -1609,7 +1609,9 @@ function FolderTreePane({
               onDrop={(e) => {
                 e.preventDefault();
                 if (draggingItemId) onMoveItem(draggingItemId, null);
+                else if (draggingFolderId) onMoveFolder(draggingFolderId, null);
                 setDraggingItemId(null);
+                setDraggingFolderId(null);
                 setDragOverFolderId(null);
               }}
               className={`border-b border-border py-1 pl-2 text-xs uppercase tracking-wide text-muted-foreground ${
