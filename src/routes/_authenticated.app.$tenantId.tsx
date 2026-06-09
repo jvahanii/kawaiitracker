@@ -732,10 +732,15 @@ function ItemDetail({
 
   const save = async () => {
     if (!dirty) return;
+    const trimmed = title.trim();
+    if (trimmed.length === 0) {
+      setTitle(item.title);
+      return;
+    }
     setSaving(true);
     try {
       await onSave({
-        title,
+        title: trimmed,
         status,
         assigneeIds: assigneesChanged ? assigneeIds : undefined,
       });
