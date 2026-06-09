@@ -268,6 +268,17 @@ function AuditPage() {
     enabled: currentTenant?.role === "admin" || currentTenant?.role === "superuser",
   });
 
+  const itemsQ = useQuery({
+    queryKey: ["items", tenantId],
+    queryFn: () => itemsFn({ data: { tenantId } }),
+    enabled: currentTenant?.role === "admin" || currentTenant?.role === "superuser",
+  });
+  const itemNames = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const it of itemsQ.data ?? []) m.set(it.id, it.title);
+    return m;
+  }, [itemsQ.data]);
+
   const [actorFilter, setActorFilter] = useState<string>("");
   const [tableFilter, setTableFilter] = useState<string>("");
 
