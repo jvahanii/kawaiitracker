@@ -1455,16 +1455,37 @@ function FolderTreePane({
     </li>
   );
 
+  const isDescendantOf = (candidateId: string, ancestorId: string): boolean => {
+    if (candidateId === ancestorId) return true;
+    const kids = childrenByParent.get(ancestorId) ?? [];
+    for (const k of kids) {
+      if (isDescendantOf(candidateId, k.id)) return true;
+    }
+    return false;
+  };
+
   const renderFolder = (folder: FolderRow, depth: number): ReactNode => {
     const open = isOpen(folder.id);
     const children = childrenByParent.get(folder.id) ?? [];
     const folderItems = itemsByFolder.get(folder.id) ?? [];
     const dragHover = dragOverFolderId === folder.id;
+    const folderDropAllowed =
+      !draggingFolderId || !isDescendantOf(folder.id, draggingFolderId);
     return (
       <li key={folder.id}>
         <div
+          draggable
+          onDragStart={(e) => {
+            setDraggingFolderId(folder.id);
+            e.dataTransfer.effectAllowed = "move";
+          }}
+          onDragEnd={() => {
+            setDraggingFolderId(null);
+            setDragOverFolderId(null);
+          }}
           onDragOver={(e) => {
-            if (!draggingItemId) return;
+            if (!draggingItemId && !draggingFolderId) return;
+            if (draggingFolderId && !folderDropAllowed) return;
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             if (dragOverFolderId !== folder.id) setDragOverFolderId(folder.id);
@@ -1476,12 +1497,16 @@ function FolderTreePane({
             e.preventDefault();
             e.stopPropagation();
             if (draggingItemId) onMoveItem(draggingItemId, folder.id);
+            else if (draggingFolderId && folderDropAllowed && draggingFolderId !== folder.id) {
+              onMoveFolder(draggingFolderId, folder.id);
+            }
             setDraggingItemId(null);
+            setDraggingFolderId(null);
             setDragOverFolderId(null);
           }}
           className={`group flex items-center gap-1 border-b border-border py-1 pr-1 text-sm ${
             dragHover ? "bg-primary/10" : "bg-muted/30"
-          }`}
+          } ${draggingFolderId === folder.id ? "opacity-40" : ""}`}
           style={{ paddingLeft: `${depth * 12 + 4}px` }}
         >
           <button onClick={() => toggle(folder.id)} className="p-0.5 text-muted-foreground hover:text-foreground" aria-label="toggle">
