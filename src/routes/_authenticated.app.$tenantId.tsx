@@ -85,11 +85,16 @@ function WorkspacePage() {
   const updateFolderFn = useServerFn(updateFolder);
   const deleteFolderFn = useServerFn(deleteFolder);
   const setLastTenantFn = useServerFn(setLastTenantId);
+  const isSuperuserSF = useServerFn(isSuperuserFn);
 
   const tenantsQ = useQuery({
     queryKey: ["my-tenants"],
     queryFn: () => tenantListFn(),
     retry: 1,
+  });
+  const isSuperuserQ = useQuery({
+    queryKey: ["is-superuser"],
+    queryFn: () => isSuperuserSF(),
   });
   const tenants = tenantsQ.data ?? [];
   const currentTenant = tenants.find((tn) => tn.id === tenantId) ?? null;
