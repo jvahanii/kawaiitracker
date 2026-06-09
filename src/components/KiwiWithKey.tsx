@@ -59,7 +59,7 @@ export function KiwiWithKey({
       />
       {/* Centered on the kiwi */}
       <KawaiiKey
-        className={`pointer-events-none absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 rotate-180 drop-shadow-sm ${keyClassName ?? ""}`}
+        className={`pointer-events-none absolute left-1/2 top-[48%] -translate-x-1/2 -translate-y-1/2 rotate-180 drop-shadow-sm ${keyClassName ?? ""}`}
       />
     </span>
   );
