@@ -1049,10 +1049,34 @@ function NumberInput({
 }) {
   const [text, setText] = useState(value === null ? "0" : String(value));
   const [focused, setFocused] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!focused) setText(value === null ? "0" : String(value));
   }, [value, focused]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const commitIfChanged = (raw: string) => {
+    const trimmed = raw.trim();
+    if (trimmed === "" && value === null) return;
+    const parsed = Number(trimmed.replace(",", "."));
+    if (!Number.isFinite(parsed)) return;
+    if (parsed === (value ?? 0)) return;
+    onCommit(parsed);
+  };
+
+  const scheduleSave = (raw: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      commitIfChanged(raw);
+    }, 600);
+  };
 
   return (
     <input
@@ -1065,15 +1089,17 @@ function NumberInput({
         setFocused(true);
         e.currentTarget.select();
       }}
-      onChange={(e) => setText(e.target.value)}
+      onChange={(e) => {
+        setText(e.target.value);
+        scheduleSave(e.target.value);
+      }}
       onBlur={() => {
         setFocused(false);
-        const trimmed = text.trim();
-        if (trimmed === "" && value === null) return;
-        const parsed = Number(trimmed.replace(",", "."));
-        if (!Number.isFinite(parsed)) return;
-        if (parsed === (value ?? 0)) return;
-        onCommit(parsed);
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+        commitIfChanged(text);
       }}
       placeholder={placeholder ?? "0"}
       className={`h-6 w-full min-w-0 bg-transparent text-center font-mono text-xs outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${className}`}
@@ -1084,10 +1110,32 @@ function NumberInput({
 function TotalEditor({ total, onCommit }: { total: number; onCommit: (newTotal: number) => void }) {
   const [text, setText] = useState(String(total));
   const [focused, setFocused] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!focused) setText(String(total));
   }, [total, focused]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const commitIfChanged = (raw: string) => {
+    const parsed = Number(raw.trim().replace(",", "."));
+    if (!Number.isFinite(parsed)) return;
+    if (parsed === total) return;
+    onCommit(parsed);
+  };
+
+  const scheduleSave = (raw: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      commitIfChanged(raw);
+    }, 600);
+  };
 
   return (
     <input
@@ -1096,18 +1144,23 @@ function TotalEditor({ total, onCommit }: { total: number; onCommit: (newTotal: 
       step="0.01"
       value={text}
       onFocus={() => setFocused(true)}
-      onChange={(e) => setText(e.target.value)}
+      onChange={(e) => {
+        setText(e.target.value);
+        scheduleSave(e.target.value);
+      }}
       onBlur={() => {
         setFocused(false);
-        const parsed = Number(text.trim().replace(",", "."));
-        if (!Number.isFinite(parsed)) return;
-        if (parsed === total) return;
-        onCommit(parsed);
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+        commitIfChanged(text);
       }}
       className="h-6 w-24 rounded border border-border bg-background px-1 text-right font-mono text-xs font-semibold text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
     />
   );
 }
+
 
 function folderPathLabel(f: FolderRow, all: FolderRow[]): string {
   const parts: string[] = [f.name];
