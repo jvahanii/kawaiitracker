@@ -8,7 +8,9 @@ import { toast } from "sonner";
 import { ensureSupabase } from "@/lib/supabase/client";
 import {
   grantSuperuserByEmail,
+  grantSuperuserById,
   isSuperuser,
+  listAllWorkspaceUsers,
   listSuperusers,
   revokeSuperuser,
 } from "@/lib/api/superusers.functions";
