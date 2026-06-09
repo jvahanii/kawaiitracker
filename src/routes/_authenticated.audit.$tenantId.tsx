@@ -431,7 +431,7 @@ function AuditPage() {
         ) : (
           <ul className="rounded-md border border-border">
             {filtered.map((e) => (
-              <AuditRow key={e.id} entry={e} itemNames={itemNames} />
+              <AuditRow key={e.id} entry={e} itemNames={itemNames} entriesById={entriesById} />
             ))}
           </ul>
         )}
