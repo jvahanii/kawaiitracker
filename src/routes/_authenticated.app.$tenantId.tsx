@@ -95,11 +95,27 @@ function WorkspacePage() {
   useEffect(() => {
     if (!tenantsQ.data) return;
     if (tenantsQ.data.length === 0) {
+      try {
+        localStorage.removeItem("lastTenantId");
+      } catch {
+        /* ignore */
+      }
       navigate({ to: "/onboarding", replace: true });
       return;
     }
     if (!currentTenant) {
+      try {
+        localStorage.removeItem("lastTenantId");
+      } catch {
+        /* ignore */
+      }
       navigate({ to: "/app/$tenantId", params: { tenantId: tenantsQ.data[0].id }, replace: true });
+      return;
+    }
+    try {
+      localStorage.setItem("lastTenantId", currentTenant.id);
+    } catch {
+      /* ignore */
     }
   }, [currentTenant, navigate, tenantsQ.data]);
 
