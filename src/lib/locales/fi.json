@@ -39,7 +39,9 @@
     "forgotPassword": "Unohditko salasanasi?",
     "rememberMe": "Muista minut",
     "newHere": "Uusi käyttäjä?",
-    "createAccount": "Luo tili"
+    "createAccount": "Luo tili",
+    "showPassword": "Näytä salasana",
+    "hidePassword": "Piilota salasana"
   },
   "signup": {
     "metaTitle": "Rekisteröidy — Seuranta",
