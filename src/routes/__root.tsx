@@ -154,6 +154,11 @@ function SupabaseAuthSync() {
         if (cancelled) return;
         const { data } = supabase.auth.onAuthStateChange((event) => {
           if (event === "SIGNED_OUT") {
+            try {
+              localStorage.removeItem("lastTenantId");
+            } catch {
+              // ignore
+            }
             queryClient.cancelQueries();
             queryClient.clear();
             router.invalidate();
