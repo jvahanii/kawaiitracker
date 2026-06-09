@@ -119,7 +119,6 @@ function MembersPage() {
     mutationFn: (v: { userId: string; role: "admin" | "member" }) =>
       updateRoleFn({ data: { tenantId, ...v } }),
     onSuccess: invalidate,
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const removeM = useMutation({
@@ -128,8 +127,7 @@ function MembersPage() {
       invalidate();
       setRemoveId(null);
     },
-    onError: (e: unknown) => {
-      toast.error(e instanceof Error ? e.message : String(e));
+    onError: () => {
       setRemoveId(null);
     },
   });
@@ -142,7 +140,6 @@ function MembersPage() {
       setEditingName("");
       invalidate();
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const addM = useMutation({
@@ -157,6 +154,7 @@ function MembersPage() {
               : undefined,
         },
       }),
+    meta: { silent: true },
     onSuccess: (res) => {
       if (res?.ok === false) {
         toast.error(res.error);
@@ -168,18 +166,17 @@ function MembersPage() {
       if (res?.alreadyMember) toast.success(t("members.alreadyMember"));
       else toast.success(t("members.addedOk"));
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   const setPwM = useMutation({
     mutationFn: (v: { userId: string; password: string }) =>
       setPasswordFn({ data: { tenantId, ...v } }),
+    meta: { silent: true },
     onSuccess: () => {
       setPwUserId(null);
       setPwValue("");
       toast.success("Password updated.");
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
 
