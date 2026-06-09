@@ -177,7 +177,7 @@ function WorkspacePage() {
   const createFolderM = useMutation({
     mutationFn: (vars: { name: string; parentId: string | null }) =>
       createFolderFn({ data: { tenantId, name: vars.name, parentId: vars.parentId } }),
-    meta: { toast: undefined as string | undefined },
+    meta: { silent: true },
     onSuccess: () => {
       invalidateFolders();
       toast.success(t("workspace.folderCreated"));
