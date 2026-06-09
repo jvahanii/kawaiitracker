@@ -63,6 +63,22 @@ function SuperusersPage() {
   });
 
   const [email, setEmail] = useState("");
+  const [myUserId, setMyUserId] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const sb = await ensureSupabase();
+        const { data } = await sb.auth.getUser();
+        if (!cancelled) setMyUserId(data.user?.id ?? null);
+      } catch {
+        /* noop */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (meQ.isLoading) {
     return <div className="p-6 text-sm text-muted-foreground">{t("common.loading")}</div>;
