@@ -323,6 +323,17 @@ function AuditPage() {
     return m;
   }, [itemsQ.data]);
 
+  const entriesAllQ = useQuery({
+    queryKey: ["entries-all", tenantId],
+    queryFn: () => entriesFn({ data: { tenantId } }),
+    enabled: currentTenant?.role === "admin" || currentTenant?.role === "superuser",
+  });
+  const entriesById = useMemo(() => {
+    const m = new Map<string, EntryMeta>();
+    for (const e of entriesAllQ.data ?? []) m.set(e.id, { itemId: e.itemId, month: e.month });
+    return m;
+  }, [entriesAllQ.data]);
+
   const [actorFilter, setActorFilter] = useState<string>("");
   const [tableFilter, setTableFilter] = useState<string>("");
 
