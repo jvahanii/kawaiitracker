@@ -128,6 +128,7 @@ function ResetPasswordPage() {
   }, []);
 
   const m = useMutation({
+    meta: { silent: true },
     mutationFn: async (data: { password: string }) => {
       const supabase = await ensureSupabase();
       const { error } = await supabase.auth.updateUser({ password: data.password });
