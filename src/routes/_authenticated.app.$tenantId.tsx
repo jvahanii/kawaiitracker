@@ -576,7 +576,7 @@ function TaskLists({
   return (
     <div className="mt-6 space-y-4">
       <TaskGroup
-        name="Tasks"
+        name="Tehtävät"
         tasks={tasks}
         userId={undefined}
         onAdd={(title) => createM.mutate({ title })}
