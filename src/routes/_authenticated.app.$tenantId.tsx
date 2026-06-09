@@ -1288,12 +1288,15 @@ function FolderTreePane({
   setSelectedId,
   draggingItemId,
   setDraggingItemId,
+  draggingFolderId,
+  setDraggingFolderId,
   dragOverItemId,
   setDragOverItemId,
   dragOverFolderId,
   setDragOverFolderId,
   onReorder,
   onMoveItem,
+  onMoveFolder,
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
@@ -1312,12 +1315,15 @@ function FolderTreePane({
   setSelectedId: (id: string) => void;
   draggingItemId: string | null;
   setDraggingItemId: (id: string | null) => void;
+  draggingFolderId: string | null;
+  setDraggingFolderId: (id: string | null) => void;
   dragOverItemId: string | null;
   setDragOverItemId: (id: string | null) => void;
   dragOverFolderId: string | null | "ROOT";
   setDragOverFolderId: (id: string | null | "ROOT") => void;
   onReorder: (ids: string[]) => void;
   onMoveItem: (id: string, folderId: string | null) => void;
+  onMoveFolder: (id: string, parentId: string | null) => void;
   onCreateFolder: (name: string, parentId: string | null) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
