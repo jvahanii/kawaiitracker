@@ -743,3 +743,114 @@ alter table public.profiles
   add column if not exists last_tenant_id uuid
     references public.tenants(id) on delete set null;
 
+
+-- ============================================================
+-- SUPERUSER ROLE (cross-workspace administrator)
+-- ============================================================
+do $$ begin
+  create type public.app_role as enum ('superuser');
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists public.user_roles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role public.app_role not null,
+  created_at timestamptz not null default now(),
+  unique (user_id, role)
+);
+
+grant select on public.user_roles to authenticated;
+grant all on public.user_roles to service_role;
+
+alter table public.user_roles enable row level security;
+
+create or replace function public.has_role(_user_id uuid, _role public.app_role)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.user_roles where user_id = _user_id and role = _role)
+$$;
+grant execute on function public.has_role(uuid, public.app_role) to authenticated;
+
+drop policy if exists "user_roles: read own" on public.user_roles;
+create policy "user_roles: read own"
+  on public.user_roles for select to authenticated
+  using (user_id = auth.uid());
+
+drop policy if exists "user_roles: superusers read all" on public.user_roles;
+create policy "user_roles: superusers read all"
+  on public.user_roles for select to authenticated
+  using (public.has_role(auth.uid(), 'superuser'));
+
+create or replace function public.is_tenant_member(p_tenant_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.has_role(auth.uid(), 'superuser')
+      or exists (
+        select 1 from public.tenant_members
+        where tenant_id = p_tenant_id and user_id = auth.uid()
+      )
+$$;
+
+create or replace function public.is_tenant_admin(p_tenant_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.has_role(auth.uid(), 'superuser')
+      or exists (
+        select 1 from public.tenant_members
+        where tenant_id = p_tenant_id and user_id = auth.uid() and role = 'admin'
+      )
+$$;
+
+create or replace function public.list_my_tenants()
+returns table (id uuid, name text, join_code text, role text)
+language sql stable security definer set search_path = public as $$
+  select t.id, t.name, t.join_code,
+         coalesce(m.role,
+                  case when public.has_role(auth.uid(), 'superuser')
+                       then 'superuser' end) as role
+  from public.tenants t
+  left join public.tenant_members m
+    on m.tenant_id = t.id and m.user_id = auth.uid()
+  where m.user_id = auth.uid()
+     or public.has_role(auth.uid(), 'superuser')
+  order by t.created_at asc
+$$;
+
+create or replace function public.grant_superuser(p_user_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.has_role(auth.uid(), 'superuser') then
+    raise exception 'Only superusers can grant superuser';
+  end if;
+  insert into public.user_roles (user_id, role)
+  values (p_user_id, 'superuser')
+  on conflict do nothing;
+end $$;
+
+create or replace function public.revoke_superuser(p_user_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.has_role(auth.uid(), 'superuser') then
+    raise exception 'Only superusers can revoke superuser';
+  end if;
+  if p_user_id = auth.uid() then
+    raise exception 'Refusing to revoke your own superuser role';
+  end if;
+  delete from public.user_roles where user_id = p_user_id and role = 'superuser';
+end $$;
+
+create or replace function public.list_superusers()
+returns table (user_id uuid, display_name text, email text, created_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select ur.user_id, p.display_name, p.email, ur.created_at
+  from public.user_roles ur
+  join public.profiles p on p.id = ur.user_id
+  where ur.role = 'superuser'
+    and public.has_role(auth.uid(), 'superuser')
+  order by p.display_name
+$$;
+
+grant execute on function public.grant_superuser(uuid)  to authenticated;
+grant execute on function public.revoke_superuser(uuid) to authenticated;
+grant execute on function public.list_superusers()      to authenticated;
+
+-- Bootstrap (run manually once):
+-- insert into public.user_roles (user_id, role) values ('<your-auth-uid>', 'superuser');
