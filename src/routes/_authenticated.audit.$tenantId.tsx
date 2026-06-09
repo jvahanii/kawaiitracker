@@ -128,7 +128,8 @@ function AuditPage() {
       navigate({ to: "/onboarding", replace: true });
       return;
     }
-    if (!currentTenant || currentTenant.role !== "admin") {
+    const allowed = currentTenant && (currentTenant.role === "admin" || currentTenant.role === "superuser");
+    if (!allowed) {
       navigate({ to: "/app/$tenantId", params: { tenantId: tenantsQ.data[0].id }, replace: true });
     }
   }, [currentTenant, navigate, tenantsQ.data]);
@@ -136,7 +137,7 @@ function AuditPage() {
   const auditQ = useQuery({
     queryKey: ["audit", tenantId],
     queryFn: () => auditFn({ data: { tenantId, limit: 500 } }),
-    enabled: currentTenant?.role === "admin",
+    enabled: currentTenant?.role === "admin" || currentTenant?.role === "superuser",
   });
 
   const [actorFilter, setActorFilter] = useState<string>("");
