@@ -241,6 +241,124 @@ function SuperusersPage() {
             </ul>
           )}
         </section>
+
+        <section className="rounded-xl border border-border bg-background p-6">
+          <h2 className="text-base font-semibold">
+            {t("superusers.allUsersTitle", "All users")}
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t(
+              "superusers.allUsersBody",
+              "All members across every workspace. Grant or revoke superuser directly.",
+            )}
+          </p>
+          {allUsersQ.isLoading ? (
+            <p className="mt-3 text-sm text-muted-foreground">{t("common.loading")}</p>
+          ) : allUsers.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              {t("superusers.allUsersEmpty", "No users found.")}
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-border">
+              {allUsers.map((u) => {
+                const isSelf = u.userId === myUserId;
+                const isLastSuper = u.isSuperuser && superuserCount <= 1;
+                const blockSelfRevoke = isSelf && isLastSuper;
+                const pending =
+                  (revokeM.isPending && revokeM.variables === u.userId) ||
+                  (grantByIdM.isPending && grantByIdM.variables === u.userId);
+
+                const onAction = () => {
+                  if (u.isSuperuser) {
+                    if (blockSelfRevoke) {
+                      toast.error(
+                        t(
+                          "superusers.cannotRevokeLast",
+                          "You are the last superuser — grant the role to someone else first.",
+                        ),
+                      );
+                      return;
+                    }
+                    if (
+                      isSelf &&
+                      !window.confirm(
+                        t(
+                          "superusers.confirmSelfRevoke",
+                          "Revoke your own superuser role? You will lose superuser access.",
+                        ),
+                      )
+                    ) {
+                      return;
+                    }
+                    revokeM.mutate(u.userId);
+                  } else {
+                    grantByIdM.mutate(u.userId);
+                  }
+                };
+
+                return (
+                  <li
+                    key={u.userId}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {u.displayName || u.email || u.userId}
+                        </span>
+                        {u.isSuperuser && (
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                            {t("superusers.superuserBadge", "Superuser")}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">{u.email}</div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {u.tenants.length === 0 ? (
+                          <span className="text-[11px] italic text-muted-foreground">
+                            {t("superusers.noWorkspaces", "No workspaces")}
+                          </span>
+                        ) : (
+                          u.tenants.map((tn) => (
+                            <span
+                              key={tn.id}
+                              className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                            >
+                              {tn.name}
+                              <span className="ml-1 opacity-60">· {tn.role}</span>
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onAction}
+                      disabled={pending || blockSelfRevoke}
+                      title={
+                        blockSelfRevoke
+                          ? t(
+                              "superusers.cannotRevokeLast",
+                              "You are the last superuser — grant the role to someone else first.",
+                            )
+                          : undefined
+                      }
+                      className={
+                        u.isSuperuser
+                          ? "rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                          : "rounded-md border border-border px-2 py-1 text-sm hover:bg-accent disabled:opacity-50"
+                      }
+                    >
+                      {u.isSuperuser
+                        ? t("superusers.revoke", "Revoke")
+                        : t("superusers.grant", "Grant superuser")}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
       </main>
     </div>
   );
