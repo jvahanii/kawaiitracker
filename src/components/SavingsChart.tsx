@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -76,6 +76,31 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   });
 
   const saveGoal = (g: Goal) => upsertM.mutate(g);
+
+  // Debounced amount editing: keep a local draft string while typing, and
+  // only fire the mutation (and its toast) once the user pauses.
+  const [amountDraft, setAmountDraft] = useState<string>(
+    goal.amount === null ? "" : String(goal.amount),
+  );
+  const amountFocusedRef = useRef(false);
+  useEffect(() => {
+    if (amountFocusedRef.current) return;
+    setAmountDraft(goal.amount === null ? "" : String(goal.amount));
+  }, [goal.amount]);
+  const amountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleAmountSave = (raw: string) => {
+    if (amountTimerRef.current) clearTimeout(amountTimerRef.current);
+    amountTimerRef.current = setTimeout(() => {
+      const v = raw.trim();
+      const next = v === "" ? null : Number(v.replace(",", "."));
+      if (next !== null && Number.isNaN(next)) return;
+      if (next === goal.amount) return;
+      saveGoal({ ...goal, amount: next });
+    }, 600);
+  };
+  useEffect(() => () => {
+    if (amountTimerRef.current) clearTimeout(amountTimerRef.current);
+  }, []);
 
   // Realtime: when any client updates the goal for this tenant, refetch.
   useEffect(() => {
@@ -268,10 +293,26 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
             type="number"
             inputMode="decimal"
             step="0.01"
-            value={goal.amount === null ? "" : String(goal.amount)}
+            value={amountDraft}
+            onFocus={() => {
+              amountFocusedRef.current = true;
+            }}
+            onBlur={() => {
+              amountFocusedRef.current = false;
+              if (amountTimerRef.current) {
+                clearTimeout(amountTimerRef.current);
+                amountTimerRef.current = null;
+              }
+              const v = amountDraft.trim();
+              const next = v === "" ? null : Number(v.replace(",", "."));
+              if (next !== null && Number.isNaN(next)) return;
+              if (next === goal.amount) return;
+              saveGoal({ ...goal, amount: next });
+            }}
             onChange={(e) => {
-              const v = e.target.value.trim();
-              saveGoal({ ...goal, amount: v === "" ? null : Number(v.replace(",", ".")) });
+              const v = e.target.value;
+              setAmountDraft(v);
+              scheduleAmountSave(v);
             }}
             placeholder="0,00"
             className="input h-7 w-28 py-0 text-xs"
