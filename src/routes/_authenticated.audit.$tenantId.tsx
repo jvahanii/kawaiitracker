@@ -146,13 +146,19 @@ function parentItemRef(entry: AuditEntry, itemNames: Map<string, string>): strin
   return shortId(itemId);
 }
 
-function AuditRow({ entry }: { entry: AuditEntry }) {
+function AuditRow({
+  entry,
+  itemNames,
+}: {
+  entry: AuditEntry;
+  itemNames: Map<string, string>;
+}) {
   const [open, setOpen] = useState(false);
   const date = new Date(entry.createdAt);
   const actor = entry.actorName || entry.actorEmail || "Unknown";
   const label = TABLE_LABELS[entry.tableName] ?? entry.tableName;
-  const name = entityName(entry);
-  const parentRef = parentItemRef(entry);
+  const name = entityName(entry, itemNames);
+  const parentRef = parentItemRef(entry, itemNames);
   const changeKeys = entry.changes ? Object.keys(entry.changes) : [];
 
   return (
