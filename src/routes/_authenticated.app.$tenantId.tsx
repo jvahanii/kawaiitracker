@@ -147,7 +147,8 @@ function WorkspacePage() {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "ROOT">(null);
   const [visibilityFolderId, setVisibilityFolderId] = useState<string | null>(null);
   const folders = foldersQ.data ?? [];
-  const isAdmin = currentTenant?.role === "admin";
+  const isSuperuser = currentTenant?.role === "superuser";
+  const isAdmin = currentTenant?.role === "admin" || isSuperuser;
 
   const items = itemsQ.data ?? [];
   const filtered = useMemo(() => {
