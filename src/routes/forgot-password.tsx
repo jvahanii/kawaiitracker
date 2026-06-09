@@ -16,6 +16,7 @@ function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
 
   const m = useMutation({
+    meta: { silent: true },
     mutationFn: async (data: { email: string }) => {
       const supabase = await ensureSupabase();
       const redirectTo =
