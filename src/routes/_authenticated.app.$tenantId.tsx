@@ -317,7 +317,16 @@ function WorkspacePage() {
           </Link>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          {user ? <span className="font-medium text-foreground">{user.displayName}</span> : null}
+          {user ? (
+            <span className="flex items-center gap-1.5">
+              <span className="font-medium text-foreground">{user.displayName}</span>
+              {isSuperuser ? (
+                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                  {t("workspace.superuserBadge", "Superuser")}
+                </span>
+              ) : null}
+            </span>
+          ) : null}
           <LanguageSwitcher />
           <Link
             to="/members/$tenantId"
