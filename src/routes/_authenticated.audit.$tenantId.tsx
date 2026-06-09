@@ -245,6 +245,7 @@ function AuditPage() {
 
   const tenantsFn = useServerFn(listMyTenants);
   const auditFn = useServerFn(listAuditLog);
+  const itemsFn = useServerFn(listItems);
 
   const tenantsQ = useQuery({ queryKey: ["my-tenants"], queryFn: () => tenantsFn() });
   const currentTenant = tenantsQ.data?.find((t) => t.id === tenantId) ?? null;
