@@ -37,6 +37,52 @@ export const listSuperusers = createServerFn({ method: "GET" })
     }));
   });
 
+export type WorkspaceUserRow = {
+  userId: string;
+  displayName: string;
+  email: string;
+  isSuperuser: boolean;
+  tenants: { id: string; name: string; role: string }[];
+};
+
+export const listAllWorkspaceUsers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = (await context.supabase.rpc(
+      "list_all_workspace_users",
+    )) as {
+      data:
+        | {
+            user_id: string;
+            display_name: string | null;
+            email: string | null;
+            is_superuser: boolean;
+            tenants: { id: string; name: string; role: string }[] | null;
+          }[]
+        | null;
+      error: { message: string } | null;
+    };
+    if (error) throw new Error(error.message);
+    return (data ?? []).map<WorkspaceUserRow>((r) => ({
+      userId: r.user_id,
+      displayName: r.display_name ?? "",
+      email: r.email ?? "",
+      isSuperuser: !!r.is_superuser,
+      tenants: r.tenants ?? [],
+    }));
+  });
+
+export const grantSuperuserById = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase.rpc("grant_superuser", {
+      p_user_id: data.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const revokeSuperuser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ userId: z.string().uuid() }).parse(d))
