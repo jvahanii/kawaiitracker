@@ -34,6 +34,7 @@ function LoginPage() {
   }, []);
 
   const m = useMutation({
+    meta: { silent: true },
     mutationFn: async (data: { email: string; password: string; rememberMe: boolean }) => {
       const supabase = await ensureSupabase();
       const { error } = await supabase.auth.signInWithPassword({

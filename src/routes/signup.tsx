@@ -19,6 +19,7 @@ function SignupPage() {
   const [password, setPassword] = useState("");
 
   const m = useMutation({
+    meta: { silent: true },
     mutationFn: async (data: { displayName: string; email: string; password: string }) => {
       const supabase = await ensureSupabase();
       const { data: res, error } = await supabase.auth.signUp({

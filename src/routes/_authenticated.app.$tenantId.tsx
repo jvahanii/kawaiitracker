@@ -177,6 +177,7 @@ function WorkspacePage() {
   const createFolderM = useMutation({
     mutationFn: (vars: { name: string; parentId: string | null }) =>
       createFolderFn({ data: { tenantId, name: vars.name, parentId: vars.parentId } }),
+    meta: { silent: true },
     onSuccess: () => {
       invalidateFolders();
       toast.success(t("workspace.folderCreated"));
@@ -1566,7 +1567,6 @@ function FolderVisibilityDialog({
         data: { tenantId, folderId, restricted, userIds: Array.from(allowed) },
       }),
     onSuccess: onSaved,
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
   return (
