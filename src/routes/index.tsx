@@ -10,7 +10,7 @@ import i18n, { applyDetectedLanguage } from "@/lib/i18n";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Tracker — Multi-tenant item tracker" },
+      { title: "Keywi - savings and income tracker" },
       { name: "description", content: "Track items across teams. Create or join a workspace with a code." },
     ],
   }),
