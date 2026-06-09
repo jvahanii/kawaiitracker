@@ -39,7 +39,9 @@
     "forgotPassword": "Forgot password?",
     "rememberMe": "Remember me",
     "newHere": "New here?",
-    "createAccount": "Create an account"
+    "createAccount": "Create an account",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "signup": {
     "metaTitle": "Sign up — Kawaii",
