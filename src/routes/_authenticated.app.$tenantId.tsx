@@ -326,7 +326,7 @@ function WorkspacePage() {
           >
             {t("workspace.manageUsers")}
           </Link>
-          {currentTenant.role === "admin" ? (
+          {isAdmin ? (
             <>
               <Link
                 to="/audit/$tenantId"
@@ -347,6 +347,14 @@ function WorkspacePage() {
                 </span>
               </button>
             </>
+          ) : null}
+          {isSuperuser ? (
+            <Link
+              to="/superusers"
+              className="rounded-md bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-500/25 dark:text-amber-300"
+            >
+              {t("workspace.superusers", "Superusers")}
+            </Link>
           ) : null}
           <button onClick={() => logoutM.mutate()} className="rounded-md px-2 py-1 hover:bg-accent">
             {t("common.logout")}
