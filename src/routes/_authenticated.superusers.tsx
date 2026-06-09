@@ -1,16 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { ensureSupabase } from "@/lib/supabase/client";
 import {
   grantSuperuserByEmail,
   isSuperuser,
   listSuperusers,
   revokeSuperuser,
 } from "@/lib/api/superusers.functions";
+
 
 export const Route = createFileRoute("/_authenticated/superusers")({
   head: () => ({ meta: [{ title: "Superusers — Tracker" }] }),
@@ -61,6 +63,22 @@ function SuperusersPage() {
   });
 
   const [email, setEmail] = useState("");
+  const [myUserId, setMyUserId] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const sb = await ensureSupabase();
+        const { data } = await sb.auth.getUser();
+        if (!cancelled) setMyUserId(data.user?.id ?? null);
+      } catch {
+        /* noop */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (meQ.isLoading) {
     return <div className="p-6 text-sm text-muted-foreground">{t("common.loading")}</div>;
@@ -145,22 +163,58 @@ function SuperusersPage() {
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-border">
-              {rows.map((r) => (
-                <li key={r.userId} className="flex items-center justify-between py-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium">{r.displayName || r.email}</div>
-                    <div className="text-xs text-muted-foreground">{r.email}</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => revokeM.mutate(r.userId)}
-                    disabled={revokeM.isPending}
-                    className="rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                  >
-                    {t("superusers.revoke", "Revoke")}
-                  </button>
-                </li>
-              ))}
+              {rows.map((r) => {
+                const isSelf = r.userId === myUserId;
+                const isLast = rows.length === 1;
+                const blocked = isSelf && isLast;
+                const handleClick = () => {
+                  if (blocked) {
+                    toast.error(
+                      t(
+                        "superusers.cannotRevokeLast",
+                        "You are the last superuser — grant the role to someone else first.",
+                      ),
+                    );
+                    return;
+                  }
+                  if (
+                    isSelf &&
+                    !window.confirm(
+                      t(
+                        "superusers.confirmSelfRevoke",
+                        "Revoke your own superuser role? You will lose superuser access.",
+                      ),
+                    )
+                  ) {
+                    return;
+                  }
+                  revokeM.mutate(r.userId);
+                };
+                return (
+                  <li key={r.userId} className="flex items-center justify-between py-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">{r.displayName || r.email}</div>
+                      <div className="text-xs text-muted-foreground">{r.email}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClick}
+                      disabled={revokeM.isPending || blocked}
+                      title={
+                        blocked
+                          ? t(
+                              "superusers.cannotRevokeLast",
+                              "You are the last superuser — grant the role to someone else first.",
+                            )
+                          : undefined
+                      }
+                      className="rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                    >
+                      {t("superusers.revoke", "Revoke")}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
