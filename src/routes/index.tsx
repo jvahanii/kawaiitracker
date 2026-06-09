@@ -6,12 +6,11 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { KiwiWithKey } from "@/components/KiwiWithKey";
 import i18n, { applyDetectedLanguage } from "@/lib/i18n";
 
-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Keywi - savings and income tracker" },
-      { name: "description", content: "Track items across teams. Create or join a workspace with a code." },
+      { name: "description", content: "Track savings across initiatives. Create or join a workspace with a code." },
     ],
   }),
   component: Landing,
@@ -49,12 +48,8 @@ function Landing() {
         <div className="mb-6 inline-block rounded-full border-2 border-border bg-white/80 px-4 py-1.5 text-sm font-medium text-muted-foreground shadow-sm">
           ✨ 🥝 ʕ•ᴥ•ʔ 🥝 ✨
         </div>
-        <h1 className="whitespace-pre-line text-balance text-6xl font-bold tracking-tight">
-          {tr("landing.heading")}
-        </h1>
-        <p className="mx-auto mt-6 max-w-xl text-balance text-base text-muted-foreground">
-          {tr("landing.sub")}
-        </p>
+        <h1 className="whitespace-pre-line text-balance text-6xl font-bold tracking-tight">{tr("landing.heading")}</h1>
+        <p className="mx-auto mt-6 max-w-xl text-balance text-base text-muted-foreground">{tr("landing.sub")}</p>
         <div className="mt-10 flex justify-center gap-3">
           <Link to="/signup" className="kawaii-button">
             {tr("landing.getStarted")} 🥝
