@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createTenant, joinTenant, listMyTenants } from "@/lib/api/tenants.functions";
@@ -27,13 +27,6 @@ function Onboarding() {
     retry: 1,
   });
 
-  useEffect(() => {
-    const firstTenant = tenantsQ.data?.[0];
-    if (firstTenant) {
-      navigate({ to: "/app/$tenantId", params: { tenantId: firstTenant.id }, replace: true });
-    }
-  }, [navigate, tenantsQ.data]);
-
   const createM = useMutation({
     mutationFn: (n: string) => createFn({ data: { name: n } }),
     onSuccess: (r) => navigate({ to: "/app/$tenantId", params: { tenantId: r.id } }),
@@ -46,18 +39,12 @@ function Onboarding() {
     },
   });
 
-  const hasTenant = (tenantsQ.data?.length ?? 0) > 0;
-  const showLoader = tenantsQ.isLoading || !tenantsQ.isFetched || hasTenant;
+  const tenants = tenantsQ.data ?? [];
+  const showLoader = tenantsQ.isLoading;
 
   return (
     <div className="min-h-screen bg-muted/30 px-4 py-16">
       <div className="mx-auto max-w-xl">
-        {showLoader ? (
-          <div className="mt-16 flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
-          </div>
-        ) : (
-        <>
         <div className="flex items-start justify-between">
           <div>
             <Link
@@ -71,69 +58,95 @@ function Onboarding() {
           </div>
           <LanguageSwitcher />
         </div>
-        <div className="mt-8 grid gap-6 sm:grid-cols-2">
-
-          <section className="rounded-xl border border-border bg-background p-6">
-            <h2 className="text-base font-semibold">{t("onboarding.createTitle")}</h2>
-            <form
-              onSubmit={(e: FormEvent) => {
-                e.preventDefault();
-                createM.mutate(name);
-              }}
-              className="mt-4 space-y-3"
-            >
-              <input
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t("onboarding.namePlaceholder")}
-                className="input"
-              />
-              {createM.error ? (
-                <p className="text-sm text-destructive">{(createM.error as Error).message}</p>
-              ) : null}
-              <button
-                type="submit"
-                disabled={createM.isPending}
-                className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
-              >
-                {createM.isPending ? t("common.creating") : t("common.create")}
-              </button>
-            </form>
-          </section>
-          <section className="rounded-xl border border-border bg-background p-6">
-            <h2 className="text-base font-semibold">{t("onboarding.joinTitle")}</h2>
-            <form
-              onSubmit={(e: FormEvent) => {
-                e.preventDefault();
-                joinM.mutate(code);
-              }}
-              className="mt-4 space-y-3"
-            >
-              <input
-                required
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder={t("onboarding.codePlaceholder")}
-                maxLength={16}
-                className="input font-mono tracking-widest"
-              />
-              {joinM.error ? (
-                <p className="text-sm text-destructive">{(joinM.error as Error).message}</p>
-              ) : joinM.data && !joinM.data.ok ? (
-                <p className="text-sm text-destructive">{joinM.data.error}</p>
-              ) : null}
-              <button
-                type="submit"
-                disabled={joinM.isPending}
-                className="w-full rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
-              >
-                {joinM.isPending ? t("common.joining") : t("common.join")}
-              </button>
-            </form>
-          </section>
-        </div>
-        </>
+        {showLoader ? (
+          <div className="mt-16 flex justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
+          </div>
+        ) : (
+          <>
+            {tenants.length > 0 ? (
+              <section className="mt-8 rounded-xl border border-border bg-background p-6">
+                <h2 className="text-base font-semibold">
+                  {t("onboarding.yourWorkspaces", "Your workspaces")}
+                </h2>
+                <ul className="mt-3 divide-y divide-border">
+                  {tenants.map((tn) => (
+                    <li key={tn.id}>
+                      <Link
+                        to="/app/$tenantId"
+                        params={{ tenantId: tn.id }}
+                        className="flex items-center justify-between py-2 text-sm hover:underline"
+                      >
+                        <span className="font-medium">{tn.name}</span>
+                        <span className="text-xs text-muted-foreground">{tn.role}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              <section className="rounded-xl border border-border bg-background p-6">
+                <h2 className="text-base font-semibold">{t("onboarding.createTitle")}</h2>
+                <form
+                  onSubmit={(e: FormEvent) => {
+                    e.preventDefault();
+                    createM.mutate(name);
+                  }}
+                  className="mt-4 space-y-3"
+                >
+                  <input
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t("onboarding.namePlaceholder")}
+                    className="input"
+                  />
+                  {createM.error ? (
+                    <p className="text-sm text-destructive">{(createM.error as Error).message}</p>
+                  ) : null}
+                  <button
+                    type="submit"
+                    disabled={createM.isPending}
+                    className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+                  >
+                    {createM.isPending ? t("common.creating") : t("common.create")}
+                  </button>
+                </form>
+              </section>
+              <section className="rounded-xl border border-border bg-background p-6">
+                <h2 className="text-base font-semibold">{t("onboarding.joinTitle")}</h2>
+                <form
+                  onSubmit={(e: FormEvent) => {
+                    e.preventDefault();
+                    joinM.mutate(code);
+                  }}
+                  className="mt-4 space-y-3"
+                >
+                  <input
+                    required
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    placeholder={t("onboarding.codePlaceholder")}
+                    maxLength={16}
+                    className="input font-mono tracking-widest"
+                  />
+                  {joinM.error ? (
+                    <p className="text-sm text-destructive">{(joinM.error as Error).message}</p>
+                  ) : joinM.data && !joinM.data.ok ? (
+                    <p className="text-sm text-destructive">{joinM.data.error}</p>
+                  ) : null}
+                  <button
+                    type="submit"
+                    disabled={joinM.isPending}
+                    className="w-full rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
+                  >
+                    {joinM.isPending ? t("common.joining") : t("common.join")}
+                  </button>
+                </form>
+              </section>
+            </div>
+          </>
         )}
       </div>
     </div>

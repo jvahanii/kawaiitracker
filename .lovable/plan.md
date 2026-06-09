@@ -1,22 +1,12 @@
-## Goal
+The onboarding page (`src/routes/_authenticated.onboarding.tsx`) currently auto-redirects to `/app/$tenantId` as soon as `listMyTenants` returns any workspace. This prevents users who already have a workspace from ever reaching the Create / Join forms — the page flashes then jumps away.
 
-Make monthly entry inputs (plan/actual per month, and the year-total editors) save the same way the goal amount does: live debounced save while typing, so each edit fires one mutation and shows one "Saved" toast — instead of only saving on blur.
+Since the user wants to always be able to create another workspace from here, remove that redirect guard.
 
-## Changes
+### Changes
 
-**File: `src/routes/_authenticated.app.$tenantId.tsx`**
+1. **Remove the auto-redirect `useEffect`** in `src/routes/_authenticated.onboarding.tsx`.
+2. **Remove `hasTenant` from the loader condition** (`showLoader`) so the forms are visible once `isLoading` is false, regardless of whether the user already has workspaces.
+3. **Add a "Your workspaces" section** above the Create/Join cards when the user already has one or more tenants. Each workspace shows its name as a link to `/app/$tenantId`.
+4. **Keep the Create and Join forms always rendered** below the workspace list (or in place if none exist).
 
-1. `NumberInput` (used for each month's plan + actual cell):
-   - Keep local `text` state, but additionally schedule `onCommit` ~600ms after the user stops typing (only if the parsed value differs from the current `value`).
-   - Use a `useRef` timer; clear it on new keystrokes and on unmount.
-   - On blur: flush immediately (clear timer + commit now if changed) so tabbing out still saves instantly.
-   - Mirror the goal-input pattern from `SavingsChart.tsx` (focused ref + timer ref + `scheduleSave` helper).
-
-2. `TotalEditor` (the "Planned:" / "Actual:" yearly totals): same treatment — debounce 600ms while typing, flush on blur.
-
-No changes to the mutation itself — `upsertM` in `MonthlyEntries` already routes through the global `MutationCache` in `src/router.tsx`, so each committed mutation will surface one "Saved" toast automatically.
-
-## Out of scope
-
-- No changes to `entries.functions.ts`, `SavingsChart.tsx`, or the global toast wiring.
-- No visual / layout changes to the monthly grid.
+This ensures the onboarding page is always accessible and functional, allowing multi-workspace creation without being bounced out.
