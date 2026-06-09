@@ -5,7 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import { supabase } from "@/lib/supabase/client";
+import { ensureSupabase } from "@/lib/supabase/client";
 import {
   grantSuperuserByEmail,
   isSuperuser,
