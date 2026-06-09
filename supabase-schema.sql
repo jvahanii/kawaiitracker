@@ -735,3 +735,11 @@ begin
     end;
   end if;
 end$$;
+
+-- ============================================================
+-- Per-user last visited workspace (for cross-device login routing)
+-- ============================================================
+alter table public.profiles
+  add column if not exists last_tenant_id uuid
+    references public.tenants(id) on delete set null;
+
