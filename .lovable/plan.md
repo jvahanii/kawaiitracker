@@ -1,30 +1,20 @@
-## Goal
-Place a simple key icon in the center of each kawaii kiwi image (landing hero kiwi, the two decorative kiwis on landing, the two decorative kiwis on login, and the small kiwi badge above the login card).
+## Problem
 
-## Approach
-Overlay a `lucide-react` `Key` icon on top of the kiwi `<img>` using a relative wrapper — keeps the generated PNG untouched and easy to tweak.
+In `SavingsChart.tsx`, the goal amount input calls `saveGoal` on every keystroke. Each keystroke fires a separate mutation, and the rapid succession of identical "Saved" toasts gets visually collapsed by Sonner — so it looks like no toast appears.
 
-Create a small reusable component `src/components/KiwiWithKey.tsx`:
-```tsx
-import { Key } from "lucide-react";
-import kawaiiKiwi from "@/assets/kawaii-kiwi.png";
+The global `MutationCache.onSuccess` in `src/router.tsx` is wired correctly; the issue is the mutation firing pattern, not the toast logic.
 
-export function KiwiWithKey({ className, imgClassName, keyClassName, alt = "" }) {
-  return (
-    <span className={`relative inline-block ${className ?? ""}`}>
-      <img src={kawaiiKiwi} alt={alt} className={imgClassName} />
-      <Key
-        aria-hidden
-        className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-foreground ${keyClassName ?? ""}`}
-      />
-    </span>
-  );
-}
-```
+## Fix
 
-Replace each existing `<img src={kawaiiKiwi} … />` in `src/routes/index.tsx` and `src/routes/login.tsx` with `<KiwiWithKey …/>`, preserving size/rotation classes, and pick a `Key` size proportional to each kiwi (e.g. ~40% of the kiwi dimensions).
+In `src/components/SavingsChart.tsx`:
+
+1. Keep a local `goalDraft` state for the input value (initialized from `goalQ.data`).
+2. Debounce the call to `upsertM.mutate` (~600ms after the user stops typing) so a single mutation fires per edit.
+3. Keep the optimistic update behavior so the chart's goal line responds immediately.
+
+Result: one mutation per edit → one "Saved" toast per goal change, visible to the user.
 
 ## Out of scope
-- Favicon (stays as the 🥝 emoji)
-- No changes to the kiwi PNG itself
-- No color/layout changes elsewhere
+
+- No changes to the global toast logic in `src/router.tsx`.
+- No changes to other mutations.
