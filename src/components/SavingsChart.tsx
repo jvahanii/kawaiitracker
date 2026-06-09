@@ -293,10 +293,26 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
             type="number"
             inputMode="decimal"
             step="0.01"
-            value={goal.amount === null ? "" : String(goal.amount)}
+            value={amountDraft}
+            onFocus={() => {
+              amountFocusedRef.current = true;
+            }}
+            onBlur={() => {
+              amountFocusedRef.current = false;
+              if (amountTimerRef.current) {
+                clearTimeout(amountTimerRef.current);
+                amountTimerRef.current = null;
+              }
+              const v = amountDraft.trim();
+              const next = v === "" ? null : Number(v.replace(",", "."));
+              if (next !== null && Number.isNaN(next)) return;
+              if (next === goal.amount) return;
+              saveGoal({ ...goal, amount: next });
+            }}
             onChange={(e) => {
-              const v = e.target.value.trim();
-              saveGoal({ ...goal, amount: v === "" ? null : Number(v.replace(",", ".")) });
+              const v = e.target.value;
+              setAmountDraft(v);
+              scheduleAmountSave(v);
             }}
             placeholder="0,00"
             className="input h-7 w-28 py-0 text-xs"
