@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { listMyTenants } from "@/lib/api/tenants.functions";
 import { listAuditLog, type AuditEntry } from "@/lib/api/audit.functions";
 import { listItems } from "@/lib/api/items.functions";
+import { listAllEntries } from "@/lib/api/entries.functions";
 import { formatDateTime } from "@/lib/format-date";
 
 export const Route = createFileRoute("/_authenticated/audit/$tenantId")({
@@ -69,16 +70,51 @@ function formatMonth(v: unknown): string | null {
   return m ? `${m[1]}-${m[2]}` : null;
 }
 
-function entryMonth(entry: AuditEntry): string | null {
+type EntryMeta = { itemId: string; month: string };
+
+function entryMonth(
+  entry: AuditEntry,
+  entriesById: Map<string, EntryMeta>,
+): string | null {
   const row = entry.rowData as { [k: string]: unknown } | null;
   const fromRow = formatMonth(row?.month);
   if (fromRow) return fromRow;
   const ch = entry.changes?.month;
-  if (ch) return formatMonth(ch.new) ?? formatMonth(ch.old);
+  if (ch) {
+    const m = formatMonth(ch.new) ?? formatMonth(ch.old);
+    if (m) return m;
+  }
+  if (entry.recordId) {
+    const meta = entriesById.get(entry.recordId);
+    if (meta) return meta.month.slice(0, 7);
+  }
   return null;
 }
 
-function entityName(entry: AuditEntry, itemNames: Map<string, string>): string | null {
+function resolveEntryItemId(
+  entry: AuditEntry,
+  entriesById: Map<string, EntryMeta>,
+): string | null {
+  const row = entry.rowData as { [k: string]: unknown } | null;
+  const ch = entry.changes;
+  const fromRow =
+    (row?.item_id as string | undefined) ??
+    (ch?.item_id?.new as string | undefined) ??
+    (ch?.item_id?.old as string | undefined) ??
+    null;
+  if (fromRow) return fromRow;
+  if (entry.recordId) {
+    const meta = entriesById.get(entry.recordId);
+    if (meta) return meta.itemId;
+  }
+  return null;
+}
+
+function entityName(
+  entry: AuditEntry,
+  itemNames: Map<string, string>,
+  entriesById: Map<string, EntryMeta>,
+): string | null {
   const row = entry.rowData as { [k: string]: unknown } | null;
   const ch = entry.changes;
   switch (entry.tableName) {
@@ -98,13 +134,9 @@ function entityName(entry: AuditEntry, itemNames: Map<string, string>): string |
       return title ?? (parent ? `task in ${parent}` : null);
     }
     case "item_entries": {
-      const itemId =
-        (row?.item_id as string | undefined) ??
-        (ch?.item_id?.new as string | undefined) ??
-        (ch?.item_id?.old as string | undefined) ??
-        null;
+      const itemId = resolveEntryItemId(entry, entriesById);
       const parent = itemId ? itemNames.get(itemId) : null;
-      const month = entryMonth(entry);
+      const month = entryMonth(entry, entriesById);
       if (parent && month) return `${parent} · ${month}`;
       if (parent) return parent;
       if (month) return month;
@@ -132,16 +164,25 @@ function entityName(entry: AuditEntry, itemNames: Map<string, string>): string |
   }
 }
 
-function parentItemRef(entry: AuditEntry, itemNames: Map<string, string>): string | null {
+function parentItemRef(
+  entry: AuditEntry,
+  itemNames: Map<string, string>,
+  entriesById: Map<string, EntryMeta>,
+): string | null {
   if (entry.tableName !== "item_tasks" && entry.tableName !== "item_entries") return null;
-  const row = entry.rowData as { [k: string]: unknown } | null;
   const itemId =
-    (row?.item_id as string | undefined) ??
-    (entry.changes?.item_id?.new as string | undefined) ??
-    (entry.changes?.item_id?.old as string | undefined) ??
-    null;
+    entry.tableName === "item_entries"
+      ? resolveEntryItemId(entry, entriesById)
+      : (() => {
+          const row = entry.rowData as { [k: string]: unknown } | null;
+          return (
+            (row?.item_id as string | undefined) ??
+            (entry.changes?.item_id?.new as string | undefined) ??
+            (entry.changes?.item_id?.old as string | undefined) ??
+            null
+          );
+        })();
   if (!itemId) return null;
-  // If the entity name already includes the parent, don't repeat it.
   if (itemNames.get(itemId)) return null;
   return shortId(itemId);
 }
@@ -149,16 +190,18 @@ function parentItemRef(entry: AuditEntry, itemNames: Map<string, string>): strin
 function AuditRow({
   entry,
   itemNames,
+  entriesById,
 }: {
   entry: AuditEntry;
   itemNames: Map<string, string>;
+  entriesById: Map<string, EntryMeta>;
 }) {
   const [open, setOpen] = useState(false);
   const date = new Date(entry.createdAt);
   const actor = entry.actorName || entry.actorEmail || "Unknown";
   const label = TABLE_LABELS[entry.tableName] ?? entry.tableName;
-  const name = entityName(entry, itemNames);
-  const parentRef = parentItemRef(entry, itemNames);
+  const name = entityName(entry, itemNames, entriesById);
+  const parentRef = parentItemRef(entry, itemNames, entriesById);
   const changeKeys = entry.changes ? Object.keys(entry.changes) : [];
 
   return (
@@ -246,6 +289,7 @@ function AuditPage() {
   const tenantsFn = useServerFn(listMyTenants);
   const auditFn = useServerFn(listAuditLog);
   const itemsFn = useServerFn(listItems);
+  const entriesFn = useServerFn(listAllEntries);
 
   const tenantsQ = useQuery({ queryKey: ["my-tenants"], queryFn: () => tenantsFn() });
   const currentTenant = tenantsQ.data?.find((t) => t.id === tenantId) ?? null;
@@ -278,6 +322,17 @@ function AuditPage() {
     for (const it of itemsQ.data ?? []) m.set(it.id, it.title);
     return m;
   }, [itemsQ.data]);
+
+  const entriesAllQ = useQuery({
+    queryKey: ["entries-all", tenantId],
+    queryFn: () => entriesFn({ data: { tenantId } }),
+    enabled: currentTenant?.role === "admin" || currentTenant?.role === "superuser",
+  });
+  const entriesById = useMemo(() => {
+    const m = new Map<string, EntryMeta>();
+    for (const e of entriesAllQ.data ?? []) m.set(e.id, { itemId: e.itemId, month: e.month });
+    return m;
+  }, [entriesAllQ.data]);
 
   const [actorFilter, setActorFilter] = useState<string>("");
   const [tableFilter, setTableFilter] = useState<string>("");
@@ -376,7 +431,7 @@ function AuditPage() {
         ) : (
           <ul className="rounded-md border border-border">
             {filtered.map((e) => (
-              <AuditRow key={e.id} entry={e} itemNames={itemNames} />
+              <AuditRow key={e.id} entry={e} itemNames={itemNames} entriesById={entriesById} />
             ))}
           </ul>
         )}
