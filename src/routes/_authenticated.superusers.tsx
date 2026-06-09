@@ -163,22 +163,58 @@ function SuperusersPage() {
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-border">
-              {rows.map((r) => (
-                <li key={r.userId} className="flex items-center justify-between py-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium">{r.displayName || r.email}</div>
-                    <div className="text-xs text-muted-foreground">{r.email}</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => revokeM.mutate(r.userId)}
-                    disabled={revokeM.isPending}
-                    className="rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                  >
-                    {t("superusers.revoke", "Revoke")}
-                  </button>
-                </li>
-              ))}
+              {rows.map((r) => {
+                const isSelf = r.userId === myUserId;
+                const isLast = rows.length === 1;
+                const blocked = isSelf && isLast;
+                const handleClick = () => {
+                  if (blocked) {
+                    toast.error(
+                      t(
+                        "superusers.cannotRevokeLast",
+                        "You are the last superuser — grant the role to someone else first.",
+                      ),
+                    );
+                    return;
+                  }
+                  if (
+                    isSelf &&
+                    !window.confirm(
+                      t(
+                        "superusers.confirmSelfRevoke",
+                        "Revoke your own superuser role? You will lose superuser access.",
+                      ),
+                    )
+                  ) {
+                    return;
+                  }
+                  revokeM.mutate(r.userId);
+                };
+                return (
+                  <li key={r.userId} className="flex items-center justify-between py-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">{r.displayName || r.email}</div>
+                      <div className="text-xs text-muted-foreground">{r.email}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClick}
+                      disabled={revokeM.isPending || blocked}
+                      title={
+                        blocked
+                          ? t(
+                              "superusers.cannotRevokeLast",
+                              "You are the last superuser — grant the role to someone else first.",
+                            )
+                          : undefined
+                      }
+                      className="rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                    >
+                      {t("superusers.revoke", "Revoke")}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
