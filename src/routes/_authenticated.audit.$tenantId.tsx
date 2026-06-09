@@ -63,7 +63,22 @@ function shortId(id: string | null): string {
   return id.length > 8 ? id.slice(0, 8) : id;
 }
 
-function entityName(entry: AuditEntry): string | null {
+function formatMonth(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const m = v.match(/^(\d{4})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}` : null;
+}
+
+function entryMonth(entry: AuditEntry): string | null {
+  const row = entry.rowData as { [k: string]: unknown } | null;
+  const fromRow = formatMonth(row?.month);
+  if (fromRow) return fromRow;
+  const ch = entry.changes?.month;
+  if (ch) return formatMonth(ch.new) ?? formatMonth(ch.old);
+  return null;
+}
+
+function entityName(entry: AuditEntry, itemNames: Map<string, string>): string | null {
   const row = entry.rowData as { [k: string]: unknown } | null;
   const ch = entry.changes;
   switch (entry.tableName) {
@@ -71,13 +86,36 @@ function entityName(entry: AuditEntry): string | null {
       return pickStr(row, ch, ["name"]);
     case "items":
       return pickStr(row, ch, ["title", "name"]);
-    case "item_tasks":
-      return pickStr(row, ch, ["title", "name"]);
-    case "item_entries":
-      return pickStr(row, ch, ["note", "value", "content", "text"]);
+    case "item_tasks": {
+      const title = pickStr(row, ch, ["title", "name"]);
+      const itemId =
+        (row?.item_id as string | undefined) ??
+        (ch?.item_id?.new as string | undefined) ??
+        (ch?.item_id?.old as string | undefined) ??
+        null;
+      const parent = itemId ? itemNames.get(itemId) : null;
+      if (title && parent) return `${title} (${parent})`;
+      return title ?? (parent ? `task in ${parent}` : null);
+    }
+    case "item_entries": {
+      const itemId =
+        (row?.item_id as string | undefined) ??
+        (ch?.item_id?.new as string | undefined) ??
+        (ch?.item_id?.old as string | undefined) ??
+        null;
+      const parent = itemId ? itemNames.get(itemId) : null;
+      const month = entryMonth(entry);
+      if (parent && month) return `${parent} · ${month}`;
+      if (parent) return parent;
+      if (month) return month;
+      return null;
+    }
     case "item_assignees": {
       const uid = (row?.user_id as string | undefined) ?? null;
-      return uid ? `user ${shortId(uid)}` : null;
+      const itemId = (row?.item_id as string | undefined) ?? null;
+      const parent = itemId ? itemNames.get(itemId) : null;
+      if (parent && uid) return `${parent} · user ${shortId(uid)}`;
+      return parent ?? (uid ? `user ${shortId(uid)}` : null);
     }
     case "folder_visibility": {
       const fid = (row?.folder_id as string | undefined) ?? null;
@@ -94,7 +132,7 @@ function entityName(entry: AuditEntry): string | null {
   }
 }
 
-function parentItemRef(entry: AuditEntry): string | null {
+function parentItemRef(entry: AuditEntry, itemNames: Map<string, string>): string | null {
   if (entry.tableName !== "item_tasks" && entry.tableName !== "item_entries") return null;
   const row = entry.rowData as { [k: string]: unknown } | null;
   const itemId =
@@ -102,7 +140,10 @@ function parentItemRef(entry: AuditEntry): string | null {
     (entry.changes?.item_id?.new as string | undefined) ??
     (entry.changes?.item_id?.old as string | undefined) ??
     null;
-  return itemId ? shortId(itemId) : null;
+  if (!itemId) return null;
+  // If the entity name already includes the parent, don't repeat it.
+  if (itemNames.get(itemId)) return null;
+  return shortId(itemId);
 }
 
 function AuditRow({ entry }: { entry: AuditEntry }) {
