@@ -1,26 +1,89 @@
-## Goal
-Tee muutoshistoriasta luettavampi: jokaisessa rivissä näkyy aina kohteena olevan folderin tai itemin nimi — ei piilotettuna details-osiossa.
+## Tilanne
+Superusers-näkymässä on jo "All users" -osio joka kutsuu palvelinfunktiota `listAllWorkspaceUsers`, joka taas kutsuu SQL-RPC:tä `public.list_all_workspace_users()`. Tämä RPC puuttuu tietokannasta (404 schema cache), joten lista on tyhjä.
 
-## Muutokset
+## Korjaus
+Lisää uusi migraatio joka luo RPC:n. Frontend ei vaadi muutoksia.
 
-Tiedosto: `src/routes/_authenticated.audit.$tenantId.tsx`
+### Tiedosto
+`supabase/migrations/20260609130000_list_all_workspace_users.sql`
 
-1. Lisää apuri `entityName(entry)` joka palauttaa nimen seuraavassa järjestyksessä:
-   - `folders` → `rowData.name` tai `changes.name.new ?? changes.name.old`
-   - `items` → `rowData.title` tai `changes.title.new ?? changes.title.old`
-   - `item_tasks` → `rowData.title` tai `changes.title.*`
-   - `item_entries` → `rowData.note`/`value` tai `changes.*`
-   - `folder_visibility` / `item_assignees` / `tenant_members` → näytä user/role/folder-id viittaus
-   - fallback: `recordId` lyhennettynä
+### SQL (kuvaus)
+- `create or replace function public.list_all_workspace_users()` palauttaa:
+  - `user_id uuid`
+  - `display_name text`
+  - `email text`
+  - `is_superuser boolean`
+  - `tenants jsonb` (`[{id, name, role}, ...]`)
+- `language sql security definer stable set search_path = public, auth`
+- Pääsy: vain superuser saa kutsua → tarkistus heti aluksi `if not public.has_role(auth.uid(), 'superuser') then raise exception 'forbidden'; end if;` (toteutetaan plpgsql-wrapperilla joka kutsuu SQL-aggregointia).
+- Lähde:
+  - kaikki userit joko `public.tenant_members` tai `public.user_roles` -taulusta (UNION)
+  - liitos `public.profiles` → `display_name`, `email`
+  - aggregointi `tenant_members` + `tenants` → `tenants jsonb`
+  - `is_superuser` = `exists(select 1 from user_roles where role = 'superuser' and user_id = u.id)`
+- `revoke all on function ... from public; grant execute to authenticated;` (sisäinen tarkistus estää muut kuin superuserit).
 
-2. Muuta rivin otsikkoa niin että nimi näkyy aina lihavoituna tyyppi-labelin jälkeen:
-   `Matti  updated  Folder "Markkinointi"  · 2 fields`
-   Jos nimi puuttuu, jätä lainausmerkit pois.
+### Toteutus tarkemmin (plpgsql + SQL CTE)
+```sql
+create or replace function public.list_all_workspace_users()
+returns table (
+  user_id uuid,
+  display_name text,
+  email text,
+  is_superuser boolean,
+  tenants jsonb
+)
+language plpgsql
+security definer
+stable
+set search_path = public, auth
+as $$
+begin
+  if not public.has_role(auth.uid(), 'superuser') then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
 
-3. Säilytä "Show details" -toggle muuttuneille kentille (vanha→uusi taulukko), mutta itse nimi näkyy aina rivillä ilman avaamista.
+  return query
+  with all_user_ids as (
+    select tm.user_id from public.tenant_members tm
+    union
+    select ur.user_id from public.user_roles ur
+    union
+    select p.id from public.profiles p
+  )
+  select
+    u.user_id,
+    coalesce(p.display_name, '') as display_name,
+    coalesce(p.email, '')        as email,
+    exists(
+      select 1 from public.user_roles ur
+      where ur.user_id = u.user_id and ur.role = 'superuser'
+    ) as is_superuser,
+    coalesce(
+      (
+        select jsonb_agg(
+          jsonb_build_object('id', t.id, 'name', t.name, 'role', tm.role)
+          order by t.name
+        )
+        from public.tenant_members tm
+        join public.tenants t on t.id = tm.tenant_id
+        where tm.user_id = u.user_id
+      ),
+      '[]'::jsonb
+    ) as tenants
+  from all_user_ids u
+  left join public.profiles p on p.id = u.user_id
+  order by lower(coalesce(p.display_name, p.email, ''));
+end;
+$$;
 
-4. Jos `item_tasks` / `item_entries` -rivillä on `item_id` rowData/changes-kohdassa, näytä lisäksi vanhemman itemin viite muodossa `on item <uuid lyhennetty>` — täydellinen item-nimen haku vaatisi erillisen RPC:n eikä kuulu tähän muutokseen.
+revoke all on function public.list_all_workspace_users() from public;
+grant execute on function public.list_all_workspace_users() to authenticated;
+```
 
-## Ei muutoksia
-- Backend / SQL pysyy ennallaan; data tulee jo `rowData` + `changes` kentissä.
-- Suodattimet, lataus, reititys ennallaan.
+### Riskit / oletukset
+- Oletetaan että `profiles(id, display_name, email)`, `tenants(id, name)`, `tenant_members(user_id, tenant_id, role)`, `user_roles(user_id, role)` ja `public.has_role(uuid, app_role)` ovat olemassa (käytetään muualla koodissa).
+- Jos `profiles.email` puuttuu, haetaan tilalle `auth.users.email` — lisätään fallback `left join auth.users au on au.id = u.user_id` ja `coalesce(p.email, au.email)`.
+
+## Ei muutoksia frontendiin
+`_authenticated.superusers.tsx` ja `superusers.functions.ts` pysyvät ennallaan.
