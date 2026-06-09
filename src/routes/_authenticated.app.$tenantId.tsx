@@ -745,6 +745,19 @@ function ItemDetail({
     }
   };
 
+  const titleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (titleTimerRef.current) clearTimeout(titleTimerRef.current);
+  }, []);
+  const scheduleTitleSave = (next: string) => {
+    if (titleTimerRef.current) clearTimeout(titleTimerRef.current);
+    titleTimerRef.current = setTimeout(() => {
+      if (next === item.title) return;
+      void onSave({ title: next });
+      setSavedAt(Date.now());
+    }, 600);
+  };
+
   const toggleAssignee = (id: string) => {
     setAssigneeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
@@ -755,8 +768,18 @@ function ItemDetail({
     <div className="mx-auto max-w-4xl p-6">
       <input
         value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={save}
+        onChange={(e) => {
+          const v = e.target.value;
+          setTitle(v);
+          scheduleTitleSave(v);
+        }}
+        onBlur={() => {
+          if (titleTimerRef.current) {
+            clearTimeout(titleTimerRef.current);
+            titleTimerRef.current = null;
+          }
+          void save();
+        }}
         className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none"
       />
       <MonthlyEntries tenantId={tenantId} itemId={item.id} onChanged={onEntriesChanged} />
