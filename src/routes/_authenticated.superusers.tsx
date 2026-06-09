@@ -75,6 +75,14 @@ function SuperusersPage() {
     onSuccess: invalidate,
   });
 
+  const grantByIdM = useMutation({
+    mutationFn: (userId: string) => grantByIdFn({ data: { userId } }),
+    onSuccess: () => {
+      toast.success(t("superusers.granted", "Superuser added"));
+      invalidate();
+    },
+  });
+
   const [email, setEmail] = useState("");
   const [myUserId, setMyUserId] = useState<string | null>(null);
   useEffect(() => {
