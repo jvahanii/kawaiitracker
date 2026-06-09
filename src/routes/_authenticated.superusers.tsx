@@ -123,6 +123,8 @@ function SuperusersPage() {
   }
 
   const rows = listQ.data ?? [];
+  const allUsers = allUsersQ.data ?? [];
+  const superuserCount = rows.length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
