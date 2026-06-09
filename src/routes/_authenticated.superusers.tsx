@@ -1,16 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { supabase } from "@/lib/supabase/client";
 import {
   grantSuperuserByEmail,
   isSuperuser,
   listSuperusers,
   revokeSuperuser,
 } from "@/lib/api/superusers.functions";
+
 
 export const Route = createFileRoute("/_authenticated/superusers")({
   head: () => ({ meta: [{ title: "Superusers — Tracker" }] }),
