@@ -29,7 +29,9 @@ function SuperusersPage() {
   const isSuperFn = useServerFn(isSuperuser);
   const listFn = useServerFn(listSuperusers);
   const grantFn = useServerFn(grantSuperuserByEmail);
+  const grantByIdFn = useServerFn(grantSuperuserById);
   const revokeFn = useServerFn(revokeSuperuser);
+  const listAllFn = useServerFn(listAllWorkspaceUsers);
 
   const meQ = useQuery({
     queryKey: ["is-superuser"],
@@ -43,7 +45,16 @@ function SuperusersPage() {
     enabled: meQ.data?.is === true,
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["superusers"] });
+  const allUsersQ = useQuery({
+    queryKey: ["all-workspace-users"],
+    queryFn: () => listAllFn(),
+    enabled: meQ.data?.is === true,
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["superusers"] });
+    qc.invalidateQueries({ queryKey: ["all-workspace-users"] });
+  };
 
   const grantM = useMutation({
     mutationFn: (email: string) => grantFn({ data: { email } }),
