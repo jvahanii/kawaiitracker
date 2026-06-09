@@ -38,11 +38,79 @@ function fmt(value: unknown): string {
   }
 }
 
+function pickStr(
+  row: { [k: string]: unknown } | null,
+  changes: { [k: string]: { old: unknown; new: unknown } } | null,
+  keys: string[],
+): string | null {
+  for (const k of keys) {
+    const v = row?.[k];
+    if (typeof v === "string" && v.trim()) return v;
+  }
+  for (const k of keys) {
+    const c = changes?.[k];
+    if (c) {
+      if (typeof c.new === "string" && c.new.trim()) return c.new;
+      if (typeof c.old === "string" && c.old.trim()) return c.old;
+    }
+  }
+  return null;
+}
+
+function shortId(id: string | null): string {
+  if (!id) return "";
+  return id.length > 8 ? id.slice(0, 8) : id;
+}
+
+function entityName(entry: AuditEntry): string | null {
+  const row = entry.rowData as { [k: string]: unknown } | null;
+  const ch = entry.changes;
+  switch (entry.tableName) {
+    case "folders":
+      return pickStr(row, ch, ["name"]);
+    case "items":
+      return pickStr(row, ch, ["title", "name"]);
+    case "item_tasks":
+      return pickStr(row, ch, ["title", "name"]);
+    case "item_entries":
+      return pickStr(row, ch, ["note", "value", "content", "text"]);
+    case "item_assignees": {
+      const uid = (row?.user_id as string | undefined) ?? null;
+      return uid ? `user ${shortId(uid)}` : null;
+    }
+    case "folder_visibility": {
+      const fid = (row?.folder_id as string | undefined) ?? null;
+      return fid ? `folder ${shortId(fid)}` : null;
+    }
+    case "tenant_members": {
+      const role = (row?.role as string | undefined) ?? null;
+      const uid = (row?.user_id as string | undefined) ?? null;
+      if (role && uid) return `${role} · ${shortId(uid)}`;
+      return role ?? (uid ? `user ${shortId(uid)}` : null);
+    }
+    default:
+      return null;
+  }
+}
+
+function parentItemRef(entry: AuditEntry): string | null {
+  if (entry.tableName !== "item_tasks" && entry.tableName !== "item_entries") return null;
+  const row = entry.rowData as { [k: string]: unknown } | null;
+  const itemId =
+    (row?.item_id as string | undefined) ??
+    (entry.changes?.item_id?.new as string | undefined) ??
+    (entry.changes?.item_id?.old as string | undefined) ??
+    null;
+  return itemId ? shortId(itemId) : null;
+}
+
 function AuditRow({ entry }: { entry: AuditEntry }) {
   const [open, setOpen] = useState(false);
   const date = new Date(entry.createdAt);
   const actor = entry.actorName || entry.actorEmail || "Unknown";
   const label = TABLE_LABELS[entry.tableName] ?? entry.tableName;
+  const name = entityName(entry);
+  const parentRef = parentItemRef(entry);
   const changeKeys = entry.changes ? Object.keys(entry.changes) : [];
 
   return (
@@ -58,6 +126,17 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
                 : "updated"}
           </span>{" "}
           <span className="font-medium">{label}</span>
+          {name ? (
+            <>
+              {" "}
+              <span className="font-semibold">&ldquo;{name}&rdquo;</span>
+            </>
+          ) : entry.recordId ? (
+            <span className="text-muted-foreground"> · {shortId(entry.recordId)}</span>
+          ) : null}
+          {parentRef ? (
+            <span className="text-muted-foreground"> on item {parentRef}</span>
+          ) : null}
           {entry.action === "UPDATE" && changeKeys.length > 0 ? (
             <span className="text-muted-foreground">
               {" "}
