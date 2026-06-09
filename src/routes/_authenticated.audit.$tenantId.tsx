@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { listMyTenants } from "@/lib/api/tenants.functions";
 import { listAuditLog, type AuditEntry } from "@/lib/api/audit.functions";
+import { listItems } from "@/lib/api/items.functions";
 import { formatDateTime } from "@/lib/format-date";
 
 export const Route = createFileRoute("/_authenticated/audit/$tenantId")({
