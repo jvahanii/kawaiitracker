@@ -56,12 +56,21 @@ function LoginPage() {
       }
       return { ok: true as const };
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       let lastTenantId: string | null = null;
+      // Prefer the server-stored preference so it works across devices.
       try {
-        lastTenantId = localStorage.getItem("lastTenantId");
+        const r = await getLastTenantFn();
+        lastTenantId = r?.id ?? null;
       } catch {
-        // ignore
+        // ignore — fall back to localStorage
+      }
+      if (!lastTenantId) {
+        try {
+          lastTenantId = localStorage.getItem("lastTenantId");
+        } catch {
+          // ignore
+        }
       }
       if (lastTenantId) {
         navigate({ to: "/app/$tenantId", params: { tenantId: lastTenantId } });
