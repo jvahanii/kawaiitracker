@@ -7,7 +7,7 @@ export type TenantSummary = {
   id: string;
   name: string;
   joinCode: string;
-  role: "admin" | "member";
+  role: "admin" | "member" | "superuser";
 };
 
 export const listMyTenants = createServerFn({ method: "GET" })
