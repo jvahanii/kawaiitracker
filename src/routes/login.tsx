@@ -1,9 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ensureSupabase } from "@/lib/supabase/client";
+import { getLastTenantId } from "@/lib/api/tenants.functions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { KiwiWithKey } from "@/components/KiwiWithKey";
 
@@ -17,6 +19,7 @@ const REMEMBER_KEY = "rememberedEmail";
 function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const getLastTenantFn = useServerFn(getLastTenantId);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -53,12 +56,21 @@ function LoginPage() {
       }
       return { ok: true as const };
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       let lastTenantId: string | null = null;
+      // Prefer the server-stored preference so it works across devices.
       try {
-        lastTenantId = localStorage.getItem("lastTenantId");
+        const r = await getLastTenantFn();
+        lastTenantId = r?.id ?? null;
       } catch {
-        // ignore
+        // ignore — fall back to localStorage
+      }
+      if (!lastTenantId) {
+        try {
+          lastTenantId = localStorage.getItem("lastTenantId");
+        } catch {
+          // ignore
+        }
       }
       if (lastTenantId) {
         navigate({ to: "/app/$tenantId", params: { tenantId: lastTenantId } });

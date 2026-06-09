@@ -28,7 +28,7 @@ import {
 
 import { ensureSupabase } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/format-date";
-import { listMyTenants, listTenantMembers } from "@/lib/api/tenants.functions";
+import { listMyTenants, listTenantMembers, setLastTenantId } from "@/lib/api/tenants.functions";
 import {
   createItem,
   deleteItem,
@@ -83,6 +83,7 @@ function WorkspacePage() {
   const createFolderFn = useServerFn(createFolder);
   const updateFolderFn = useServerFn(updateFolder);
   const deleteFolderFn = useServerFn(deleteFolder);
+  const setLastTenantFn = useServerFn(setLastTenantId);
 
   const tenantsQ = useQuery({
     queryKey: ["my-tenants"],
@@ -117,7 +118,11 @@ function WorkspacePage() {
     } catch {
       /* ignore */
     }
-  }, [currentTenant, navigate, tenantsQ.data]);
+    // Persist server-side too so the preference syncs across devices.
+    setLastTenantFn({ data: { tenantId: currentTenant.id } }).catch(() => {
+      /* best-effort */
+    });
+  }, [currentTenant, navigate, setLastTenantFn, tenantsQ.data]);
 
   const itemsQ = useQuery({
     queryKey: ["items", tenantId],
