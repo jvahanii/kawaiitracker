@@ -196,7 +196,6 @@ function AuditRow({
   itemNames: Map<string, string>;
   entriesById: Map<string, EntryMeta>;
 }) {
-  const [open, setOpen] = useState(false);
   const date = new Date(entry.createdAt);
   const actor = entry.actorName || entry.actorEmail || "Unknown";
   const label = TABLE_LABELS[entry.tableName] ?? entry.tableName;
