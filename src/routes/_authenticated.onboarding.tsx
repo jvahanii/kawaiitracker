@@ -52,6 +52,12 @@ function Onboarding() {
   return (
     <div className="min-h-screen bg-muted/30 px-4 py-16">
       <div className="mx-auto max-w-xl">
+        {showLoader ? (
+          <div className="mt-16 flex justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
+          </div>
+        ) : (
+        <>
         <div className="flex items-start justify-between">
           <div>
             <Link
@@ -65,11 +71,6 @@ function Onboarding() {
           </div>
           <LanguageSwitcher />
         </div>
-        {showLoader ? (
-          <div className="mt-16 flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
-          </div>
-        ) : (
         <div className="mt-8 grid gap-6 sm:grid-cols-2">
 
           <section className="rounded-xl border border-border bg-background p-6">
@@ -132,6 +133,7 @@ function Onboarding() {
             </form>
           </section>
         </div>
+        </>
         )}
       </div>
     </div>
