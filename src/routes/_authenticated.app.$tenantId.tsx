@@ -752,8 +752,10 @@ function ItemDetail({
   const scheduleTitleSave = (next: string) => {
     if (titleTimerRef.current) clearTimeout(titleTimerRef.current);
     titleTimerRef.current = setTimeout(() => {
-      if (next === item.title) return;
-      void onSave({ title: next });
+      const trimmed = next.trim();
+      if (trimmed.length === 0) return;
+      if (trimmed === item.title) return;
+      void onSave({ title: trimmed });
       setSavedAt(Date.now());
     }, 600);
   };
