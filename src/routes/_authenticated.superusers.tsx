@@ -137,7 +137,7 @@ function SuperusersPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl space-y-6 p-6">
+      <main className="mx-auto max-w-3xl space-y-6 p-6">
         <section className="rounded-xl border border-border bg-background p-6">
           <h2 className="text-base font-semibold">
             {t("superusers.addTitle", "Add superuser")}
