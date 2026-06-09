@@ -68,7 +68,7 @@ function MembersPage() {
     }
   }, [currentTenant, navigate, tenantsQ.data]);
 
-  const isAdmin = currentTenant?.role === "admin";
+  const isAdmin = currentTenant?.role === "admin" || currentTenant?.role === "superuser";
 
   const membersQ = useQuery({
     queryKey: ["members", tenantId],

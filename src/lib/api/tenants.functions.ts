@@ -7,7 +7,7 @@ export type TenantSummary = {
   id: string;
   name: string;
   joinCode: string;
-  role: "admin" | "member";
+  role: "admin" | "member" | "superuser";
 };
 
 export const listMyTenants = createServerFn({ method: "GET" })
@@ -19,7 +19,7 @@ export const listMyTenants = createServerFn({ method: "GET" })
       id: r.id,
       name: r.name,
       joinCode: r.join_code,
-      role: r.role as "admin" | "member",
+      role: r.role as "admin" | "member" | "superuser",
     }));
   });
 
