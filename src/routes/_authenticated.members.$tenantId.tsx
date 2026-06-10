@@ -23,6 +23,7 @@ import {
   listTenantMembers,
   removeMember,
   setMemberPassword,
+  updateMemberEmail,
   updateMemberName,
   updateMemberRole,
 } from "@/lib/api/tenants.functions";
@@ -33,6 +34,7 @@ import {
   revokeSuperuser,
   superuserRemoveMember,
   superuserUpdateMemberRole,
+  superuserUpdateUserEmail,
 } from "@/lib/api/superusers.functions";
 
 export const Route = createFileRoute("/_authenticated/members/$tenantId")({
