@@ -550,7 +550,59 @@ function MembersPage() {
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground">{u.email}</div>
+                        {editingEmailId === u.userId && editingEmailScope === "super" ? (
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              const email = editingEmail.trim();
+                              if (!email) return;
+                              suEmailM.mutate({ userId: u.userId, email });
+                            }}
+                            className="mt-1 flex items-center gap-2"
+                          >
+                            <input
+                              autoFocus
+                              type="email"
+                              value={editingEmail}
+                              onChange={(e) => setEditingEmail(e.target.value)}
+                              className="input h-7 flex-1 text-xs"
+                              maxLength={255}
+                              required
+                            />
+                            <button
+                              type="submit"
+                              disabled={suEmailM.isPending || !editingEmail.trim()}
+                              className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                            >
+                              {suEmailM.isPending ? t("common.saving") : t("common.saved")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingEmailId(null);
+                                setEditingEmail("");
+                              }}
+                              className="rounded-md px-2 py-1 text-xs hover:bg-accent"
+                            >
+                              {t("common.cancel")}
+                            </button>
+                          </form>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs text-muted-foreground">{u.email}</div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingEmailId(u.userId);
+                                setEditingEmail(u.email);
+                                setEditingEmailScope("super");
+                              }}
+                              className="rounded-md px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+                            >
+                              {t("members.editEmail")}
+                            </button>
+                          </div>
+                        )}
                         <div className="mt-2 flex flex-wrap gap-2">
                           {u.tenants.length === 0 ? (
                             <span className="text-[11px] italic text-muted-foreground">
