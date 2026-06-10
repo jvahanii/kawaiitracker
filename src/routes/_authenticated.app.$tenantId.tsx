@@ -276,14 +276,6 @@ function WorkspacePage() {
 
   const [newTitle, setNewTitle] = useState("");
   const [copied, setCopied] = useState(false);
-  const [newItemDialogFolderId, setNewItemDialogFolderId] = useState<string | null>(null);
-  const [newItemDialogTitle, setNewItemDialogTitle] = useState("");
-
-  const submitNewItemDialog = () => {
-    if (!newItemDialogTitle.trim()) return;
-    createM.mutate({ title: newItemDialogTitle.trim(), folderId: newItemDialogFolderId });
-    setNewItemDialogFolderId(null);
-  };
 
   const copyJoinCode = async () => {
     try {
@@ -471,8 +463,8 @@ function WorkspacePage() {
             onDeleteFolder={(id) => deleteFolderM.mutate(id)}
             onManageVisibility={(id) => setVisibilityFolderId(id)}
             onCreateItemInFolder={(folderId) => {
-              setNewItemDialogFolderId(folderId);
-              setNewItemDialogTitle("");
+              const title = prompt(t("workspace.newItemPlaceholder"));
+              if (title?.trim()) createM.mutate({ title: title.trim(), folderId });
             }}
           />
         </aside>
@@ -519,45 +511,6 @@ function WorkspacePage() {
           }}
         />
       ) : null}
-      <Dialog
-        open={newItemDialogFolderId !== null}
-        onOpenChange={(open) => { if (!open) setNewItemDialogFolderId(null); }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t("common.add")}</DialogTitle>
-            <DialogDescription className="sr-only">
-              {t("workspace.newItemPlaceholder")}
-            </DialogDescription>
-          </DialogHeader>
-          <input
-            autoFocus
-            type="text"
-            value={newItemDialogTitle}
-            onChange={(e) => setNewItemDialogTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") submitNewItemDialog(); }}
-            placeholder={t("workspace.newItemPlaceholder")}
-            className="input w-full"
-          />
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => setNewItemDialogFolderId(null)}
-              className="rounded-md px-3 py-1.5 text-sm hover:bg-accent"
-            >
-              {t("common.cancel")}
-            </button>
-            <button
-              type="button"
-              disabled={!newItemDialogTitle.trim()}
-              onClick={submitNewItemDialog}
-              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {t("common.create")}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
