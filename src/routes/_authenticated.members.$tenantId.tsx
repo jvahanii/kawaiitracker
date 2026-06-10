@@ -200,6 +200,34 @@ function MembersPage() {
     },
   });
 
+  const updateEmailM = useMutation({
+    mutationFn: (v: { userId: string; email: string }) =>
+      updateEmailFn({ data: { tenantId, ...v } }),
+    meta: { silent: true },
+    onSuccess: () => {
+      setEditingEmailId(null);
+      setEditingEmail("");
+      toast.success(t("members.emailUpdated"));
+      qc.invalidateQueries({ queryKey: ["members", tenantId] });
+      qc.invalidateQueries({ queryKey: ["all-workspace-users"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const suEmailM = useMutation({
+    mutationFn: (v: { userId: string; email: string }) => suEmailSF({ data: v }),
+    meta: { silent: true },
+    onSuccess: () => {
+      setEditingEmailId(null);
+      setEditingEmail("");
+      toast.success(t("members.emailUpdated"));
+      qc.invalidateQueries({ queryKey: ["all-workspace-users"] });
+      qc.invalidateQueries({ queryKey: ["members", tenantId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
 
   const isSuperQ = useQuery({
     queryKey: ["is-superuser"],
