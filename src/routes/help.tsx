@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -83,6 +83,7 @@ function renderMarkdown(src: string) {
 
 function HelpPage() {
   const { t, i18n: i18nHook } = useTranslation();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -91,6 +92,14 @@ function HelpPage() {
   const tr = mounted ? t : i18n.getFixedT("en");
   const lang = mounted ? i18nHook.language : "en";
   const content = lang?.toLowerCase().startsWith("fi") ? guideFi : guideEn;
+
+  const handleBack = () => {
+    if (mounted && router.history.canGoBack()) {
+      router.history.back();
+    } else {
+      router.navigate({ to: "/" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -101,9 +110,9 @@ function HelpPage() {
           </Link>
           <div className="flex items-center gap-3">
             {mounted ? <LanguageSwitcher /> : <span className="inline-block h-8 w-10" />}
-            <Link to="/" className="kawaii-button-soft text-sm">
+            <button type="button" onClick={handleBack} className="kawaii-button-soft text-sm">
               {tr("common.back")}
-            </Link>
+            </button>
           </div>
         </div>
       </header>
