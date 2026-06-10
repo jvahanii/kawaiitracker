@@ -11,9 +11,9 @@ import guideFi from "../../docs/USER_GUIDE.fi.md?raw";
 export const Route = createFileRoute("/help")({
   head: () => ({
     meta: [
-      { title: "Help — Keywi" },
+      { title: "User guide — Keywi" },
       { name: "description", content: "User guide for Keywi: workspaces, savings, monthly entries, goals, currency, admin and superuser features." },
-      { property: "og:title", content: "Help — Keywi" },
+      { property: "og:title", content: "User guide — Keywi" },
       { property: "og:description", content: "User guide for Keywi." },
       { property: "og:url", content: "https://kawaiitracker.lovable.app/help" },
     ],
