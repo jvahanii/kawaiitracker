@@ -58,6 +58,14 @@ function Landing() {
             {tr("landing.haveAccount")}
           </Link>
         </div>
+        <p className="mt-4 text-center text-sm text-muted-foreground">
+          <a
+            href="#"
+            className="underline-offset-4 hover:underline"
+          >
+            {tr("landing.userGuide")}
+          </a>
+        </p>
         <div className="relative mt-12 flex justify-center">
           <KiwiWithKey
             alt="Kawaii kiwi mascot with a key"

@@ -26,7 +26,8 @@
     "heading": "Track savings and income across workstreams.",
     "sub": "Create a workspace, share an 8-character join code, and manage savings and income together to reach your financial targets",
     "getStarted": "Get started",
-    "haveAccount": "I have an account"
+    "haveAccount": "I have an account",
+    "userGuide": "User guide"
   },
   "login": {
     "metaTitle": "Log in — Tracker",
