@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   createContext,
   useCallback,
@@ -10,6 +11,10 @@ import {
   type ReactNode,
 } from "react";
 
+import {
+  getMyPreferredCurrency,
+  updateMyPreferredCurrency,
+} from "@/lib/api/user-settings.functions";
 import { tryGetSupabase } from "@/lib/supabase/client";
 
 export const SUPPORTED_CURRENCIES = ["EUR", "USD", "GBP", "SEK", "NOK"] as const;
@@ -62,9 +67,11 @@ async function fetchRates(): Promise<Rates> {
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState<Currency>("EUR");
+  const [userId, setUserId] = useState<string | null>(null);
   const appliedUserRef = useRef<string | null>(null);
 
   // Read localStorage after mount to avoid SSR hydration mismatch
+  // (temporary value while the database preference loads)
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -74,36 +81,16 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Apply per-user preference from Supabase auth user metadata (no DB schema needed)
+  // Track the signed-in user
   useEffect(() => {
     const client = tryGetSupabase();
     if (!client) return;
     let mounted = true;
-
-    const applyFromUser = (user: { id: string; user_metadata?: Record<string, unknown> } | null) => {
-      if (!user) {
-        appliedUserRef.current = null;
-        return;
-      }
-      // Apply server preference once per signed-in user
-      if (appliedUserRef.current === user.id) return;
-      appliedUserRef.current = user.id;
-      const pref = user.user_metadata?.preferred_currency;
-      if (isCurrency(pref)) {
-        setCurrencyState(pref);
-        try {
-          window.localStorage.setItem(STORAGE_KEY, pref);
-        } catch {
-          // ignore
-        }
-      }
-    };
-
     client.auth.getUser().then(({ data }) => {
-      if (mounted) applyFromUser(data.user ?? null);
+      if (mounted) setUserId(data.user?.id ?? null);
     });
     const { data: sub } = client.auth.onAuthStateChange((_event, session) => {
-      applyFromUser(session?.user ?? null);
+      setUserId(session?.user?.id ?? null);
     });
     return () => {
       mounted = false;
@@ -111,23 +98,55 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const setCurrency = useCallback((c: Currency) => {
-    setCurrencyState(c);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, c);
-    } catch {
-      // ignore
+  // Always load the currency choice from the database for the signed-in user
+  const fetchPreferred = useServerFn(getMyPreferredCurrency);
+  const prefQ = useQuery({
+    queryKey: ["preferred-currency", userId],
+    queryFn: () => fetchPreferred(),
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  useEffect(() => {
+    if (!userId || !prefQ.data) return;
+    if (appliedUserRef.current === userId) return;
+    appliedUserRef.current = userId;
+    const pref = prefQ.data.currency;
+    if (isCurrency(pref)) {
+      setCurrencyState(pref);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, pref);
+      } catch {
+        // ignore
+      }
     }
-    // Persist per user in Supabase auth metadata (fire-and-forget)
-    const client = tryGetSupabase();
-    if (client) {
-      client.auth
-        .updateUser({ data: { preferred_currency: c } })
-        .catch(() => {
-          // signed out or offline — localStorage still keeps the choice locally
-        });
-    }
-  }, []);
+  }, [userId, prefQ.data]);
+
+  // Reset applied flag on sign-out so a re-login reloads from DB
+  useEffect(() => {
+    if (!userId) appliedUserRef.current = null;
+  }, [userId]);
+
+  const updatePreferred = useServerFn(updateMyPreferredCurrency);
+  const updateMutation = useMutation({
+    mutationFn: (c: Currency) => updatePreferred({ data: { currency: c } }),
+  });
+
+  const setCurrency = useCallback(
+    (c: Currency) => {
+      setCurrencyState(c);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, c);
+      } catch {
+        // ignore
+      }
+      // Persist per user in the database (fire-and-forget)
+      if (userId) {
+        updateMutation.mutate(c);
+      }
+    },
+    [userId, updateMutation],
+  );
 
   const ratesQ = useQuery({
     queryKey: ["fx", "EUR"],
