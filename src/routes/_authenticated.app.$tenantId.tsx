@@ -362,6 +362,12 @@ function WorkspacePage() {
           <LanguageSwitcher />
           <CurrencySwitcher />
           <Link
+            to="/help"
+            className="rounded-md px-2 py-1 text-xs hover:bg-accent"
+          >
+            {t("common.help", "Help")}
+          </Link>
+          <Link
             to="/members/$tenantId"
             params={{ tenantId }}
             className="rounded-md px-2 py-1 text-xs hover:bg-accent"
