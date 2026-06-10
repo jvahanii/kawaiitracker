@@ -194,8 +194,51 @@ function MembersPage() {
   });
 
 
+  const isSuperQ = useQuery({
+    queryKey: ["is-superuser"],
+    queryFn: () => isSuperSF(),
+    retry: 1,
+  });
+  const isSuper = !!isSuperQ.data?.is;
+
+  const allUsersQ = useQuery({
+    queryKey: ["all-workspace-users"],
+    queryFn: () => listAllSF(),
+    enabled: isSuper,
+  });
+
+  const invalidateSuper = () => {
+    qc.invalidateQueries({ queryKey: ["all-workspace-users"] });
+    qc.invalidateQueries({ queryKey: ["members", tenantId] });
+  };
+
+  const grantSuperM = useMutation({
+    mutationFn: (userId: string) => grantSuperSF({ data: { userId } }),
+    onSuccess: () => {
+      toast.success(t("members.grantSuperuser"));
+      invalidateSuper();
+    },
+  });
+  const revokeSuperM = useMutation({
+    mutationFn: (userId: string) => revokeSuperSF({ data: { userId } }),
+    onSuccess: invalidateSuper,
+  });
+  const suRoleM = useMutation({
+    mutationFn: (v: { tenantId: string; userId: string; role: "admin" | "member" }) =>
+      suRoleSF({ data: v }),
+    onSuccess: invalidateSuper,
+  });
+  const suRemoveM = useMutation({
+    mutationFn: (v: { tenantId: string; userId: string }) => suRemoveSF({ data: v }),
+    onSuccess: invalidateSuper,
+  });
+
   const members = membersQ.data ?? [];
   const adminCount = members.filter((m) => m.role === "admin").length;
+  const otherUsers = (allUsersQ.data ?? []).filter(
+    (u) => !u.tenants.some((tn) => tn.id === tenantId),
+  );
+  const superuserCount = (allUsersQ.data ?? []).filter((u) => u.isSuperuser).length;
   const pageError = tenantsQ.error ?? membersQ.error;
 
   if (pageError) {
