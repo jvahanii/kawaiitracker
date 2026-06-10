@@ -1,20 +1,30 @@
-## Issue
+## Goal
+Make currency selection remembered per user account (follows them across devices/browsers), instead of one shared localStorage value per browser.
 
-In `MonthlyEntries` (src/routes/_authenticated.app.$tenantId.tsx:973), the selected year is local component state initialised to the current year (`useState(new Date().getFullYear())`, line 1011). When the user clicks another item the component remounts, so any change like 2027 resets back to 2026.
+## Changes
 
-## Fix
+### 1. New table `public.user_settings`
+Migration adds:
+- `user_id uuid PK references auth.users(id) on delete cascade`
+- `preferred_currency text not null default 'EUR'` (check constraint: EUR/USD/GBP/SEK/NOK)
+- `updated_at timestamptz default now()`
+- GRANTs to `authenticated` and `service_role`
+- RLS: user can select/insert/update only their own row (`auth.uid() = user_id`)
 
-Persist the selected year so it survives item switches (and page reloads).
+### 2. Server functions (`src/lib/api/user-settings.functions.ts`)
+- `getMySettings` — returns `{ preferred_currency }`, creating row on first read
+- `updateMyCurrency({ currency })` — upserts the row
+Both use `requireSupabaseAuth` middleware.
 
-- Replace the `useState(new Date().getFullYear())` on line 1011 with a small persisted state hook backed by `localStorage` under a stable key, e.g. `keywi.monthlyEntries.year`.
-- On mount: read the stored value, fall back to `new Date().getFullYear()` if missing or invalid.
-- On `setYear`: write the new year to `localStorage` (guarded for SSR with `typeof window !== "undefined"`).
-- No other behaviour changes — `months`, totals, and queries already derive from `year`, so they update automatically.
+### 3. `src/lib/currency.tsx`
+- Load initial currency via `useQuery(getMySettings)` once auth session is available; fall back to existing localStorage value while loading (avoids flicker), then to `"EUR"`.
+- `setCurrency` updates local state immediately, mirrors to localStorage (cache for next load), and fires `updateMyCurrency` mutation.
+- When user is not signed in (e.g. /auth pages), keep current localStorage-only behaviour.
 
-This makes the year a user-level preference shared across all items in the workspace, matching the request that 2027 stays selected when navigating to another item.
+### 4. No UI changes
+The existing currency switcher continues to call `setCurrency`.
 
 ## Out of scope
-
-- No backend / schema changes.
-- No UI redesign of the year switcher.
-- Not storing a different year per item (interpretation: user wants the chosen year to stick, not a separate year per item).
+- Per-tenant currency
+- Currency history/audit
+- Migration of existing localStorage values into the DB (they'll be used as the first-write seed naturally)
