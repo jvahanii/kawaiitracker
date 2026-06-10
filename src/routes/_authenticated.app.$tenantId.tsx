@@ -348,7 +348,8 @@ function WorkspacePage() {
               <span className="font-medium text-foreground">{user.displayName}</span>
               {isSuperuser ? (
                 <Link
-                  to="/superusers"
+                  to="/members/$tenantId"
+                  params={{ tenantId }}
                   className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-500/25 dark:text-amber-300"
                 >
                   {t("workspace.superuserBadge", "Superuser")}
