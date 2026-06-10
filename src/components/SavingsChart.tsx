@@ -330,6 +330,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
             placeholder="0,00"
             className="input h-7 w-28 py-0 text-xs"
           />
+          <span className="font-mono text-xs text-muted-foreground">{currencySymbol}</span>
         </label>
         <div className="ml-auto inline-flex overflow-hidden rounded border border-border">
           <button
