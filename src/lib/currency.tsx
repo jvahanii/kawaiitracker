@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   createContext,
@@ -6,7 +6,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -68,10 +67,9 @@ async function fetchRates(): Promise<Rates> {
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState<Currency>("EUR");
   const [userId, setUserId] = useState<string | null>(null);
-  const appliedUserRef = useRef<string | null>(null);
+  const queryClient = useQueryClient();
 
-  // Read localStorage after mount to avoid SSR hydration mismatch
-  // (temporary value while the database preference loads)
+  // Read localStorage after mount (instant pre-login fallback only)
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -98,7 +96,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Always load the currency choice from the database for the signed-in user
+  // DB is source of truth: always mirror the loaded value
   const fetchPreferred = useServerFn(getMyPreferredCurrency);
   const prefQ = useQuery({
     queryKey: ["preferred-currency", userId],
@@ -108,10 +106,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    if (!userId || !prefQ.data) return;
-    if (appliedUserRef.current === userId) return;
-    appliedUserRef.current = userId;
-    const pref = prefQ.data.currency;
+    const pref = prefQ.data?.currency;
     if (isCurrency(pref)) {
       setCurrencyState(pref);
       try {
@@ -120,12 +115,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
         // ignore
       }
     }
-  }, [userId, prefQ.data]);
-
-  // Reset applied flag on sign-out so a re-login reloads from DB
-  useEffect(() => {
-    if (!userId) appliedUserRef.current = null;
-  }, [userId]);
+  }, [prefQ.data]);
 
   const updatePreferred = useServerFn(updateMyPreferredCurrency);
   const updateMutation = useMutation({
@@ -140,12 +130,13 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       } catch {
         // ignore
       }
-      // Persist per user in the database (fire-and-forget)
       if (userId) {
+        // Pre-populate cache so any refetch/remount sees the new value
+        queryClient.setQueryData(["preferred-currency", userId], { currency: c });
         updateMutation.mutate(c);
       }
     },
-    [userId, updateMutation],
+    [userId, updateMutation, queryClient],
   );
 
   const ratesQ = useQuery({

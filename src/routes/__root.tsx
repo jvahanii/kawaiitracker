@@ -156,6 +156,14 @@ function SupabaseAuthSync() {
       .then((supabase) => {
         if (cancelled) return;
         const { data } = supabase.auth.onAuthStateChange((event) => {
+          if (
+            event !== "SIGNED_IN" &&
+            event !== "SIGNED_OUT" &&
+            event !== "USER_UPDATED" &&
+            event !== "PASSWORD_RECOVERY"
+          ) {
+            return;
+          }
           if (event === "SIGNED_OUT") {
             try {
               localStorage.removeItem("lastTenantId");
@@ -166,8 +174,6 @@ function SupabaseAuthSync() {
             queryClient.clear();
             router.invalidate();
           } else if (event === "PASSWORD_RECOVERY") {
-            // Navigate to the reset-password page so the recovery session is
-            // available there regardless of which page the user is currently on.
             router.navigate({ to: "/reset-password" });
           } else {
             queryClient.invalidateQueries();
