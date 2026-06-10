@@ -1008,7 +1008,22 @@ function MonthlyEntries({
     return m;
   }, [entries]);
 
-  const [year, setYear] = useState(new Date().getFullYear());
+  const YEAR_STORAGE_KEY = "keywi.monthlyEntries.year";
+  const [year, setYearState] = useState<number>(() => {
+    if (typeof window === "undefined") return new Date().getFullYear();
+    const stored = window.localStorage.getItem(YEAR_STORAGE_KEY);
+    const parsed = stored ? parseInt(stored, 10) : NaN;
+    return Number.isFinite(parsed) ? parsed : new Date().getFullYear();
+  });
+  const setYear = (updater: number | ((y: number) => number)) => {
+    setYearState((prev) => {
+      const next = typeof updater === "function" ? (updater as (y: number) => number)(prev) : updater;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(YEAR_STORAGE_KEY, String(next));
+      }
+      return next;
+    });
+  };
 
   const months = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => ({
