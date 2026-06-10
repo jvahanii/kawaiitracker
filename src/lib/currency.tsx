@@ -1,5 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
@@ -12,10 +11,6 @@ import {
 } from "react";
 
 import { tryGetSupabase } from "@/lib/supabase/client";
-import {
-  getMyPreferredCurrency,
-  updateMyPreferredCurrency,
-} from "@/lib/api/user-settings.functions";
 
 export const SUPPORTED_CURRENCIES = ["EUR", "USD", "GBP", "SEK", "NOK"] as const;
 export type Currency = (typeof SUPPORTED_CURRENCIES)[number];
@@ -43,8 +38,11 @@ type CurrencyContextValue = {
 
 const CurrencyContext = createContext<CurrencyContextValue | null>(null);
 
-function isCurrency(value: string | null): value is Currency {
-  return !!value && (SUPPORTED_CURRENCIES as readonly string[]).includes(value);
+function isCurrency(value: unknown): value is Currency {
+  return (
+    typeof value === "string" &&
+    (SUPPORTED_CURRENCIES as readonly string[]).includes(value)
+  );
 }
 
 async function fetchRates(): Promise<Rates> {
@@ -64,11 +62,7 @@ async function fetchRates(): Promise<Rates> {
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState<Currency>("EUR");
-  const [userId, setUserId] = useState<string | null>(null);
-  const lastSyncedRef = useRef<string | null>(null);
-
-  const fetchMyCurrency = useServerFn(getMyPreferredCurrency);
-  const updateMyCurrency = useServerFn(updateMyPreferredCurrency);
+  const appliedUserRef = useRef<string | null>(null);
 
   // Read localStorage after mount to avoid SSR hydration mismatch
   useEffect(() => {
@@ -80,16 +74,36 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Track signed-in user id; subscribe to auth changes
+  // Apply per-user preference from Supabase auth user metadata (no DB schema needed)
   useEffect(() => {
     const client = tryGetSupabase();
     if (!client) return;
     let mounted = true;
+
+    const applyFromUser = (user: { id: string; user_metadata?: Record<string, unknown> } | null) => {
+      if (!user) {
+        appliedUserRef.current = null;
+        return;
+      }
+      // Apply server preference once per signed-in user
+      if (appliedUserRef.current === user.id) return;
+      appliedUserRef.current = user.id;
+      const pref = user.user_metadata?.preferred_currency;
+      if (isCurrency(pref)) {
+        setCurrencyState(pref);
+        try {
+          window.localStorage.setItem(STORAGE_KEY, pref);
+        } catch {
+          // ignore
+        }
+      }
+    };
+
     client.auth.getUser().then(({ data }) => {
-      if (mounted) setUserId(data.user?.id ?? null);
+      if (mounted) applyFromUser(data.user ?? null);
     });
     const { data: sub } = client.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id ?? null);
+      applyFromUser(session?.user ?? null);
     });
     return () => {
       mounted = false;
@@ -97,45 +111,23 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Load preferred currency from server for signed-in user
-  const prefQ = useQuery({
-    queryKey: ["user-settings", "preferred-currency", userId],
-    queryFn: () => fetchMyCurrency(),
-    enabled: !!userId,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  useEffect(() => {
-    if (!userId) return;
-    const c = prefQ.data?.currency;
-    if (!c || !isCurrency(c)) return;
-    // Apply server preference once per user load
-    if (lastSyncedRef.current === userId) return;
-    lastSyncedRef.current = userId;
+  const setCurrency = useCallback((c: Currency) => {
     setCurrencyState(c);
     try {
       window.localStorage.setItem(STORAGE_KEY, c);
     } catch {
       // ignore
     }
-  }, [userId, prefQ.data]);
-
-  const updateMutation = useMutation({
-    mutationFn: (c: Currency) => updateMyCurrency({ data: { currency: c } }),
-  });
-
-  const setCurrency = useCallback(
-    (c: Currency) => {
-      setCurrencyState(c);
-      try {
-        window.localStorage.setItem(STORAGE_KEY, c);
-      } catch {
-        // ignore
-      }
-      if (userId) updateMutation.mutate(c);
-    },
-    [userId, updateMutation],
-  );
+    // Persist per user in Supabase auth metadata (fire-and-forget)
+    const client = tryGetSupabase();
+    if (client) {
+      client.auth
+        .updateUser({ data: { preferred_currency: c } })
+        .catch(() => {
+          // signed out or offline — localStorage still keeps the choice locally
+        });
+    }
+  }, []);
 
   const ratesQ = useQuery({
     queryKey: ["fx", "EUR"],
@@ -185,4 +177,3 @@ export function useCurrency(): CurrencyContextValue {
   }
   return ctx;
 }
-
