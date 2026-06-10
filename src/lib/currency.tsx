@@ -1,0 +1,120 @@
+import { useQuery } from "@tanstack/react-query";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+
+export const SUPPORTED_CURRENCIES = ["EUR", "USD", "GBP", "SEK", "NOK"] as const;
+export type Currency = (typeof SUPPORTED_CURRENCIES)[number];
+
+const STORAGE_KEY = "keywi.currency";
+const FALLBACK_RATES: Record<Currency, number> = {
+  EUR: 1,
+  USD: 1,
+  GBP: 1,
+  SEK: 1,
+  NOK: 1,
+};
+
+type Rates = Record<Currency, number>;
+
+type CurrencyContextValue = {
+  currency: Currency;
+  setCurrency: (c: Currency) => void;
+  rates: Rates;
+  convert: (eurAmount: number) => number;
+  format: (eurAmount: number) => string;
+};
+
+const CurrencyContext = createContext<CurrencyContextValue | null>(null);
+
+function isCurrency(value: string | null): value is Currency {
+  return !!value && (SUPPORTED_CURRENCIES as readonly string[]).includes(value);
+}
+
+async function fetchRates(): Promise<Rates> {
+  const symbols = SUPPORTED_CURRENCIES.filter((c) => c !== "EUR").join(",");
+  const res = await fetch(
+    `https://api.frankfurter.dev/v1/latest?base=EUR&symbols=${symbols}`,
+  );
+  if (!res.ok) throw new Error("FX fetch failed");
+  const json = (await res.json()) as { rates: Record<string, number> };
+  const rates: Rates = { ...FALLBACK_RATES };
+  for (const c of SUPPORTED_CURRENCIES) {
+    if (c === "EUR") continue;
+    if (typeof json.rates[c] === "number") rates[c] = json.rates[c];
+  }
+  return rates;
+}
+
+export function CurrencyProvider({ children }: { children: ReactNode }) {
+  const [currency, setCurrencyState] = useState<Currency>("EUR");
+
+  // Read localStorage after mount to avoid SSR hydration mismatch
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (isCurrency(stored)) setCurrencyState(stored);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const setCurrency = useCallback((c: Currency) => {
+    setCurrencyState(c);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, c);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const ratesQ = useQuery({
+    queryKey: ["fx", "EUR"],
+    queryFn: fetchRates,
+    staleTime: 1000 * 60 * 60 * 12, // 12h
+    gcTime: 1000 * 60 * 60 * 24,
+    retry: 1,
+  });
+
+  const rates = ratesQ.data ?? FALLBACK_RATES;
+
+  const value = useMemo<CurrencyContextValue>(() => {
+    const convert = (eur: number) => eur * (rates[currency] ?? 1);
+    const format = (eur: number) => {
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: "currency",
+          currency,
+        }).format(convert(eur));
+      } catch {
+        return `${convert(eur).toFixed(2)} ${currency}`;
+      }
+    };
+    return { currency, setCurrency, rates, convert, format };
+  }, [currency, setCurrency, rates]);
+
+  return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>;
+}
+
+export function useCurrency(): CurrencyContextValue {
+  const ctx = useContext(CurrencyContext);
+  if (!ctx) {
+    // Safe fallback so components don't crash if provider missing.
+    const convert = (eur: number) => eur;
+    return {
+      currency: "EUR",
+      setCurrency: () => {},
+      rates: FALLBACK_RATES,
+      convert,
+      format: (eur: number) =>
+        new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(eur),
+    };
+  }
+  return ctx;
+}
