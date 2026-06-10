@@ -15,9 +15,9 @@ export const getMyPreferredCurrency = createServerFn({ method: "GET" })
       .eq("id", context.userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    const value = (data?.preferred_currency as string | null) ?? "EUR";
-    const parsed = CurrencySchema.safeParse(value);
-    return { currency: parsed.success ? parsed.data : ("EUR" as PreferredCurrency) };
+    const raw = (data?.preferred_currency as string | null) ?? "EUR";
+    const parsed = CurrencySchema.safeParse(raw);
+    return { currency: (parsed.success ? parsed.data : "EUR") as PreferredCurrency };
   });
 
 export const updateMyPreferredCurrency = createServerFn({ method: "POST" })

@@ -1,13 +1,21 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+
+import { supabase } from "@/lib/supabase/client";
+import {
+  getMyPreferredCurrency,
+  updateMyPreferredCurrency,
+} from "@/lib/api/user-settings.functions";
 
 export const SUPPORTED_CURRENCIES = ["EUR", "USD", "GBP", "SEK", "NOK"] as const;
 export type Currency = (typeof SUPPORTED_CURRENCIES)[number];
