@@ -144,7 +144,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     queryFn: () => itemsFn({ data: { tenantId } }),
   });
 
-  const { format: fmt } = useCurrency();
+  const { format: fmt, convert, toEur, currency } = useCurrency();
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short" });
 
   const allEntries = entriesQ.data ?? [];
