@@ -158,6 +158,8 @@
     "addedOk": "User added.",
     "alreadyMember": "User is already a member of this workspace.",
     "editName": "Edit name",
+    "editEmail": "Edit email",
+    "emailUpdated": "Email updated.",
     "otherUsersTitle": "Other users",
     "otherUsersBody": "All users across other workspaces. As superuser you can change their workspace roles, remove them from workspaces, and grant or revoke superuser.",
     "otherUsersEmpty": "No other users.",
