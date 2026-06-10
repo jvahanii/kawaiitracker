@@ -390,7 +390,71 @@ function MembersPage() {
                             </button>
                           ) : null}
                         </div>
-                        <div className="text-xs text-muted-foreground">{m.email}</div>
+                        {isAdmin && editingEmailId === m.id ? (
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              const email = editingEmail.trim();
+                              if (!email) return;
+                              if (editingEmailScope === "super") {
+                                suEmailM.mutate({ userId: m.id, email });
+                              } else {
+                                updateEmailM.mutate({ userId: m.id, email });
+                              }
+                            }}
+                            className="mt-1 flex items-center gap-2"
+                          >
+                            <input
+                              autoFocus
+                              type="email"
+                              value={editingEmail}
+                              onChange={(e) => setEditingEmail(e.target.value)}
+                              className="input h-7 flex-1 text-xs"
+                              maxLength={255}
+                              required
+                            />
+                            <button
+                              type="submit"
+                              disabled={
+                                updateEmailM.isPending ||
+                                suEmailM.isPending ||
+                                !editingEmail.trim()
+                              }
+                              className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                            >
+                              {updateEmailM.isPending || suEmailM.isPending
+                                ? t("common.saving")
+                                : t("common.saved")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingEmailId(null);
+                                setEditingEmail("");
+                              }}
+                              className="rounded-md px-2 py-1 text-xs hover:bg-accent"
+                            >
+                              {t("common.cancel")}
+                            </button>
+                          </form>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs text-muted-foreground">{m.email}</div>
+                            {isAdmin ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingEmailId(m.id);
+                                  setEditingEmail(m.email);
+                                  setEditingEmailScope("tenant");
+                                }}
+                                className="rounded-md px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+                              >
+                                {t("members.editEmail")}
+                              </button>
+                            ) : null}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
