@@ -1,30 +1,29 @@
-## Goal
-Make currency selection remembered per user account (follows them across devices/browsers), instead of one shared localStorage value per browser.
+# Make per-user currency persistence reliable
+
+## What I verified
+
+- The `preferred_currency` column exists, and the server calls work: your recent changes (NOK → USD → EUR) were all saved to the database. The DB currently holds **EUR** — your last selection.
+- The published site (kawaiitracker.lovable.app) still runs **old code** (it stores currency in auth metadata, where your old "GBP" choice still lives). If you tested there, it will not work until you re-publish.
+
+## Remaining bugs to fix
+
+1. **Stale cache can revert your choice.** After saving a new currency, the cached "preferred currency" query still holds the old value. Any refetch or auth event can re-apply the stale value and visually flip the selector back.
+2. **One-shot apply logic is fragile.** The provider applies the DB value only once per login; edge cases (empty value, refetches) can leave the UI out of sync with the database.
+3. **Global cache invalidation fires too often.** The root auth listener invalidates all queries on every auth event, including the one that fires on every page load and on hourly token refreshes — causing needless refetches that interact badly with bug 1.
 
 ## Changes
 
-### 1. New table `public.user_settings`
-Migration adds:
-- `user_id uuid PK references auth.users(id) on delete cascade`
-- `preferred_currency text not null default 'EUR'` (check constraint: EUR/USD/GBP/SEK/NOK)
-- `updated_at timestamptz default now()`
-- GRANTs to `authenticated` and `service_role`
-- RLS: user can select/insert/update only their own row (`auth.uid() = user_id`)
+**`src/lib/currency.tsx`**
+- On save, immediately write the new value into the React Query cache (`setQueryData`) so refetches/remounts can never re-apply an old value.
+- Treat the database as the source of truth: always reflect the loaded DB value (instead of the once-per-user flag), keep localStorage only as an instant pre-login fallback.
 
-### 2. Server functions (`src/lib/api/user-settings.functions.ts`)
-- `getMySettings` — returns `{ preferred_currency }`, creating row on first read
-- `updateMyCurrency({ currency })` — upserts the row
-Both use `requireSupabaseAuth` middleware.
+**`src/routes/__root.tsx`**
+- Filter the auth listener to only react to real sign-in/sign-out/user-update events, ignoring page-load and token-refresh events.
 
-### 3. `src/lib/currency.tsx`
-- Load initial currency via `useQuery(getMySettings)` once auth session is available; fall back to existing localStorage value while loading (avoids flicker), then to `"EUR"`.
-- `setCurrency` updates local state immediately, mirrors to localStorage (cache for next load), and fires `updateMyCurrency` mutation.
-- When user is not signed in (e.g. /auth pages), keep current localStorage-only behaviour.
+## Verification
 
-### 4. No UI changes
-The existing currency switcher continues to call `setCurrency`.
+- Change currency, confirm the DB row updates, reload the preview and switch items/pages, confirm the choice sticks.
 
-## Out of scope
-- Per-tenant currency
-- Currency history/audit
-- Migration of existing localStorage values into the DB (they'll be used as the first-write seed naturally)
+## After implementation
+
+Re-publish the app so the live site (kawaiitracker.lovable.app) gets the new database-backed behavior — until then, the published site will keep using the old logic.
