@@ -26,6 +26,14 @@ import {
   updateMemberName,
   updateMemberRole,
 } from "@/lib/api/tenants.functions";
+import {
+  grantSuperuserById,
+  isSuperuser as isSuperuserFn,
+  listAllWorkspaceUsers,
+  revokeSuperuser,
+  superuserRemoveMember,
+  superuserUpdateMemberRole,
+} from "@/lib/api/superusers.functions";
 
 export const Route = createFileRoute("/_authenticated/members/$tenantId")({
   head: () => ({ meta: [{ title: "Users — Tracker" }] }),
