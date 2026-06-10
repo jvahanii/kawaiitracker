@@ -1,29 +1,41 @@
-# Make per-user currency persistence reliable
+## Goal
+On the Users page (`/_authenticated/members/$tenantId`), let admins edit the email of members in their workspace, and let superusers edit the email of any user (including those in the "Other users" section).
 
-## What I verified
+## Backend — new server functions
 
-- The `preferred_currency` column exists, and the server calls work: your recent changes (NOK → USD → EUR) were all saved to the database. The DB currently holds **EUR** — your last selection.
-- The published site (kawaiitracker.lovable.app) still runs **old code** (it stores currency in auth metadata, where your old "GBP" choice still lives). If you tested there, it will not work until you re-publish.
+In `src/lib/api/tenants.functions.ts`:
 
-## Remaining bugs to fix
+- `updateMemberEmail({ tenantId, userId, email })`
+  - Auth: caller must be `admin` of `tenantId` (same check as `updateMemberName`).
+  - Validate email with Zod, normalize lowercase.
+  - Use `getSupabaseAdmin()` to:
+    1. `admin.auth.admin.updateUserById(userId, { email, email_confirm: true })` — updates the auth login email without sending a confirmation email (admin-set, mirroring existing `setMemberPassword` UX).
+    2. Update `profiles.email` to keep it in sync.
+  - Handle the "email already in use" error from Auth and return a friendly message.
 
-1. **Stale cache can revert your choice.** After saving a new currency, the cached "preferred currency" query still holds the old value. Any refetch or auth event can re-apply the stale value and visually flip the selector back.
-2. **One-shot apply logic is fragile.** The provider applies the DB value only once per login; edge cases (empty value, refetches) can leave the UI out of sync with the database.
-3. **Global cache invalidation fires too often.** The root auth listener invalidates all queries on every auth event, including the one that fires on every page load and on hourly token refreshes — causing needless refetches that interact badly with bug 1.
+In `src/lib/api/superusers.functions.ts`:
 
-## Changes
+- `superuserUpdateUserEmail({ userId, email })`
+  - Auth: caller must be superuser (reuse the existing superuser guard used by `superuserUpdateMemberRole` / `grantSuperuserById`).
+  - Same admin-side update as above; no tenant scoping.
 
-**`src/lib/currency.tsx`**
-- On save, immediately write the new value into the React Query cache (`setQueryData`) so refetches/remounts can never re-apply an old value.
-- Treat the database as the source of truth: always reflect the loaded DB value (instead of the once-per-user flag), keep localStorage only as an instant pre-login fallback.
+Both return `{ ok: true }` on success or throw a readable error.
 
-**`src/routes/__root.tsx`**
-- Filter the auth listener to only react to real sign-in/sign-out/user-update events, ignoring page-load and token-refresh events.
+## Frontend — Users page
 
-## Verification
+In `src/routes/_authenticated.members.$tenantId.tsx`:
 
-- Change currency, confirm the DB row updates, reload the preview and switch items/pages, confirm the choice sticks.
+1. Wire the new server fns with `useServerFn` + `useMutation`, invalidating `["members", tenantId]` and `["all-workspace-users"]`.
+2. Members list (current workspace):
+   - Add an "Edit email" affordance next to the existing email line, shown only when `isAdmin`.
+   - Reuse the existing inline-edit pattern (like `editingId` / `editingName`): add `editingEmailId` + `editingEmail` state; on submit call `updateMemberEmail`.
+   - Show toast on success/error; on "email already in use" show the server's error message.
+3. Superuser "Other users" section:
+   - Add an "Edit email" button per user that opens the same inline edit, calling `superuserUpdateUserEmail`.
+   - For users who are also members of the current tenant, the workspace-admin edit applies; for users in the Other users list, the superuser fn applies.
+4. i18n: add `members.editEmail`, `members.emailInUse`, `members.emailUpdated` to the existing translation files used on this page.
 
-## After implementation
-
-Re-publish the app so the live site (kawaiitracker.lovable.app) gets the new database-backed behavior — until then, the published site will keep using the old logic.
+## Out of scope
+- No email confirmation flow / "verify new email" round-trip — admin/superuser sets it directly, matching the existing `setMemberPassword` behavior.
+- No self-service email change for non-admins.
+- No schema changes.

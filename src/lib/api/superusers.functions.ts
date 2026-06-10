@@ -245,3 +245,41 @@ export const superuserRemoveMember = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });
+
+export const superuserUpdateUserEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        email: z.string().trim().toLowerCase().email().max(255),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { data: amSuper, error: roleErr } = (await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "superuser",
+    })) as { data: boolean | null; error: { message: string } | null };
+    if (roleErr) throw new Error(roleErr.message);
+    if (!amSuper) throw new Error("Only superusers can perform this action");
+
+    const { getSupabaseAdmin } = await import("@/lib/supabase/admin.server");
+    const admin = getSupabaseAdmin();
+    const { error: authErr } = await admin.auth.admin.updateUserById(data.userId, {
+      email: data.email,
+      email_confirm: true,
+    });
+    if (authErr) {
+      const msg = /already|registered|exists|duplicate/i.test(authErr.message)
+        ? "That email is already in use."
+        : authErr.message;
+      throw new Error(msg);
+    }
+    const { error: profErr } = await admin
+      .from("profiles")
+      .update({ email: data.email })
+      .eq("id", data.userId);
+    if (profErr) throw new Error(profErr.message);
+    return { ok: true as const };
+  });

@@ -158,6 +158,8 @@
     "addedOk": "Käyttäjä lisätty.",
     "alreadyMember": "Käyttäjä on jo tämän työtilan jäsen.",
     "editName": "Muokkaa nimeä",
+    "editEmail": "Muokkaa sähköpostia",
+    "emailUpdated": "Sähköposti päivitetty.",
     "otherUsersTitle": "Muut käyttäjät",
     "otherUsersBody": "Kaikki käyttäjät muista työtiloista. Pääkäyttäjänä voit muuttaa heidän rooliaan, poistaa heidät työtiloista ja myöntää tai peruuttaa pääkäyttäjäoikeudet.",
     "otherUsersEmpty": "Ei muita käyttäjiä.",

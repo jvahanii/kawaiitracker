@@ -23,6 +23,7 @@ import {
   listTenantMembers,
   removeMember,
   setMemberPassword,
+  updateMemberEmail,
   updateMemberName,
   updateMemberRole,
 } from "@/lib/api/tenants.functions";
@@ -33,6 +34,7 @@ import {
   revokeSuperuser,
   superuserRemoveMember,
   superuserUpdateMemberRole,
+  superuserUpdateUserEmail,
 } from "@/lib/api/superusers.functions";
 
 export const Route = createFileRoute("/_authenticated/members/$tenantId")({
@@ -57,12 +59,14 @@ function MembersPage() {
   const removeFn = useServerFn(removeMember);
   const addByEmailFn = useServerFn(addMemberByEmail);
   const setPasswordFn = useServerFn(setMemberPassword);
+  const updateEmailFn = useServerFn(updateMemberEmail);
   const isSuperSF = useServerFn(isSuperuserFn);
   const listAllSF = useServerFn(listAllWorkspaceUsers);
   const grantSuperSF = useServerFn(grantSuperuserById);
   const revokeSuperSF = useServerFn(revokeSuperuser);
   const suRoleSF = useServerFn(superuserUpdateMemberRole);
   const suRemoveSF = useServerFn(superuserRemoveMember);
+  const suEmailSF = useServerFn(superuserUpdateUserEmail);
 
   const tenantsQ = useQuery({
     queryKey: ["my-tenants"],
@@ -98,6 +102,9 @@ function MembersPage() {
   const [addRole, setAddRole] = useState<"admin" | "member">("member");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
+  const [editingEmail, setEditingEmail] = useState("");
+  const [editingEmailScope, setEditingEmailScope] = useState<"tenant" | "super">("tenant");
   const [pwUserId, setPwUserId] = useState<string | null>(null);
   const [pwValue, setPwValue] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -192,6 +199,34 @@ function MembersPage() {
       toast.success("Password updated.");
     },
   });
+
+  const updateEmailM = useMutation({
+    mutationFn: (v: { userId: string; email: string }) =>
+      updateEmailFn({ data: { tenantId, ...v } }),
+    meta: { silent: true },
+    onSuccess: () => {
+      setEditingEmailId(null);
+      setEditingEmail("");
+      toast.success(t("members.emailUpdated"));
+      qc.invalidateQueries({ queryKey: ["members", tenantId] });
+      qc.invalidateQueries({ queryKey: ["all-workspace-users"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const suEmailM = useMutation({
+    mutationFn: (v: { userId: string; email: string }) => suEmailSF({ data: v }),
+    meta: { silent: true },
+    onSuccess: () => {
+      setEditingEmailId(null);
+      setEditingEmail("");
+      toast.success(t("members.emailUpdated"));
+      qc.invalidateQueries({ queryKey: ["all-workspace-users"] });
+      qc.invalidateQueries({ queryKey: ["members", tenantId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
 
   const isSuperQ = useQuery({
@@ -355,7 +390,71 @@ function MembersPage() {
                             </button>
                           ) : null}
                         </div>
-                        <div className="text-xs text-muted-foreground">{m.email}</div>
+                        {isAdmin && editingEmailId === m.id ? (
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              const email = editingEmail.trim();
+                              if (!email) return;
+                              if (editingEmailScope === "super") {
+                                suEmailM.mutate({ userId: m.id, email });
+                              } else {
+                                updateEmailM.mutate({ userId: m.id, email });
+                              }
+                            }}
+                            className="mt-1 flex items-center gap-2"
+                          >
+                            <input
+                              autoFocus
+                              type="email"
+                              value={editingEmail}
+                              onChange={(e) => setEditingEmail(e.target.value)}
+                              className="input h-7 flex-1 text-xs"
+                              maxLength={255}
+                              required
+                            />
+                            <button
+                              type="submit"
+                              disabled={
+                                updateEmailM.isPending ||
+                                suEmailM.isPending ||
+                                !editingEmail.trim()
+                              }
+                              className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                            >
+                              {updateEmailM.isPending || suEmailM.isPending
+                                ? t("common.saving")
+                                : t("common.saved")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingEmailId(null);
+                                setEditingEmail("");
+                              }}
+                              className="rounded-md px-2 py-1 text-xs hover:bg-accent"
+                            >
+                              {t("common.cancel")}
+                            </button>
+                          </form>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs text-muted-foreground">{m.email}</div>
+                            {isAdmin ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingEmailId(m.id);
+                                  setEditingEmail(m.email);
+                                  setEditingEmailScope("tenant");
+                                }}
+                                className="rounded-md px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+                              >
+                                {t("members.editEmail")}
+                              </button>
+                            ) : null}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -451,7 +550,59 @@ function MembersPage() {
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground">{u.email}</div>
+                        {editingEmailId === u.userId && editingEmailScope === "super" ? (
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              const email = editingEmail.trim();
+                              if (!email) return;
+                              suEmailM.mutate({ userId: u.userId, email });
+                            }}
+                            className="mt-1 flex items-center gap-2"
+                          >
+                            <input
+                              autoFocus
+                              type="email"
+                              value={editingEmail}
+                              onChange={(e) => setEditingEmail(e.target.value)}
+                              className="input h-7 flex-1 text-xs"
+                              maxLength={255}
+                              required
+                            />
+                            <button
+                              type="submit"
+                              disabled={suEmailM.isPending || !editingEmail.trim()}
+                              className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                            >
+                              {suEmailM.isPending ? t("common.saving") : t("common.saved")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingEmailId(null);
+                                setEditingEmail("");
+                              }}
+                              className="rounded-md px-2 py-1 text-xs hover:bg-accent"
+                            >
+                              {t("common.cancel")}
+                            </button>
+                          </form>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs text-muted-foreground">{u.email}</div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingEmailId(u.userId);
+                                setEditingEmail(u.email);
+                                setEditingEmailScope("super");
+                              }}
+                              className="rounded-md px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+                            >
+                              {t("members.editEmail")}
+                            </button>
+                          </div>
+                        )}
                         <div className="mt-2 flex flex-wrap gap-2">
                           {u.tenants.length === 0 ? (
                             <span className="text-[11px] italic text-muted-foreground">
