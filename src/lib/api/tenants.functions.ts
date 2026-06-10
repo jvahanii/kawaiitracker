@@ -188,6 +188,58 @@ export const updateMemberName = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const updateMemberEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        tenantId: z.string().uuid(),
+        userId: z.string().uuid(),
+        email: z.string().trim().toLowerCase().email().max(255),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { data: meRow, error: meErr } = await context.supabase
+      .from("tenant_members")
+      .select("role")
+      .eq("tenant_id", data.tenantId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (meErr) throw new Error(meErr.message);
+    if (!meRow || meRow.role !== "admin") {
+      throw new Error("Only admins can edit emails.");
+    }
+
+    const { data: target, error: tErr } = await context.supabase
+      .from("tenant_members")
+      .select("user_id")
+      .eq("tenant_id", data.tenantId)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!target) throw new Error("User is not a member of this workspace");
+
+    const { getSupabaseAdmin } = await import("@/lib/supabase/admin.server");
+    const admin = getSupabaseAdmin();
+    const { error: authErr } = await admin.auth.admin.updateUserById(data.userId, {
+      email: data.email,
+      email_confirm: true,
+    });
+    if (authErr) {
+      const msg = /already|registered|exists|duplicate/i.test(authErr.message)
+        ? "That email is already in use."
+        : authErr.message;
+      throw new Error(msg);
+    }
+    const { error: profErr } = await admin
+      .from("profiles")
+      .update({ email: data.email })
+      .eq("id", data.userId);
+    if (profErr) throw new Error(profErr.message);
+    return { ok: true as const };
+  });
+
 export const addMemberByEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
