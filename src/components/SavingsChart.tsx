@@ -317,10 +317,12 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                 amountTimerRef.current = null;
               }
               const v = amountDraft.trim();
-              const next = v === "" ? null : Number(v.replace(",", "."));
-              if (next !== null && Number.isNaN(next)) return;
-              if (next === goal.amount) return;
-              saveGoal({ ...goal, amount: next });
+              const parsed = v === "" ? null : Number(v.replace(",", "."));
+              if (parsed !== null && Number.isNaN(parsed)) return;
+              const nextEur =
+                parsed === null ? null : Math.round(toEur(parsed) * 100) / 100;
+              if (nextEur === goal.amount) return;
+              saveGoal({ ...goal, amount: nextEur });
             }}
             onChange={(e) => {
               const v = e.target.value;
