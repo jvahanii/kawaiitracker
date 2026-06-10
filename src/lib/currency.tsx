@@ -28,8 +28,10 @@ type CurrencyContextValue = {
   setCurrency: (c: Currency) => void;
   rates: Rates;
   convert: (eurAmount: number) => number;
+  toEur: (displayAmount: number) => number;
   format: (eurAmount: number) => string;
 };
+
 
 const CurrencyContext = createContext<CurrencyContextValue | null>(null);
 
@@ -85,7 +87,9 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   const rates = ratesQ.data ?? FALLBACK_RATES;
 
   const value = useMemo<CurrencyContextValue>(() => {
-    const convert = (eur: number) => eur * (rates[currency] ?? 1);
+    const rate = rates[currency] ?? 1;
+    const convert = (eur: number) => eur * rate;
+    const toEur = (disp: number) => (rate ? disp / rate : disp);
     const format = (eur: number) => {
       try {
         return new Intl.NumberFormat(undefined, {
@@ -96,8 +100,9 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
         return `${convert(eur).toFixed(2)} ${currency}`;
       }
     };
-    return { currency, setCurrency, rates, convert, format };
+    return { currency, setCurrency, rates, convert, toEur, format };
   }, [currency, setCurrency, rates]);
+
 
   return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>;
 }
@@ -105,16 +110,18 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 export function useCurrency(): CurrencyContextValue {
   const ctx = useContext(CurrencyContext);
   if (!ctx) {
-    // Safe fallback so components don't crash if provider missing.
     const convert = (eur: number) => eur;
+    const toEur = (disp: number) => disp;
     return {
       currency: "EUR",
       setCurrency: () => {},
       rates: FALLBACK_RATES,
       convert,
+      toEur,
       format: (eur: number) =>
         new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(eur),
     };
   }
   return ctx;
 }
+

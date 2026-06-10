@@ -46,6 +46,8 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
   const [groupBy, setGroupBy] = useState<"item" | "assignee">("item");
   const queryClient = useQueryClient();
+  const { format: fmt, convert, toEur, currency } = useCurrency();
+
 
   const listFn = useServerFn(listAllEntries);
   const itemsFn = useServerFn(listItems);
@@ -79,29 +81,34 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   const saveGoal = (g: Goal) => upsertM.mutate(g);
 
   // Debounced amount editing: keep a local draft string while typing, and
-  // only fire the mutation (and its toast) once the user pauses.
+  // only fire the mutation (and its toast) once the user pauses. Draft is in
+  // the currently selected display currency; stored value is converted to EUR.
   const [amountDraft, setAmountDraft] = useState<string>(
-    goal.amount === null ? "" : String(goal.amount),
+    goal.amount === null ? "" : String(Math.round(convert(goal.amount) * 100) / 100),
   );
   const amountFocusedRef = useRef(false);
   useEffect(() => {
     if (amountFocusedRef.current) return;
-    setAmountDraft(goal.amount === null ? "" : String(goal.amount));
-  }, [goal.amount]);
+    setAmountDraft(
+      goal.amount === null ? "" : String(Math.round(convert(goal.amount) * 100) / 100),
+    );
+  }, [goal.amount, currency, convert]);
   const amountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scheduleAmountSave = (raw: string) => {
     if (amountTimerRef.current) clearTimeout(amountTimerRef.current);
     amountTimerRef.current = setTimeout(() => {
       const v = raw.trim();
-      const next = v === "" ? null : Number(v.replace(",", "."));
-      if (next !== null && Number.isNaN(next)) return;
-      if (next === goal.amount) return;
-      saveGoal({ ...goal, amount: next });
+      const parsed = v === "" ? null : Number(v.replace(",", "."));
+      if (parsed !== null && Number.isNaN(parsed)) return;
+      const nextEur = parsed === null ? null : Math.round(toEur(parsed) * 100) / 100;
+      if (nextEur === goal.amount) return;
+      saveGoal({ ...goal, amount: nextEur });
     }, 600);
   };
   useEffect(() => () => {
     if (amountTimerRef.current) clearTimeout(amountTimerRef.current);
   }, []);
+
 
   // Realtime: when any client updates the goal for this tenant, refetch.
   useEffect(() => {
@@ -144,7 +151,8 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     queryFn: () => itemsFn({ data: { tenantId } }),
   });
 
-  const { format: fmt } = useCurrency();
+  // useCurrency moved to top of component
+
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short" });
 
   const allEntries = entriesQ.data ?? [];
