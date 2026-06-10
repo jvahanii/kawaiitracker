@@ -100,7 +100,7 @@
     "noEntries": "Ei vielä kuukausimerkintöjä.",
     "savingsTableTitle": "Säästötaulukko",
     "addMonth": "Lisää kuukausi",
-    "goalAmount": "Tavoite (€)",
+    "goalAmount": "Tavoite",
     "goalDate": "Tavoiteaika",
     "goalDateShort": "Tavoite",
     "daysLeft": "{{count}} päivää jäljellä",

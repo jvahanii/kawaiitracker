@@ -48,6 +48,11 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient();
   const { format: fmt, convert, toEur, currency } = useCurrency();
 
+  const currencySymbol = useMemo(() => {
+    const parts = new Intl.NumberFormat(i18n.language, { style: "currency", currency }).formatToParts(0);
+    return parts.find((p) => p.type === "currency")?.value ?? currency;
+  }, [i18n.language, currency]);
+
 
   const listFn = useServerFn(listAllEntries);
   const itemsFn = useServerFn(listItems);
@@ -325,6 +330,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
             placeholder="0,00"
             className="input h-7 w-28 py-0 text-xs"
           />
+          <span className="font-mono text-xs text-muted-foreground">{currencySymbol}</span>
         </label>
         <div className="ml-auto inline-flex overflow-hidden rounded border border-border">
           <button
