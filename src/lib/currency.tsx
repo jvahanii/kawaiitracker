@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { supabase } from "@/lib/supabase/client";
+import { tryGetSupabase } from "@/lib/supabase/client";
 import {
   getMyPreferredCurrency,
   updateMyPreferredCurrency,
