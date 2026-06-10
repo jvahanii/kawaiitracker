@@ -1015,10 +1015,26 @@ function MonthlyEntries({
     () => new Intl.DateTimeFormat(i18n.language, { month: "long" }),
     [i18n.language],
   );
-  const { format: fmt } = useCurrency();
+  const { convert, toEur, currency } = useCurrency();
 
-  const yearTotal = months.reduce((s, m) => s + (byMonth.get(m.iso)?.amount ?? 0), 0);
-  const actualTotal = months.reduce((s, m) => s + (byMonth.get(m.iso)?.actual ?? 0), 0);
+  const currencySymbol = useMemo(() => {
+    try {
+      const parts = new Intl.NumberFormat(i18n.language, {
+        style: "currency",
+        currency,
+      }).formatToParts(0);
+      return parts.find((p) => p.type === "currency")?.value ?? currency;
+    } catch {
+      return currency;
+    }
+  }, [i18n.language, currency]);
+
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+
+  const yearTotalEur = months.reduce((s, m) => s + (byMonth.get(m.iso)?.amount ?? 0), 0);
+  const actualTotalEur = months.reduce((s, m) => s + (byMonth.get(m.iso)?.actual ?? 0), 0);
+  const yearTotal = round2(convert(yearTotalEur));
+  const actualTotal = round2(convert(actualTotalEur));
 
   return (
     <div className="mt-6 rounded-md border border-border p-3">
@@ -1049,24 +1065,26 @@ function MonthlyEntries({
             <TotalEditor
               total={yearTotal}
               onCommit={(newTotal) => {
-                const per = Math.round((newTotal / 12) * 100) / 100;
+                const perEur = round2(toEur(newTotal) / 12);
                 for (const m of months) {
-                  upsertM.mutate({ month: m.iso, amount: per });
+                  upsertM.mutate({ month: m.iso, amount: perEur });
                 }
               }}
             />
+            <span className="font-mono">{currencySymbol}</span>
           </label>
           <label className="flex items-center gap-1">
             <span>{t("workspace.actual")}:</span>
             <TotalEditor
               total={actualTotal}
               onCommit={(newTotal) => {
-                const per = Math.round((newTotal / 12) * 100) / 100;
+                const perEur = round2(toEur(newTotal) / 12);
                 for (const m of months) {
-                  upsertM.mutate({ month: m.iso, actual: per });
+                  upsertM.mutate({ month: m.iso, actual: perEur });
                 }
               }}
             />
+            <span className="font-mono">{currencySymbol}</span>
           </label>
         </div>
       </div>
@@ -1077,16 +1095,22 @@ function MonthlyEntries({
         <div className="grid grid-cols-12 gap-1">
           {months.map(({ iso, idx }) => {
             const cell = byMonth.get(iso);
+            const amountDisp = cell?.amount == null ? null : round2(convert(cell.amount));
+            const actualDisp = cell?.actual == null ? null : round2(convert(cell.actual));
             return (
               <MonthCell
                 key={iso}
                 label={monthLabel.format(new Date(2000, idx, 1))}
-                amount={cell?.amount ?? null}
-                actual={cell?.actual ?? null}
+                amount={amountDisp}
+                actual={actualDisp}
                 planTabIndex={idx + 1}
                 actualTabIndex={idx + 13}
-                onCommitAmount={(amount) => upsertM.mutate({ month: iso, amount })}
-                onCommitActual={(actual) => upsertM.mutate({ month: iso, actual })}
+                onCommitAmount={(amount) =>
+                  upsertM.mutate({ month: iso, amount: round2(toEur(amount)) })
+                }
+                onCommitActual={(actual) =>
+                  upsertM.mutate({ month: iso, actual: round2(toEur(actual)) })
+                }
               />
             );
           })}
