@@ -59,12 +59,14 @@ function MembersPage() {
   const removeFn = useServerFn(removeMember);
   const addByEmailFn = useServerFn(addMemberByEmail);
   const setPasswordFn = useServerFn(setMemberPassword);
+  const updateEmailFn = useServerFn(updateMemberEmail);
   const isSuperSF = useServerFn(isSuperuserFn);
   const listAllSF = useServerFn(listAllWorkspaceUsers);
   const grantSuperSF = useServerFn(grantSuperuserById);
   const revokeSuperSF = useServerFn(revokeSuperuser);
   const suRoleSF = useServerFn(superuserUpdateMemberRole);
   const suRemoveSF = useServerFn(superuserRemoveMember);
+  const suEmailSF = useServerFn(superuserUpdateUserEmail);
 
   const tenantsQ = useQuery({
     queryKey: ["my-tenants"],
