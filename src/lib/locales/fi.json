@@ -66,6 +66,7 @@
   },
   "workspace": {
     "metaTitle": "Työtila — Seuranta",
+    "currency": "Valuutta",
     "newWorkspace": "+ Työtila",
     "joinCode": "Liittymiskoodi:",
     "joinCodeTitle": "Jaa tämä koodi, jotta tiimisi voi liittyä. Kopioi klikkaamalla.",

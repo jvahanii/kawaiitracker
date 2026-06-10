@@ -66,6 +66,7 @@
   },
   "workspace": {
     "metaTitle": "Workspace — Tracker",
+    "currency": "Currency",
     "newWorkspace": "+ Workspace",
     "joinCode": "Join code:",
     "joinCodeTitle": "Share this code so teammates can join the workspace. Click to copy.",

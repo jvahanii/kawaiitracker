@@ -19,6 +19,7 @@ import { listAllEntries } from "@/lib/api/entries.functions";
 import { listItems } from "@/lib/api/items.functions";
 import { getGoal, upsertGoal } from "@/lib/api/goals.functions";
 import { ensureSupabase } from "@/lib/supabase/client";
+import { useCurrency } from "@/lib/currency";
 
 type Goal = { amount: number | null; date: string | null };
 
@@ -143,8 +144,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     queryFn: () => itemsFn({ data: { tenantId } }),
   });
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
+  const { format: fmt } = useCurrency();
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short" });
 
   const allEntries = entriesQ.data ?? [];

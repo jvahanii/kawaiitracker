@@ -10,6 +10,7 @@ import {
 import { useEffect } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
+import { CurrencyProvider } from "@/lib/currency";
 
 import appCss from "../styles.css?url";
 import "@/lib/i18n";
@@ -130,9 +131,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SupabaseAuthSync />
-      <Outlet />
-      <Toaster />
+      <CurrencyProvider>
+        <SupabaseAuthSync />
+        <Outlet />
+        <Toaster />
+      </CurrencyProvider>
     </QueryClientProvider>
   );
 }
