@@ -102,6 +102,9 @@ function MembersPage() {
   const [addRole, setAddRole] = useState<"admin" | "member">("member");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
+  const [editingEmail, setEditingEmail] = useState("");
+  const [editingEmailScope, setEditingEmailScope] = useState<"tenant" | "super">("tenant");
   const [pwUserId, setPwUserId] = useState<string | null>(null);
   const [pwValue, setPwValue] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
