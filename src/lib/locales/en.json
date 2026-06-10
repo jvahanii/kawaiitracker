@@ -100,7 +100,7 @@
     "noEntries": "No monthly entries yet.",
     "savingsTableTitle": "Savings table",
     "addMonth": "Add month",
-    "goalAmount": "Goal (€)",
+    "goalAmount": "Goal",
     "goalDate": "Target date",
     "goalDateShort": "Target",
     "daysLeft": "{{count}} days left",
