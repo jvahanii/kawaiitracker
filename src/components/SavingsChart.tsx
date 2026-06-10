@@ -46,6 +46,8 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
   const [groupBy, setGroupBy] = useState<"item" | "assignee">("item");
   const queryClient = useQueryClient();
+  const { format: fmt, convert, toEur, currency } = useCurrency();
+
 
   const listFn = useServerFn(listAllEntries);
   const itemsFn = useServerFn(listItems);
@@ -149,7 +151,8 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
     queryFn: () => itemsFn({ data: { tenantId } }),
   });
 
-  const { format: fmt, convert, toEur, currency } = useCurrency();
+  // useCurrency moved to top of component
+
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short" });
 
   const allEntries = entriesQ.data ?? [];
