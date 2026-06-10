@@ -36,7 +36,7 @@ function Landing() {
           <div className="flex items-center gap-3">
             {mounted ? <LanguageSwitcher /> : <span className="inline-block h-8 w-10" />}
             <Link to="/help" className="text-sm text-muted-foreground hover:text-foreground">
-              {tr("common.appName") && (i18n.language?.toLowerCase().startsWith("fi") ? "Käyttöohje" : "Help")}
+              {mounted && i18n.language?.toLowerCase().startsWith("fi") ? "Käyttöohje" : "Help"}
             </Link>
             <Link to="/login" className="kawaii-button-soft text-sm">
               {tr("landing.login")}
