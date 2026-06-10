@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, FolderPlus, GripVertical, Lock, Pencil, Trash2 } from "lucide-react";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { CurrencySwitcher } from "@/components/CurrencySwitcher";
+import { useCurrency } from "@/lib/currency";
 import { SavingsChart } from "@/components/SavingsChart";
 import {
   Dialog,
@@ -358,6 +360,7 @@ function WorkspacePage() {
             </span>
           ) : null}
           <LanguageSwitcher />
+          <CurrencySwitcher />
           <Link
             to="/members/$tenantId"
             params={{ tenantId }}
@@ -1012,8 +1015,7 @@ function MonthlyEntries({
     () => new Intl.DateTimeFormat(i18n.language, { month: "long" }),
     [i18n.language],
   );
-  const fmt = (n: number) =>
-    new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n);
+  const { format: fmt } = useCurrency();
 
   const yearTotal = months.reduce((s, m) => s + (byMonth.get(m.iso)?.amount ?? 0), 0);
   const actualTotal = months.reduce((s, m) => s + (byMonth.get(m.iso)?.actual ?? 0), 0);
