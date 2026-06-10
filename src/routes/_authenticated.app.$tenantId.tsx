@@ -279,6 +279,12 @@ function WorkspacePage() {
   const [newItemDialogFolderId, setNewItemDialogFolderId] = useState<string | null>(null);
   const [newItemDialogTitle, setNewItemDialogTitle] = useState("");
 
+  const submitNewItemDialog = () => {
+    if (!newItemDialogTitle.trim()) return;
+    createM.mutate({ title: newItemDialogTitle.trim(), folderId: newItemDialogFolderId });
+    setNewItemDialogFolderId(null);
+  };
+
   const copyJoinCode = async () => {
     try {
       await navigator.clipboard?.writeText(currentTenant?.joinCode ?? "");
@@ -529,12 +535,7 @@ function WorkspacePage() {
             type="text"
             value={newItemDialogTitle}
             onChange={(e) => setNewItemDialogTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && newItemDialogTitle.trim()) {
-                createM.mutate({ title: newItemDialogTitle.trim(), folderId: newItemDialogFolderId });
-                setNewItemDialogFolderId(null);
-              }
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter") submitNewItemDialog(); }}
             placeholder={t("workspace.newItemPlaceholder")}
             className="input w-full"
           />
@@ -549,12 +550,7 @@ function WorkspacePage() {
             <button
               type="button"
               disabled={!newItemDialogTitle.trim()}
-              onClick={() => {
-                if (newItemDialogTitle.trim()) {
-                  createM.mutate({ title: newItemDialogTitle.trim(), folderId: newItemDialogFolderId });
-                  setNewItemDialogFolderId(null);
-                }
-              }}
+              onClick={submitNewItemDialog}
               className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {t("common.create")}
