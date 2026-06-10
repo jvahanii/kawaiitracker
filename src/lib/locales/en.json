@@ -155,6 +155,16 @@
     "addDirectBtn": "Add",
     "addedOk": "User added.",
     "alreadyMember": "User is already a member of this workspace.",
-    "editName": "Edit name"
+    "editName": "Edit name",
+    "otherUsersTitle": "Other users",
+    "otherUsersBody": "All users across other workspaces. As superuser you can change their workspace roles, remove them from workspaces, and grant or revoke superuser.",
+    "otherUsersEmpty": "No other users.",
+    "removeFromWorkspace": "Remove",
+    "noWorkspaces": "No workspaces",
+    "grantSuperuser": "Grant superuser",
+    "revokeSuperuser": "Revoke superuser",
+    "superuserBadge": "Superuser",
+    "cannotRevokeLast": "You are the last superuser — grant the role to someone else first.",
+    "confirmSelfRevoke": "Revoke your own superuser role? You will lose superuser access."
   }
 }

@@ -148,3 +148,100 @@ export const grantSuperuserByEmail = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true as const, userId };
   });
+
+export const superuserUpdateMemberRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        tenantId: z.string().uuid(),
+        userId: z.string().uuid(),
+        role: z.enum(["admin", "member"]),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { data: amSuper, error: roleErr } = (await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "superuser",
+    })) as { data: boolean | null; error: { message: string } | null };
+    if (roleErr) throw new Error(roleErr.message);
+    if (!amSuper) throw new Error("Only superusers can perform this action");
+
+    const { getSupabaseAdmin } = await import("@/lib/supabase/admin.server");
+    const admin = getSupabaseAdmin();
+
+    const { data: target, error: tErr } = await admin
+      .from("tenant_members")
+      .select("role")
+      .eq("tenant_id", data.tenantId)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!target) throw new Error("User is not a member of this workspace");
+
+    if (target.role === "admin" && data.role === "member") {
+      const { count, error: cErr } = await admin
+        .from("tenant_members")
+        .select("user_id", { count: "exact", head: true })
+        .eq("tenant_id", data.tenantId)
+        .eq("role", "admin");
+      if (cErr) throw new Error(cErr.message);
+      if ((count ?? 0) <= 1) throw new Error("Cannot demote the last admin");
+    }
+
+    const { error } = await admin
+      .from("tenant_members")
+      .update({ role: data.role })
+      .eq("tenant_id", data.tenantId)
+      .eq("user_id", data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const superuserRemoveMember = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ tenantId: z.string().uuid(), userId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    if (data.userId === context.userId) {
+      throw new Error("Use the workspace member controls to remove yourself");
+    }
+    const { data: amSuper, error: roleErr } = (await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "superuser",
+    })) as { data: boolean | null; error: { message: string } | null };
+    if (roleErr) throw new Error(roleErr.message);
+    if (!amSuper) throw new Error("Only superusers can perform this action");
+
+    const { getSupabaseAdmin } = await import("@/lib/supabase/admin.server");
+    const admin = getSupabaseAdmin();
+
+    const { data: target, error: tErr } = await admin
+      .from("tenant_members")
+      .select("role")
+      .eq("tenant_id", data.tenantId)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!target) return { ok: true as const };
+
+    if (target.role === "admin") {
+      const { count, error: cErr } = await admin
+        .from("tenant_members")
+        .select("user_id", { count: "exact", head: true })
+        .eq("tenant_id", data.tenantId)
+        .eq("role", "admin");
+      if (cErr) throw new Error(cErr.message);
+      if ((count ?? 0) <= 1) throw new Error("Cannot remove the last admin");
+    }
+
+    const { error } = await admin
+      .from("tenant_members")
+      .delete()
+      .eq("tenant_id", data.tenantId)
+      .eq("user_id", data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });

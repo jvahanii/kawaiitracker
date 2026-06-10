@@ -155,6 +155,16 @@
     "addDirectBtn": "Lisää",
     "addedOk": "Käyttäjä lisätty.",
     "alreadyMember": "Käyttäjä on jo tämän työtilan jäsen.",
-    "editName": "Muokkaa nimeä"
+    "editName": "Muokkaa nimeä",
+    "otherUsersTitle": "Muut käyttäjät",
+    "otherUsersBody": "Kaikki käyttäjät muista työtiloista. Pääkäyttäjänä voit muuttaa heidän rooliaan, poistaa heidät työtiloista ja myöntää tai peruuttaa pääkäyttäjäoikeudet.",
+    "otherUsersEmpty": "Ei muita käyttäjiä.",
+    "removeFromWorkspace": "Poista",
+    "noWorkspaces": "Ei työtiloja",
+    "grantSuperuser": "Myönnä pääkäyttäjä",
+    "revokeSuperuser": "Peruuta pääkäyttäjä",
+    "superuserBadge": "Pääkäyttäjä",
+    "cannotRevokeLast": "Olet viimeinen pääkäyttäjä — myönnä rooli ensin jollekin toiselle.",
+    "confirmSelfRevoke": "Peruutetaanko oma pääkäyttäjärooli? Menetät pääkäyttäjäoikeudet."
   }
 }

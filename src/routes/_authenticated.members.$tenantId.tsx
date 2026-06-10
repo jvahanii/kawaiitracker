@@ -26,6 +26,14 @@ import {
   updateMemberName,
   updateMemberRole,
 } from "@/lib/api/tenants.functions";
+import {
+  grantSuperuserById,
+  isSuperuser as isSuperuserFn,
+  listAllWorkspaceUsers,
+  revokeSuperuser,
+  superuserRemoveMember,
+  superuserUpdateMemberRole,
+} from "@/lib/api/superusers.functions";
 
 export const Route = createFileRoute("/_authenticated/members/$tenantId")({
   head: () => ({ meta: [{ title: "Users — Tracker" }] }),
@@ -49,6 +57,12 @@ function MembersPage() {
   const removeFn = useServerFn(removeMember);
   const addByEmailFn = useServerFn(addMemberByEmail);
   const setPasswordFn = useServerFn(setMemberPassword);
+  const isSuperSF = useServerFn(isSuperuserFn);
+  const listAllSF = useServerFn(listAllWorkspaceUsers);
+  const grantSuperSF = useServerFn(grantSuperuserById);
+  const revokeSuperSF = useServerFn(revokeSuperuser);
+  const suRoleSF = useServerFn(superuserUpdateMemberRole);
+  const suRemoveSF = useServerFn(superuserRemoveMember);
 
   const tenantsQ = useQuery({
     queryKey: ["my-tenants"],
@@ -180,8 +194,51 @@ function MembersPage() {
   });
 
 
+  const isSuperQ = useQuery({
+    queryKey: ["is-superuser"],
+    queryFn: () => isSuperSF(),
+    retry: 1,
+  });
+  const isSuper = !!isSuperQ.data?.is;
+
+  const allUsersQ = useQuery({
+    queryKey: ["all-workspace-users"],
+    queryFn: () => listAllSF(),
+    enabled: isSuper,
+  });
+
+  const invalidateSuper = () => {
+    qc.invalidateQueries({ queryKey: ["all-workspace-users"] });
+    qc.invalidateQueries({ queryKey: ["members", tenantId] });
+  };
+
+  const grantSuperM = useMutation({
+    mutationFn: (userId: string) => grantSuperSF({ data: { userId } }),
+    onSuccess: () => {
+      toast.success(t("members.grantSuperuser"));
+      invalidateSuper();
+    },
+  });
+  const revokeSuperM = useMutation({
+    mutationFn: (userId: string) => revokeSuperSF({ data: { userId } }),
+    onSuccess: invalidateSuper,
+  });
+  const suRoleM = useMutation({
+    mutationFn: (v: { tenantId: string; userId: string; role: "admin" | "member" }) =>
+      suRoleSF({ data: v }),
+    onSuccess: invalidateSuper,
+  });
+  const suRemoveM = useMutation({
+    mutationFn: (v: { tenantId: string; userId: string }) => suRemoveSF({ data: v }),
+    onSuccess: invalidateSuper,
+  });
+
   const members = membersQ.data ?? [];
   const adminCount = members.filter((m) => m.role === "admin").length;
+  const otherUsers = (allUsersQ.data ?? []).filter(
+    (u) => !u.tenants.some((tn) => tn.id === tenantId),
+  );
+  const superuserCount = (allUsersQ.data ?? []).filter((u) => u.isSuperuser).length;
   const pageError = tenantsQ.error ?? membersQ.error;
 
   if (pageError) {
@@ -354,6 +411,114 @@ function MembersPage() {
             })}
           </ul>
         )}
+
+        {isSuper ? (
+          <section className="mt-8 rounded-xl border border-border bg-background p-4">
+            <h2 className="text-base font-semibold">{t("members.otherUsersTitle")}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{t("members.otherUsersBody")}</p>
+            {allUsersQ.isLoading ? (
+              <p className="mt-3 text-sm text-muted-foreground">{t("common.loading")}</p>
+            ) : otherUsers.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">{t("members.otherUsersEmpty")}</p>
+            ) : (
+              <ul className="mt-3 divide-y divide-border">
+                {otherUsers.map((u) => {
+                  const isSelf = u.userId === currentUserId;
+                  const isLastSuper = u.isSuperuser && superuserCount <= 1;
+                  const blockSelfRevoke = isSelf && isLastSuper;
+                  const onSuperClick = () => {
+                    if (u.isSuperuser) {
+                      if (blockSelfRevoke) {
+                        toast.error(t("members.cannotRevokeLast"));
+                        return;
+                      }
+                      if (isSelf && !window.confirm(t("members.confirmSelfRevoke"))) return;
+                      revokeSuperM.mutate(u.userId);
+                    } else {
+                      grantSuperM.mutate(u.userId);
+                    }
+                  };
+                  return (
+                    <li key={u.userId} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {u.displayName || u.email || u.userId}
+                          </span>
+                          {u.isSuperuser && (
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                              {t("members.superuserBadge")}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{u.email}</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {u.tenants.length === 0 ? (
+                            <span className="text-[11px] italic text-muted-foreground">
+                              {t("members.noWorkspaces")}
+                            </span>
+                          ) : (
+                            u.tenants.map((tn) => (
+                              <span
+                                key={tn.id}
+                                className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                              >
+                                <span>{tn.name}</span>
+                                <select
+                                  value={tn.role}
+                                  onChange={(e) =>
+                                    suRoleM.mutate({
+                                      tenantId: tn.id,
+                                      userId: u.userId,
+                                      role: e.target.value as "admin" | "member",
+                                    })
+                                  }
+                                  disabled={suRoleM.isPending}
+                                  className="input h-6 py-0 text-[11px]"
+                                >
+                                  <option value="admin">{t("members.admin")}</option>
+                                  <option value="member">{t("members.member")}</option>
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    suRemoveM.mutate({ tenantId: tn.id, userId: u.userId })
+                                  }
+                                  disabled={suRemoveM.isPending}
+                                  className="rounded px-1 text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                                  title={t("members.removeFromWorkspace")}
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={onSuperClick}
+                        disabled={
+                          blockSelfRevoke || grantSuperM.isPending || revokeSuperM.isPending
+                        }
+                        title={blockSelfRevoke ? t("members.cannotRevokeLast") : undefined}
+                        className={
+                          u.isSuperuser
+                            ? "rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                            : "rounded-md border border-border px-2 py-1 text-sm hover:bg-accent disabled:opacity-50"
+                        }
+                      >
+                        {u.isSuperuser
+                          ? t("members.revokeSuperuser")
+                          : t("members.grantSuperuser")}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        ) : null}
 
         <div className="mt-6 text-xs text-muted-foreground">
           <Link
