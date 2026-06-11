@@ -372,9 +372,10 @@ function MembersPage() {
               const isLastSuper = memberIsSuper && superuserCount > 0 && superuserCount <= 1;
               const blockSelfSuperRevoke = isSelf && isLastSuper;
               const isLastAdmin = m.role === "admin" && adminCount <= 1;
-              // Admins cannot modify another admin; last admin cannot demote self.
+              const isPeerAdmin = m.role === "admin" && !isSelf;
+              // Admins cannot modify another admin (superusers can); last admin cannot demote self.
               const roleLocked =
-                (m.role === "admin" && !isSelf) || (isSelf && isLastAdmin);
+                (isPeerAdmin && !isSuper) || (isSelf && isLastAdmin);
               const roleLockReason = roleLocked
                 ? isSelf
                   ? t("members.lastAdmin")
@@ -518,13 +519,15 @@ function MembersPage() {
                     {isAdmin ? (
                       <select
                         value={m.role}
-                        disabled={roleLocked || updateM.isPending}
-                        onChange={(e) =>
-                          updateM.mutate({
-                            userId: m.id,
-                            role: e.target.value as "admin" | "member",
-                          })
-                        }
+                        disabled={roleLocked || updateM.isPending || suRoleM.isPending}
+                        onChange={(e) => {
+                          const role = e.target.value as "admin" | "member";
+                          if (isSuper && isPeerAdmin) {
+                            suRoleM.mutate({ tenantId, userId: m.id, role });
+                          } else {
+                            updateM.mutate({ userId: m.id, role });
+                          }
+                        }}
                         className="input h-8 py-0 text-sm"
                         title={roleLockReason}
                       >
@@ -954,7 +957,14 @@ function MembersPage() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
-                if (removeId) removeM.mutate(removeId);
+                if (!removeId) return;
+                const target = members.find((m) => m.id === removeId);
+                if (isSuper && target?.role === "admin" && removeId !== currentUserId) {
+                  suRemoveM.mutate({ tenantId, userId: removeId });
+                  setRemoveId(null);
+                } else {
+                  removeM.mutate(removeId);
+                }
               }}
             >
               {t("common.delete")}
