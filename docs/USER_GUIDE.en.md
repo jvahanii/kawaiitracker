@@ -107,6 +107,13 @@ A folder's **Visibility** setting lets you restrict which members can see the fo
 ### Audit log
 The **Audit log** page lists workspace changes in chronological order: who made the change, what entry, and when.
 
+### Free plan user limit
+A workspace on the free plan can have up to **4 members**. When the limit is reached, pressing **Add user** opens a dialog with two options:
+- **Ok** — closes the dialog.
+- **Contact me for a paid plan** — sends a request to the Keywi team. The dialog closes and your interest is recorded. Superusers see your request in the Users view (see below).
+
+Superusers bypass this limit entirely and can keep adding members.
+
 ## 5. Superuser features
 
 A superuser has system-wide privileges.
@@ -119,6 +126,9 @@ A superuser can:
 - Change a user's role in any workspace
 - Remove a user from a workspace
 - Grant or revoke superuser privileges
+
+### Paid plan requests
+When a non-superuser hits the free member limit and clicks **Contact me for a paid plan**, a request is logged for that user. On the Users page, superusers see an amber **Paid plan requested** badge next to the user's name (both in the members list and in **Other users**), along with the time of the latest request.
 
 ### Safeguards
 - You cannot revoke your own superuser role if you are the last superuser — grant the role to someone else first.
