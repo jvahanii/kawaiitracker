@@ -87,7 +87,10 @@ Jokaisella kohteella on **Tehtävät**-alaosio, jolla kohde voidaan pilkkoa pien
 - **Toteuma / Suunnitelma** -vertailuna
 
 ### Tallennuksen tila
-Yläosassa näkyy ilmaisin: **Tallennetaan…**, **Tallennettu** tai **Tallentamattomia muutoksia**. Muutokset tallentuvat automaattisesti.
+Yläosassa näkyy ilmaisin: **Tallennetaan…**, **Tallennettu** tai **Tallentamattomia muutoksia**. Muutokset tallentuvat automaattisesti. Palkki näyttää myös kohteen viimeisimmän muokkausajan.
+
+### Ohje
+Työtilanäkymän yläpalkissa on **Ohje**-linkki. Se avaa tämän käyttöohjeen valitulla kielellä.
 
 ## 4. Ylläpitäjän toiminnot (Admin)
 
