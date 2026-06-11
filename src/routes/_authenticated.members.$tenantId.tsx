@@ -31,6 +31,8 @@ import {
   grantSuperuserById,
   isSuperuser as isSuperuserFn,
   listAllWorkspaceUsers,
+  listPaidPlanRequests,
+  requestPaidPlan,
   revokeSuperuser,
   superuserDeleteUser,
   superuserRemoveMember,
@@ -71,6 +73,8 @@ function MembersPage() {
   const suRemoveSF = useServerFn(superuserRemoveMember);
   const suEmailSF = useServerFn(superuserUpdateUserEmail);
   const suDeleteSF = useServerFn(superuserDeleteUser);
+  const requestPaidSF = useServerFn(requestPaidPlan);
+  const listPaidReqSF = useServerFn(listPaidPlanRequests);
 
   const tenantsQ = useQuery({
     queryKey: ["my-tenants"],
@@ -253,6 +257,17 @@ function MembersPage() {
     enabled: isSuper,
   });
 
+  const paidReqQ = useQuery({
+    queryKey: ["paid-plan-requests"],
+    queryFn: () => listPaidReqSF(),
+    enabled: isSuper,
+  });
+  const paidReqMap = new Map((paidReqQ.data ?? []).map((r) => [r.userId, r.requestedAt]));
+
+  const requestPaidM = useMutation({
+    mutationFn: () => requestPaidSF({ data: { tenantId } }),
+  });
+
   const invalidateSuper = () => {
     qc.invalidateQueries({ queryKey: ["all-workspace-users"] });
     qc.invalidateQueries({ queryKey: ["members", tenantId] });
@@ -403,6 +418,14 @@ function MembersPage() {
                       <>
                         <div className="flex items-center gap-2">
                           <div className="font-medium">{m.displayName}</div>
+                          {isSuper && paidReqMap.has(m.id) ? (
+                            <span
+                              title={t("members.paidPlanRequestedAt", { when: new Date(paidReqMap.get(m.id)!).toLocaleString() })}
+                              className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"
+                            >
+                              {t("members.paidPlanBadge")}
+                            </span>
+                          ) : null}
                           {isAdmin ? (
                             <button
                               type="button"
@@ -575,6 +598,14 @@ function MembersPage() {
                               {t("members.superuserBadge")}
                             </span>
                           )}
+                          {paidReqMap.has(u.userId) ? (
+                            <span
+                              title={t("members.paidPlanRequestedAt", { when: new Date(paidReqMap.get(u.userId)!).toLocaleString() })}
+                              className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"
+                            >
+                              {t("members.paidPlanBadge")}
+                            </span>
+                          ) : null}
                         </div>
                         {editingEmailId === u.userId && editingEmailScope === "super" ? (
                           <form
@@ -934,7 +965,18 @@ function MembersPage() {
             <AlertDialogCancel onClick={() => setLimitDialogOpen(false)}>
               {t("members.freeLimitOk")}
             </AlertDialogCancel>
-            <AlertDialogAction onClick={() => setLimitDialogOpen(false)}>
+            <AlertDialogAction
+              onClick={() => {
+                requestPaidM.mutate(undefined, {
+                  onSuccess: () => {
+                    toast.success(t("members.paidPlanRequested"));
+                    qc.invalidateQueries({ queryKey: ["paid-plan-requests"] });
+                  },
+                  onError: (e: Error) => toast.error(e.message),
+                });
+                setLimitDialogOpen(false);
+              }}
+            >
               {t("members.freeLimitContact")}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -320,3 +320,49 @@ export const superuserDeleteUser = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export const requestPaidPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ tenantId: z.string().uuid().optional() }).parse(d ?? {}),
+  )
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase
+      .from("paid_plan_requests")
+      .insert({ user_id: context.userId, tenant_id: data.tenantId ?? null });
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export type PaidPlanRequestRow = {
+  userId: string;
+  requestedAt: string;
+};
+
+export const listPaidPlanRequests = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: amSuper, error: roleErr } = (await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "superuser",
+    })) as { data: boolean | null; error: { message: string } | null };
+    if (roleErr) throw new Error(roleErr.message);
+    if (!amSuper) throw new Error("Only superusers can view paid plan requests");
+
+    const { data, error } = await context.supabase
+      .from("paid_plan_requests")
+      .select("user_id, requested_at")
+      .order("requested_at", { ascending: false });
+    if (error) throw new Error(error.message);
+
+    // Latest per user
+    const latest = new Map<string, string>();
+    for (const row of (data ?? []) as { user_id: string; requested_at: string }[]) {
+      if (!latest.has(row.user_id)) latest.set(row.user_id, row.requested_at);
+    }
+    return Array.from(latest.entries()).map<PaidPlanRequestRow>(([userId, requestedAt]) => ({
+      userId,
+      requestedAt,
+    }));
+  });
+
+

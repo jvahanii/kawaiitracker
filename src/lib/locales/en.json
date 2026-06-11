@@ -161,6 +161,9 @@
     "freeLimitTitle": "Free user limit reached",
     "freeLimitOk": "Ok",
     "freeLimitContact": "Contact me for a paid plan",
+    "paidPlanRequested": "Thanks — our team will contact you soon.",
+    "paidPlanBadge": "Paid plan requested",
+    "paidPlanRequestedAt": "Requested {{when}}",
 
     "editName": "Edit name",
     "editEmail": "Edit email",
