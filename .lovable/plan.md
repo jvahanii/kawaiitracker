@@ -1,31 +1,18 @@
-# Fix Google Sign-In
+# Fix: Google sign-in lands on home page, no tenant created
 
-## Problem
+## Root cause
 
-After picking a Google account the app lands on `/auth/callback` and shows **"Missing authorization code."** No user is created.
+After Google consent, Supabase Auth redirects to **Site URL** (`/`) instead of `/auth/callback`, because `${origin}/auth/callback` is not in the Auth "Redirect URLs" allow‑list. The code‑exchange + onboarding redirect in `src/routes/auth.callback.tsx` therefore never runs, so the new user has no tenant and the landing page (logged‑out view) renders.
 
-Root cause: `GoogleSignInButton` calls `supabase.auth.signInWithOAuth({ provider: "google" })` directly. In Lovable Cloud, Google OAuth must go through the **Lovable broker** (`lovable.auth.signInWithOAuth("google", ...)`). The broker doesn't return a PKCE `?code=` to our `/auth/callback`, so the callback's `params.get("code")` is always null — hence the error and no session.
+## Changes
 
-Additionally, the Google provider must be enabled in Supabase Auth (the broker doesn't do that for us).
+1. **Add allowed redirect URLs in Supabase Auth** (via `supabase--configure_social_auth` / auth config) for every origin the app runs on:
+   - `https://kawaiitracker.lovable.app/auth/callback`
+   - `https://id-preview--81d75f47-0994-4548-a216-bf2d97a3d0e8.lovable.app/auth/callback`
+   - `http://localhost:*/auth/callback` (dev, if applicable)
 
-## Fix
+2. **Safety net in `src/routes/index.tsx`**: on mount, if `window.location.search` contains `code=` or the hash contains `access_token=`, immediately `navigate({ to: "/auth/callback", search: …, hash: … })` preserving params. This way even a misconfigured Site URL still completes sign‑in instead of stranding the user.
 
-1. **`src/components/GoogleSignInButton.tsx`** — replace the raw Supabase call with the Lovable broker:
-   ```ts
-   import { lovable } from "@/integrations/lovable";
-   await lovable.auth.signInWithOAuth("google", {
-     redirect_uri: window.location.origin,
-   });
-   ```
-   Drop the `/auth/callback` redirect — the broker hands the session straight back to the origin and the supabase client persists it.
+3. **Verify** by signing in with a fresh Google account: should land on `/onboarding` with the user belonging to no tenant yet (expected), able to create or join one.
 
-2. **Delete `src/routes/auth.callback.tsx`** — no longer reached by the broker flow. (If we keep a route for safety, make it just redirect home once a session is detected, but removing it is cleaner.)
-
-3. **Enable Google in Supabase Auth** via `supabase--configure_social_auth` for the `google` provider, so the broker's token exchange actually succeeds server-side.
-
-4. After sign-in, the existing root `onAuthStateChange` handler / `_authenticated` gate will route the user; if you want the "go to last tenant or onboarding" logic that lived in the callback, move it into a small effect on the landing route (e.g. `/` or `/app`) that runs once when a session is present.
-
-## Verification
-
-- Click "Continue with Google" → Google account picker → returns to app origin already signed in, redirected to last tenant or `/onboarding`. No "Missing authorization code" screen.
-- New Google users appear in Lovable Cloud → Users.
+No changes to auth.callback logic, GoogleSignInButton, or tenants functions.
