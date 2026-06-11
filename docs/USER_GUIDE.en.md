@@ -127,6 +127,9 @@ A superuser can:
 - Remove a user from a workspace
 - Grant or revoke superuser privileges
 
+### Paid plan requests
+When a non-superuser hits the free member limit and clicks **Contact me for a paid plan**, a request is logged for that user. On the Users page, superusers see an amber **Paid plan requested** badge next to the user's name (both in the members list and in **Other users**), along with the time of the latest request.
+
 ### Safeguards
 - You cannot revoke your own superuser role if you are the last superuser — grant the role to someone else first.
 - Revoking your own superuser role requires confirmation.
