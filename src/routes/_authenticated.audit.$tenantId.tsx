@@ -293,22 +293,23 @@ function AuditPage() {
       navigate({ to: "/onboarding", replace: true });
       return;
     }
-    const allowed = currentTenant && (currentTenant.role === "admin" || currentTenant.role === "superuser");
-    if (!allowed) {
+    if (!currentTenant) {
       navigate({ to: "/app/$tenantId", params: { tenantId: tenantsQ.data[0].id }, replace: true });
     }
   }, [currentTenant, navigate, tenantsQ.data]);
 
+  const isMember = !!currentTenant;
+
   const auditQ = useQuery({
     queryKey: ["audit", tenantId],
     queryFn: () => auditFn({ data: { tenantId, limit: 500 } }),
-    enabled: currentTenant?.role === "admin" || currentTenant?.role === "superuser",
+    enabled: isMember,
   });
 
   const itemsQ = useQuery({
     queryKey: ["items", tenantId],
     queryFn: () => itemsFn({ data: { tenantId } }),
-    enabled: currentTenant?.role === "admin" || currentTenant?.role === "superuser",
+    enabled: isMember,
   });
   const itemNames = useMemo(() => {
     const m = new Map<string, string>();
@@ -319,7 +320,7 @@ function AuditPage() {
   const entriesAllQ = useQuery({
     queryKey: ["entries-all", tenantId],
     queryFn: () => entriesFn({ data: { tenantId } }),
-    enabled: currentTenant?.role === "admin" || currentTenant?.role === "superuser",
+    enabled: isMember,
   });
   const entriesById = useMemo(() => {
     const m = new Map<string, EntryMeta>();
@@ -352,13 +353,6 @@ function AuditPage() {
     return (
       <div className="p-6 text-sm text-destructive">
         Tenant not found ({tenantId}).
-      </div>
-    );
-  }
-  if (currentTenant.role !== "admin") {
-    return (
-      <div className="p-6 text-sm text-destructive">
-        Admin access required (your role: {currentTenant.role}).
       </div>
     );
   }
