@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createTenant, joinTenant, listMyTenants } from "@/lib/api/tenants.functions";
+import { safeErrorMessage } from "@/lib/errors";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
@@ -103,7 +104,7 @@ function Onboarding() {
                     className="input"
                   />
                   {createM.error ? (
-                    <p className="text-sm text-destructive">{(createM.error as Error).message}</p>
+                    <p className="text-sm text-destructive">{safeErrorMessage(createM.error)}</p>
                   ) : null}
                   <button
                     type="submit"
@@ -132,7 +133,7 @@ function Onboarding() {
                     className="input font-mono tracking-widest"
                   />
                   {joinM.error ? (
-                    <p className="text-sm text-destructive">{(joinM.error as Error).message}</p>
+                    <p className="text-sm text-destructive">{safeErrorMessage(joinM.error)}</p>
                   ) : joinM.data && !joinM.data.ok ? (
                     <p className="text-sm text-destructive">{joinM.data.error}</p>
                   ) : null}

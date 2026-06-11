@@ -4,6 +4,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ensureSupabase } from "@/lib/supabase/client";
+import { safeErrorMessage } from "@/lib/errors";
 import { AuthShell, Field } from "./login";
 
 export const Route = createFileRoute("/reset-password")({
@@ -197,7 +198,7 @@ function ResetPasswordPage() {
           />
         </Field>
         {m.error ? (
-          <p className="text-sm text-destructive">{(m.error as Error).message}</p>
+          <p className="text-sm text-destructive">{safeErrorMessage(m.error)}</p>
         ) : null}
         <button
           type="submit"

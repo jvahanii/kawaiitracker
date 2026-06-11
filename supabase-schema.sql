@@ -15,8 +15,21 @@ grant all on public.profiles to service_role;
 alter table public.profiles enable row level security;
 
 drop policy if exists "profiles: read all authenticated" on public.profiles;
-create policy "profiles: read all authenticated"
-  on public.profiles for select to authenticated using (true);
+drop policy if exists "profiles: read same-tenant users" on public.profiles;
+create policy "profiles: read same-tenant users"
+  on public.profiles for select to authenticated
+  using (
+    id = auth.uid()
+    or public.has_role(auth.uid(), 'superuser')
+    or exists (
+      select 1
+      from public.tenant_members my_m
+      join public.tenant_members their_m
+        on my_m.tenant_id = their_m.tenant_id
+      where my_m.user_id = auth.uid()
+        and their_m.user_id = profiles.id
+    )
+  );
 
 drop policy if exists "profiles: update self" on public.profiles;
 create policy "profiles: update self"
@@ -802,7 +815,13 @@ $$;
 create or replace function public.list_my_tenants()
 returns table (id uuid, name text, join_code text, role text)
 language sql stable security definer set search_path = public as $$
-  select t.id, t.name, t.join_code,
+  select t.id,
+         t.name,
+         case
+           when m.role = 'admin' then t.join_code
+           when public.has_role(auth.uid(), 'superuser') then t.join_code
+           else null
+         end as join_code,
          coalesce(m.role,
                   case when public.has_role(auth.uid(), 'superuser')
                        then 'superuser' end) as role

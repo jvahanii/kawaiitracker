@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Eye, EyeOff } from "lucide-react";
 
 import { ensureSupabase } from "@/lib/supabase/client";
+import { safeErrorMessage } from "@/lib/errors";
 import { getLastTenantId } from "@/lib/api/tenants.functions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { KiwiWithKey } from "@/components/KiwiWithKey";
@@ -82,7 +83,7 @@ function LoginPage() {
     },
   });
 
-  const errorMessage = m.error ? (m.error as Error).message : null;
+  const errorMessage = m.error ? safeErrorMessage(m.error) : null;
 
   return (
     <AuthShell title={t("login.title")} subtitle={t("login.subtitle")}>

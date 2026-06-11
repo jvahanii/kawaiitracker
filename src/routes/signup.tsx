@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ensureSupabase } from "@/lib/supabase/client";
+import { safeErrorMessage } from "@/lib/errors";
 import { AuthShell, Field } from "./login";
 
 export const Route = createFileRoute("/signup")({
@@ -40,7 +41,7 @@ function SignupPage() {
     },
   });
 
-  const errorMessage = m.error ? (m.error as Error).message : null;
+  const errorMessage = m.error ? safeErrorMessage(m.error) : null;
   const needsConfirm = m.data && !m.data.hasSession;
 
   return (
