@@ -6,18 +6,19 @@ This is the user guide for Keywi. The app is a multi-tenant savings and income t
 
 ### Sign up
 1. Open the landing page and choose **Sign up**.
-2. Enter your name, email, and a password (8+ characters).
-3. Confirm with **Create account**.
+2. Enter your name, email, and a password (8+ characters), or use **Continue with Google** to register with your Google account.
+3. Confirm with **Create account**. If you signed up with email, check your inbox for a confirmation link before logging in.
 
 ### Log in
 1. From the landing page, choose **Log in**.
-2. Enter your email and password.
+2. Enter your email and password, or use **Continue with Google**.
 3. Tick **Remember me** to keep the session on this device.
 
 ### Reset password
 - On the login page choose **Forgot password?** and enter your email.
 - You will receive a one-time reset link by email.
 - Use the link to set a new password.
+- Google sign-in users manage their password through their Google account.
 
 ### Change language
 Use the language switcher in the top corner to switch between Finnish (FI) and English (EN). The choice is stored in your browser.
@@ -33,11 +34,13 @@ The workspace view has a **Currency** picker at the top. The selected currency d
 3. You become the workspace **admin** automatically.
 
 ### Join an existing workspace
-1. Ask the workspace admin for an 8-character join code.
+1. Ask the workspace admin for a join code (shown at the top of their workspace view).
 2. On Get started, type the code into the field and press **Join**.
 
 ### Switch between workspaces
-The top bar shows the current workspace. You can create a new workspace with **+ Workspace**.
+- The top bar shows the current workspace name.
+- The **Get started** page lists all workspaces you belong to under **Your workspaces** — pick one to open it.
+- Press **+ Workspace** in the top bar to go to Get started and create or join another workspace.
 
 ## 3. Savings and income (end user)
 
@@ -66,6 +69,13 @@ Each entry has a **Monthly entries** section.
 - Values are shown in the selected currency and stored in EUR.
 - You can edit individual months and the totals. Editing a total spreads the value evenly across 12 months.
 
+### Tasks
+Each entry has a **Tasks** subsection for breaking the entry into smaller to-do items.
+- Type a name in **New task…** and press Enter to add a task.
+- Click a task to edit its title; tick the checkbox to mark it done.
+- Drag tasks to reorder them.
+- Use the delete control to remove a task.
+
 ### Goal
 - Set a **Goal** amount and **Target date**.
 - The app shows how many days remain to the target.
@@ -77,7 +87,10 @@ The **Savings breakdown** chart can be grouped:
 - Compared as **Actual / Plan**
 
 ### Save status
-The top of the view shows a status indicator: **Saving…**, **Saved**, or **Unsaved changes**. Changes are saved automatically.
+The top of the view shows a status indicator: **Saving…**, **Saved**, or **Unsaved changes**. Changes are saved automatically. The bar also shows when the entry was last updated.
+
+### Help
+A **Help** link is available in the top bar of the workspace view. It opens this user guide in your selected language.
 
 ## 4. Admin features
 

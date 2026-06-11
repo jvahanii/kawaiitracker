@@ -6,18 +6,19 @@ Tämä on Keywi-sovelluksen käyttöohje. Sovellus on monikäyttäjäinen sääs
 
 ### Rekisteröityminen
 1. Avaa etusivu ja valitse **Rekisteröidy**.
-2. Syötä nimi, sähköposti ja vähintään 8 merkin salasana.
-3. Vahvista painamalla **Luo tili**.
+2. Syötä nimi, sähköposti ja vähintään 8 merkin salasana — tai käytä **Jatka Googlella** rekisteröityäksesi Google-tilillä.
+3. Vahvista painamalla **Luo tili**. Jos rekisteröidyit sähköpostilla, vahvista osoite sähköpostiin tulevan linkin kautta ennen kirjautumista.
 
 ### Kirjautuminen
 1. Valitse etusivulta **Kirjaudu**.
-2. Syötä sähköposti ja salasana.
+2. Syötä sähköposti ja salasana, tai käytä **Jatka Googlella**.
 3. Voit valita **Muista minut**, jolloin istunto säilyy laitteella.
 
 ### Salasanan nollaus
 - Kirjautumissivulla valitse **Unohditko salasanasi?** ja syötä sähköpostisi.
 - Saat sähköpostiin nollauslinkin. Linkki on kertakäyttöinen ja vanhenee.
 - Linkin kautta voit asettaa uuden salasanan.
+- Googlella kirjautuvat hallitsevat salasanaansa Google-tilinsä kautta.
 
 ### Kielen vaihto
 Yläkulman kielivalitsimesta voit vaihtaa kielen suomen (FI) ja englannin (EN) välillä. Valinta tallennetaan selaimeen.
@@ -33,11 +34,13 @@ Työtilanäkymän yläosassa on **Valuutta**-valitsin. Valittu valuutta vaikutta
 3. Sinusta tulee automaattisesti tämän työtilan **ylläpitäjä**.
 
 ### Liittyminen olemassa olevaan työtilaan
-1. Pyydä työtilan ylläpitäjältä 8-merkkinen liittymiskoodi.
+1. Pyydä työtilan ylläpitäjältä liittymiskoodi (näkyy työtilanäkymän yläosassa).
 2. Aloita-sivulla syötä koodi kenttään ja paina **Liity**.
 
 ### Työtilojen välillä vaihtaminen
-Yläpalkista löydät nykyisen työtilan nimen. Voit luoda uuden työtilan painamalla **+ Työtila**.
+- Yläpalkista löydät nykyisen työtilan nimen.
+- **Aloita**-sivu listaa kaikki työtilat, joihin kuulut, otsikon **Työtilasi** alla — avaa työtila valitsemalla se listasta.
+- Yläpalkin **+ Työtila** vie Aloita-sivulle, jossa voit luoda uuden työtilan tai liittyä toiseen.
 
 ## 3. Säästöt ja tulot (loppukäyttäjä)
 
@@ -66,6 +69,13 @@ Kohteen alta löytyy **Kuukausimerkinnät**-osio.
 - Arvot näytetään valitussa valuutassa ja tallennetaan euroina.
 - Voit muokata sekä yksittäisen kuukauden että kokonaissummia. Kokonaissumman muokkaus jakaa arvon tasaisesti 12 kuukaudelle.
 
+### Tehtävät
+Jokaisella kohteella on **Tehtävät**-alaosio, jolla kohde voidaan pilkkoa pienempiin tehtäviin.
+- Kirjoita nimi **Uusi tehtävä…** -kenttään ja paina Enter lisätäksesi tehtävän.
+- Klikkaa tehtävää muokataksesi otsikkoa; merkitse valmiiksi rastittamalla valintaruutu.
+- Järjestä tehtävät uudelleen vetämällä.
+- Poista tehtävä poistopainikkeella.
+
 ### Tavoite (Goal)
 - Aseta **Tavoite**-summa ja **Tavoiteaika**.
 - Sovellus näyttää montako päivää tavoitepäivään on jäljellä.
@@ -77,7 +87,10 @@ Kohteen alta löytyy **Kuukausimerkinnät**-osio.
 - **Toteuma / Suunnitelma** -vertailuna
 
 ### Tallennuksen tila
-Yläosassa näkyy ilmaisin: **Tallennetaan…**, **Tallennettu** tai **Tallentamattomia muutoksia**. Muutokset tallentuvat automaattisesti.
+Yläosassa näkyy ilmaisin: **Tallennetaan…**, **Tallennettu** tai **Tallentamattomia muutoksia**. Muutokset tallentuvat automaattisesti. Palkki näyttää myös kohteen viimeisimmän muokkausajan.
+
+### Ohje
+Työtilanäkymän yläpalkissa on **Ohje**-linkki. Se avaa tämän käyttöohjeen valitulla kielellä.
 
 ## 4. Ylläpitäjän toiminnot (Admin)
 
