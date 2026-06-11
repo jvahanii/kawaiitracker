@@ -20,6 +20,7 @@ create policy "profiles: read same-tenant users"
   on public.profiles for select to authenticated
   using (
     id = auth.uid()
+    or public.has_role(auth.uid(), 'superuser')
     or exists (
       select 1
       from public.tenant_members my_m
