@@ -573,6 +573,7 @@ function TaskLists({
   tenantId: string;
   itemId: string;
 }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const listFn = useServerFn(listTasksForItem);
   const createFn = useServerFn(createTask);
