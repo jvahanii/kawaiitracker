@@ -598,6 +598,14 @@ function MembersPage() {
                               {t("members.superuserBadge")}
                             </span>
                           )}
+                          {paidReqMap.has(u.userId) ? (
+                            <span
+                              title={t("members.paidPlanRequestedAt", { when: new Date(paidReqMap.get(u.userId)!).toLocaleString() })}
+                              className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"
+                            >
+                              {t("members.paidPlanBadge")}
+                            </span>
+                          ) : null}
                         </div>
                         {editingEmailId === u.userId && editingEmailScope === "super" ? (
                           <form
