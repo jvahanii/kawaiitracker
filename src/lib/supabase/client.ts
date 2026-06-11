@@ -1,3 +1,4 @@
+import "tslib";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let client: SupabaseClient | null = null;
