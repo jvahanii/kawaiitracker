@@ -257,6 +257,17 @@ function MembersPage() {
     enabled: isSuper,
   });
 
+  const paidReqQ = useQuery({
+    queryKey: ["paid-plan-requests"],
+    queryFn: () => listPaidReqSF(),
+    enabled: isSuper,
+  });
+  const paidReqMap = new Map((paidReqQ.data ?? []).map((r) => [r.userId, r.requestedAt]));
+
+  const requestPaidM = useMutation({
+    mutationFn: () => requestPaidSF({ data: { tenantId } }),
+  });
+
   const invalidateSuper = () => {
     qc.invalidateQueries({ queryKey: ["all-workspace-users"] });
     qc.invalidateQueries({ queryKey: ["members", tenantId] });
