@@ -73,6 +73,8 @@ function MembersPage() {
   const suRemoveSF = useServerFn(superuserRemoveMember);
   const suEmailSF = useServerFn(superuserUpdateUserEmail);
   const suDeleteSF = useServerFn(superuserDeleteUser);
+  const requestPaidSF = useServerFn(requestPaidPlan);
+  const listPaidReqSF = useServerFn(listPaidPlanRequests);
 
   const tenantsQ = useQuery({
     queryKey: ["my-tenants"],
