@@ -144,6 +144,7 @@ function LoginPage() {
           {m.isPending ? t("login.submitting") : `${t("login.submit")} ♡`}
         </button>
       </form>
+      <GoogleSignInButton />
       <p className="mt-4 text-center text-sm">
         <Link
           to="/forgot-password"
