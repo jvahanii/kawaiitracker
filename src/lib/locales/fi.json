@@ -161,6 +161,9 @@
     "freeLimitTitle": "Ilmaisten käyttäjien raja saavutettu",
     "freeLimitOk": "Ok",
     "freeLimitContact": "Ota yhteyttä maksullisesta suunnitelmasta",
+    "paidPlanRequested": "Kiitos — tiimimme ottaa sinuun pian yhteyttä.",
+    "paidPlanBadge": "Maksullinen suunnitelma pyydetty",
+    "paidPlanRequestedAt": "Pyydetty {{when}}",
 
     "editName": "Muokkaa nimeä",
     "editEmail": "Muokkaa sähköpostia",
