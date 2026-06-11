@@ -158,6 +158,9 @@
     "addedOk": "Käyttäjä lisätty.",
     "alreadyMember": "Käyttäjä on jo tämän työtilan jäsen.",
     "freeLimitReached": "Ilmaisten käyttäjien maksimimäärä (4) saavutettu. Lisätäksesi käyttäjiä, ota maksullinen suunnitelma käyttöön. Tiimimme ottaa sinuun yhteyttä.",
+    "freeLimitTitle": "Ilmaisten käyttäjien raja saavutettu",
+    "freeLimitOk": "Ok",
+    "freeLimitContact": "Ota yhteyttä maksullisesta suunnitelmasta",
 
     "editName": "Muokkaa nimeä",
     "editEmail": "Muokkaa sähköpostia",

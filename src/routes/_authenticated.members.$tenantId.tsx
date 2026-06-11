@@ -114,6 +114,7 @@ function MembersPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [limitDialogOpen, setLimitDialogOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -184,7 +185,7 @@ function MembersPage() {
     onSuccess: (res) => {
       if (res?.ok === false) {
         if (res.error === "FREE_LIMIT_REACHED") {
-          toast.error(t("members.freeLimitReached"));
+          setLimitDialogOpen(true);
         } else {
           toast.error(res.error);
         }
@@ -756,7 +757,7 @@ function MembersPage() {
                   e.preventDefault();
                   if (!addEmail.trim()) return;
                   if (!isSuper && members.length >= FREE_MEMBER_LIMIT) {
-                    toast.error(t("members.freeLimitReached"));
+                    setLimitDialogOpen(true);
                     return;
                   }
                   addM.mutate({ email: addEmail.trim(), role: addRole });
