@@ -3,6 +3,9 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/lib/supabase/auth-middleware";
 
+const FREE_MEMBER_LIMIT = 4;
+
+
 export type TenantSummary = {
   id: string;
   name: string;
