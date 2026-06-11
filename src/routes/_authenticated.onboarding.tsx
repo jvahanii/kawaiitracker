@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createTenant, joinTenant, listMyTenants } from "@/lib/api/tenants.functions";
+import { safeErrorMessage } from "@/lib/errors";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
