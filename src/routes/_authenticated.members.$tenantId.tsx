@@ -270,6 +270,15 @@ function MembersPage() {
     mutationFn: (v: { tenantId: string; userId: string }) => suRemoveSF({ data: v }),
     onSuccess: invalidateSuper,
   });
+  const suDeleteM = useMutation({
+    mutationFn: (userId: string) => suDeleteSF({ data: { userId } }),
+    onSuccess: () => {
+      toast.success(t("members.deleteUserSuccess"));
+      setDeleteUserId(null);
+      invalidateSuper();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const members = membersQ.data ?? [];
   const adminCount = members.filter((m) => m.role === "admin").length;
