@@ -107,6 +107,13 @@ A folder's **Visibility** setting lets you restrict which members can see the fo
 ### Audit log
 The **Audit log** page lists workspace changes in chronological order: who made the change, what entry, and when.
 
+### Free plan user limit
+A workspace on the free plan can have up to **4 members**. When the limit is reached, pressing **Add user** opens a dialog with two options:
+- **Ok** — closes the dialog.
+- **Contact me for a paid plan** — sends a request to the Keywi team. The dialog closes and your interest is recorded. Superusers see your request in the Users view (see below).
+
+Superusers bypass this limit entirely and can keep adding members.
+
 ## 5. Superuser features
 
 A superuser has system-wide privileges.
