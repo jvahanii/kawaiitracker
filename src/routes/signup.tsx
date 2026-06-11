@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { ensureSupabase } from "@/lib/supabase/client";
 import { safeErrorMessage } from "@/lib/errors";
 import { AuthShell, Field } from "./login";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Sign up — Tracker" }] }),
