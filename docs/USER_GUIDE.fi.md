@@ -34,11 +34,13 @@ Työtilanäkymän yläosassa on **Valuutta**-valitsin. Valittu valuutta vaikutta
 3. Sinusta tulee automaattisesti tämän työtilan **ylläpitäjä**.
 
 ### Liittyminen olemassa olevaan työtilaan
-1. Pyydä työtilan ylläpitäjältä 8-merkkinen liittymiskoodi.
+1. Pyydä työtilan ylläpitäjältä liittymiskoodi (näkyy työtilanäkymän yläosassa).
 2. Aloita-sivulla syötä koodi kenttään ja paina **Liity**.
 
 ### Työtilojen välillä vaihtaminen
-Yläpalkista löydät nykyisen työtilan nimen. Voit luoda uuden työtilan painamalla **+ Työtila**.
+- Yläpalkista löydät nykyisen työtilan nimen.
+- **Aloita**-sivu listaa kaikki työtilat, joihin kuulut, otsikon **Työtilasi** alla — avaa työtila valitsemalla se listasta.
+- Yläpalkin **+ Työtila** vie Aloita-sivulle, jossa voit luoda uuden työtilan tai liittyä toiseen.
 
 ## 3. Säästöt ja tulot (loppukäyttäjä)
 
