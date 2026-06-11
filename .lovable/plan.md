@@ -1,41 +1,39 @@
-## Goal
-On the Users page (`/_authenticated/members/$tenantId`), let admins edit the email of members in their workspace, and let superusers edit the email of any user (including those in the "Other users" section).
+# Superuserille mahdollisuus tuhota mikä tahansa käyttäjä
 
-## Backend — new server functions
+## Mitä tehdään
 
-In `src/lib/api/tenants.functions.ts`:
+Lisätään `/members/$tenantId` -sivun "Muut käyttäjät" -superuser-listalle "Poista käyttäjä" -nappi, joka tuhoaa käyttäjän kokonaan (auth + profiili + jäsenyydet).
 
-- `updateMemberEmail({ tenantId, userId, email })`
-  - Auth: caller must be `admin` of `tenantId` (same check as `updateMemberName`).
-  - Validate email with Zod, normalize lowercase.
-  - Use `getSupabaseAdmin()` to:
-    1. `admin.auth.admin.updateUserById(userId, { email, email_confirm: true })` — updates the auth login email without sending a confirmation email (admin-set, mirroring existing `setMemberPassword` UX).
-    2. Update `profiles.email` to keep it in sync.
-  - Handle the "email already in use" error from Auth and return a friendly message.
+## Backend
 
-In `src/lib/api/superusers.functions.ts`:
+Uusi server function `superuserDeleteUser` tiedostoon `src/lib/api/superusers.functions.ts`:
 
-- `superuserUpdateUserEmail({ userId, email })`
-  - Auth: caller must be superuser (reuse the existing superuser guard used by `superuserUpdateMemberRole` / `grantSuperuserById`).
-  - Same admin-side update as above; no tenant scoping.
+- Input: `{ userId: uuid }`.
+- Tarkistaa että kutsuja on superuser (`has_role`).
+- Estot:
+  - Ei voi poistaa itseään (`data.userId === context.userId` → virhe).
+  - Jos kohde on superuser ja superusereita on vain 1 → virhe ("Cannot delete the last superuser").
+- Käyttää `getSupabaseAdmin()` ja `admin.auth.admin.deleteUser(userId)`.
+  - Auth-käyttäjän poisto cascadoi FK:n kautta `profiles`, `user_roles`, `tenant_members` jne. (kaikki viittaavat `auth.users(id) on delete cascade`).
+- Palauttaa `{ ok: true }`.
 
-Both return `{ ok: true }` on success or throw a readable error.
+## Frontend
 
-## Frontend — Users page
+`src/routes/_authenticated.members.$tenantId.tsx`:
 
-In `src/routes/_authenticated.members.$tenantId.tsx`:
+- Lisää `useServerFn(superuserDeleteUser)` ja `useMutation` joka invalidoi `["all-workspace-users"]` ja näyttää toastin.
+- Lisää state `deleteUserId: string | null` AlertDialogia varten.
+- Riveille "Muut käyttäjät" -listalla (rinnalle grant/revoke-napin viereen): pieni "Poista" -nappi (destructive). Disabloitu jos `isSelf` tai `isLastSuper`.
+- AlertDialog vahvistus ennen poistoa.
 
-1. Wire the new server fns with `useServerFn` + `useMutation`, invalidating `["members", tenantId]` and `["all-workspace-users"]`.
-2. Members list (current workspace):
-   - Add an "Edit email" affordance next to the existing email line, shown only when `isAdmin`.
-   - Reuse the existing inline-edit pattern (like `editingId` / `editingName`): add `editingEmailId` + `editingEmail` state; on submit call `updateMemberEmail`.
-   - Show toast on success/error; on "email already in use" show the server's error message.
-3. Superuser "Other users" section:
-   - Add an "Edit email" button per user that opens the same inline edit, calling `superuserUpdateUserEmail`.
-   - For users who are also members of the current tenant, the workspace-admin edit applies; for users in the Other users list, the superuser fn applies.
-4. i18n: add `members.editEmail`, `members.emailInUse`, `members.emailUpdated` to the existing translation files used on this page.
+## Lokalisointi
 
-## Out of scope
-- No email confirmation flow / "verify new email" round-trip — admin/superuser sets it directly, matching the existing `setMemberPassword` behavior.
-- No self-service email change for non-admins.
-- No schema changes.
+`src/lib/locales/en.json` ja `fi.json`, `members.*`:
+- `deleteUser` ("Delete user" / "Poista käyttäjä")
+- `deleteUserConfirmTitle`, `deleteUserConfirmBody` (varoittaa pysyvyydestä)
+- `deleteUserSuccess`
+- `cannotDeleteSelf`, `cannotDeleteLastSuperuser`
+
+## Tekninen huomio
+
+`auth.admin.deleteUser` poistaa kovasti — kaikki käyttäjän data katoaa kaskadina. Tämä on tarkoituksella, koska superuser voi näin "tuhota minkä tahansa käyttäjän" pyynnön mukaan. AlertDialog-vahvistus on ainoa undo-mekanismi.
