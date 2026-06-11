@@ -658,23 +658,43 @@ function MembersPage() {
                           )}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={onSuperClick}
-                        disabled={
-                          blockSelfRevoke || grantSuperM.isPending || revokeSuperM.isPending
-                        }
-                        title={blockSelfRevoke ? t("members.cannotRevokeLast") : undefined}
-                        className={
-                          u.isSuperuser
-                            ? "rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                            : "rounded-md border border-border px-2 py-1 text-sm hover:bg-accent disabled:opacity-50"
-                        }
-                      >
-                        {u.isSuperuser
-                          ? t("members.revokeSuperuser")
-                          : t("members.grantSuperuser")}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={onSuperClick}
+                          disabled={
+                            blockSelfRevoke || grantSuperM.isPending || revokeSuperM.isPending
+                          }
+                          title={blockSelfRevoke ? t("members.cannotRevokeLast") : undefined}
+                          className={
+                            u.isSuperuser
+                              ? "rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                              : "rounded-md border border-border px-2 py-1 text-sm hover:bg-accent disabled:opacity-50"
+                          }
+                        >
+                          {u.isSuperuser
+                            ? t("members.revokeSuperuser")
+                            : t("members.grantSuperuser")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isSelf) {
+                              toast.error(t("members.cannotDeleteSelf"));
+                              return;
+                            }
+                            if (isLastSuper) {
+                              toast.error(t("members.cannotDeleteLastSuperuser"));
+                              return;
+                            }
+                            setDeleteUserId(u.userId);
+                          }}
+                          disabled={isSelf || isLastSuper || suDeleteM.isPending}
+                          className="rounded-md border border-destructive/40 px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                        >
+                          {t("members.deleteUser")}
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
