@@ -1,35 +1,32 @@
+## Goal
 
-# Salli superuserin muokata muiden adminien oikeuksia
+Replace the generic "This page didn't load" fallback with a clear, actionable message whenever the app is deployed without Supabase environment variables (the most common Vercel-deploy failure). Real runtime errors keep the existing generic fallback so we don't leak stack traces.
 
-Tällä hetkellä työtilan jäsenlistalla (`/members/$tenantId`) admin-rivin roolivalitsin ja "Poista" -painike on lukittu, jos kohde on toinen admin. Tämä koskee myös superusereita, mikä estää heitä alentamasta tai poistamasta toista adminia. "Tee superuseriksi" -painike on jo paikallaan superusereille.
+## What the user will see
 
-## Muutokset
+When `EXT_SUPABASE_URL` / `EXT_SUPABASE_PUBLISHABLE_KEY` (and the `VITE_*` pair) are missing on the server, every request renders a dedicated page titled **"Backend not configured"** that lists exactly which environment variables are missing and where to set them (Vercel → Project → Settings → Environment Variables), with a "Retry" button. HTTP status `503`.
 
-**`src/routes/_authenticated.members.$tenantId.tsx`**
+When env vars are present but something else fails during SSR, the existing generic "This page didn't load" page is kept (no info leak).
 
-1. Päivitä `roleLocked`-logiikka niin, että superuserille rajoitus toista adminia kohtaan ei päde. Säilytä viimeisen adminin suoja itselle ja estä omaan rooliin koskeminen tarvittaessa.
-2. Reititä jäsenrivin roolimuutos `superuserUpdateMemberRole`-funktion kautta, kun `isSuper` on tosi ja kohde on toinen admin (muuten edelleen normaali `updateMemberRole`). Tämä ohittaa "You cannot change another admin's role" -tarkistuksen serverillä.
-3. Reititä "Poista" samalla periaatteella `superuserRemoveMember`-funktioon, kun superuser poistaa toista adminia, jotta poisto onnistuu (admin-vs-admin -poistoa ei muuten sallita; tämäkin pitää viimeisen adminin suojan).
-4. Vahvista, että "Tee superuseriksi" / "Peruuta superuser" -painike näkyy edelleen kaikille jäsenriville superuserille (toiminto on jo `grantSuperM` / `revokeSuperM`). Ei muita muutoksia.
+## Changes
 
-Ei tietokantamuutoksia: tarvittavat RPC:t (`superuserUpdateMemberRole`, `superuserRemoveMember`, `grant_superuser`) ovat jo olemassa ja tarkistavat itse superuser-oikeuden.
+1. **`src/lib/error-page.ts`** — add a second exported function `renderMissingEnvPage(missing: string[])` that returns a self-contained HTML page (same styling as the current one) listing the missing variables and the fix steps. Keep `renderErrorPage()` unchanged.
 
-## Tekniset yksityiskohdat
+2. **`src/lib/env-check.ts`** (new, dependency-free) — export `getMissingSupabaseEnv(): string[]` that checks `process.env` for `EXT_SUPABASE_URL`, `EXT_SUPABASE_PUBLISHABLE_KEY`, `EXT_SUPABASE_SERVICE_ROLE_KEY`, and `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, returning the missing names.
 
-```ts
-const isPeerAdmin = m.role === "admin" && !isSelf;
-const roleLocked = (isPeerAdmin && !isSuper) || (isSelf && isLastAdmin);
+3. **`src/server.ts`** — at the top of `fetch`, before dispatching, call `getMissingSupabaseEnv()`. If non-empty, short-circuit with `renderMissingEnvPage(missing)` at status `503`. Otherwise behave exactly as today (lazy import handler, try/catch, normalize h3 500s).
 
-const onRoleChange = (role: "admin" | "member") => {
-  if (isSuper && isPeerAdmin) suRoleM.mutate({ tenantId, userId: m.id, role });
-  else updateM.mutate({ userId: m.id, role });
-};
+4. **`src/routes/api/public/supabase-config.ts`** — keep the JSON 500 response but include the list of missing variable names so the client surface matches the SSR page.
 
-const onRemove = () => {
-  if (isSuper && isPeerAdmin) suRemoveM.mutate({ tenantId, userId: m.id });
-  else removeM.mutate(m.id);
-  // (käytetään edelleen olemassa olevaa AlertDialog-vahvistusta)
-};
-```
+## Out of scope
 
-Muutokset ovat puhtaasti frontendissä ja hyödyntävät jo olemassa olevia palvelinfunktioita.
+- No changes to Supabase client code, routes, or auth flow.
+- No new dependencies.
+- Does not fix the underlying deploy — the user still needs to set the env vars on Vercel. This change just makes the failure self-explanatory instead of a blank "didn't load" screen.
+
+## Files touched
+
+- edit `src/server.ts`
+- edit `src/lib/error-page.ts`
+- create `src/lib/env-check.ts`
+- edit `src/routes/api/public/supabase-config.ts`
