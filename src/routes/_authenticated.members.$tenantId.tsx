@@ -917,6 +917,23 @@ function MembersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={limitDialogOpen} onOpenChange={setLimitDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("members.freeLimitTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("members.freeLimitReached")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setLimitDialogOpen(false)}>
+              {t("members.freeLimitOk")}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => setLimitDialogOpen(false)}>
+              {t("members.freeLimitContact")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
