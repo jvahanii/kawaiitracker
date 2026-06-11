@@ -61,7 +61,7 @@ function ForgotPasswordPage() {
             />
           </Field>
           {m.error ? (
-            <p className="text-sm text-destructive">{(m.error as Error).message}</p>
+            <p className="text-sm text-destructive">{safeErrorMessage(m.error)}</p>
           ) : null}
           <button
             type="submit"
