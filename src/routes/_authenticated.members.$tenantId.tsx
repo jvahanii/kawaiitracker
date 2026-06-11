@@ -957,7 +957,14 @@ function MembersPage() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
-                if (removeId) removeM.mutate(removeId);
+                if (!removeId) return;
+                const target = members.find((m) => m.id === removeId);
+                if (isSuper && target?.role === "admin" && removeId !== currentUserId) {
+                  suRemoveM.mutate({ tenantId, userId: removeId });
+                  setRemoveId(null);
+                } else {
+                  removeM.mutate(removeId);
+                }
               }}
             >
               {t("common.delete")}
