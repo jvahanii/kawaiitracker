@@ -169,6 +169,12 @@
     "revokeSuperuser": "Revoke superuser",
     "superuserBadge": "Superuser",
     "cannotRevokeLast": "You are the last superuser — grant the role to someone else first.",
-    "confirmSelfRevoke": "Revoke your own superuser role? You will lose superuser access."
+    "confirmSelfRevoke": "Revoke your own superuser role? You will lose superuser access.",
+    "deleteUser": "Delete user",
+    "deleteUserConfirmTitle": "Permanently delete this user?",
+    "deleteUserConfirmBody": "{{name}} will be removed from authentication, all workspaces, and their data will be deleted. This cannot be undone.",
+    "deleteUserSuccess": "User deleted.",
+    "cannotDeleteSelf": "You cannot delete your own account here.",
+    "cannotDeleteLastSuperuser": "Cannot delete the last superuser."
   }
 }

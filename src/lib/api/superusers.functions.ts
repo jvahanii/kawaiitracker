@@ -283,3 +283,40 @@ export const superuserUpdateUserEmail = createServerFn({ method: "POST" })
     if (profErr) throw new Error(profErr.message);
     return { ok: true as const };
   });
+
+export const superuserDeleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    if (data.userId === context.userId) {
+      throw new Error("You cannot delete your own account here.");
+    }
+    const { data: amSuper, error: roleErr } = (await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "superuser",
+    })) as { data: boolean | null; error: { message: string } | null };
+    if (roleErr) throw new Error(roleErr.message);
+    if (!amSuper) throw new Error("Only superusers can perform this action");
+
+    const { getSupabaseAdmin } = await import("@/lib/supabase/admin.server");
+    const admin = getSupabaseAdmin();
+
+    const { data: targetIsSuper, error: tErr } = (await context.supabase.rpc("has_role", {
+      _user_id: data.userId,
+      _role: "superuser",
+    })) as { data: boolean | null; error: { message: string } | null };
+    if (tErr) throw new Error(tErr.message);
+    if (targetIsSuper) {
+      const { count, error: cErr } = await admin
+        .from("user_roles")
+        .select("user_id", { count: "exact", head: true })
+        .eq("role", "superuser");
+      if (cErr) throw new Error(cErr.message);
+      if ((count ?? 0) <= 1) throw new Error("Cannot delete the last superuser");
+    }
+
+    const { error: delErr } = await admin.auth.admin.deleteUser(data.userId);
+    if (delErr) throw new Error(delErr.message);
+    return { ok: true as const };
+  });
+

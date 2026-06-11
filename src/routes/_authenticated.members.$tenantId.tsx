@@ -32,6 +32,7 @@ import {
   isSuperuser as isSuperuserFn,
   listAllWorkspaceUsers,
   revokeSuperuser,
+  superuserDeleteUser,
   superuserRemoveMember,
   superuserUpdateMemberRole,
   superuserUpdateUserEmail,
@@ -67,6 +68,7 @@ function MembersPage() {
   const suRoleSF = useServerFn(superuserUpdateMemberRole);
   const suRemoveSF = useServerFn(superuserRemoveMember);
   const suEmailSF = useServerFn(superuserUpdateUserEmail);
+  const suDeleteSF = useServerFn(superuserDeleteUser);
 
   const tenantsQ = useQuery({
     queryKey: ["my-tenants"],
@@ -109,6 +111,7 @@ function MembersPage() {
   const [pwValue, setPwValue] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [removeId, setRemoveId] = useState<string | null>(null);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -266,6 +269,15 @@ function MembersPage() {
   const suRemoveM = useMutation({
     mutationFn: (v: { tenantId: string; userId: string }) => suRemoveSF({ data: v }),
     onSuccess: invalidateSuper,
+  });
+  const suDeleteM = useMutation({
+    mutationFn: (userId: string) => suDeleteSF({ data: { userId } }),
+    onSuccess: () => {
+      toast.success(t("members.deleteUserSuccess"));
+      setDeleteUserId(null);
+      invalidateSuper();
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const members = membersQ.data ?? [];
@@ -646,23 +658,43 @@ function MembersPage() {
                           )}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={onSuperClick}
-                        disabled={
-                          blockSelfRevoke || grantSuperM.isPending || revokeSuperM.isPending
-                        }
-                        title={blockSelfRevoke ? t("members.cannotRevokeLast") : undefined}
-                        className={
-                          u.isSuperuser
-                            ? "rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                            : "rounded-md border border-border px-2 py-1 text-sm hover:bg-accent disabled:opacity-50"
-                        }
-                      >
-                        {u.isSuperuser
-                          ? t("members.revokeSuperuser")
-                          : t("members.grantSuperuser")}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={onSuperClick}
+                          disabled={
+                            blockSelfRevoke || grantSuperM.isPending || revokeSuperM.isPending
+                          }
+                          title={blockSelfRevoke ? t("members.cannotRevokeLast") : undefined}
+                          className={
+                            u.isSuperuser
+                              ? "rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                              : "rounded-md border border-border px-2 py-1 text-sm hover:bg-accent disabled:opacity-50"
+                          }
+                        >
+                          {u.isSuperuser
+                            ? t("members.revokeSuperuser")
+                            : t("members.grantSuperuser")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isSelf) {
+                              toast.error(t("members.cannotDeleteSelf"));
+                              return;
+                            }
+                            if (isLastSuper) {
+                              toast.error(t("members.cannotDeleteLastSuperuser"));
+                              return;
+                            }
+                            setDeleteUserId(u.userId);
+                          }}
+                          disabled={isSelf || isLastSuper || suDeleteM.isPending}
+                          className="rounded-md border border-destructive/40 px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                        >
+                          {t("members.deleteUser")}
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
@@ -836,6 +868,35 @@ function MembersPage() {
               }}
             >
               {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteUserId} onOpenChange={(open) => !open && setDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("members.deleteUserConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("members.deleteUserConfirmBody", {
+                name:
+                  (allUsersQ.data ?? []).find((u) => u.userId === deleteUserId)?.displayName ||
+                  (allUsersQ.data ?? []).find((u) => u.userId === deleteUserId)?.email ||
+                  "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteUserId(null)}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteUserId) suDeleteM.mutate(deleteUserId);
+              }}
+            >
+              {t("members.deleteUser")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

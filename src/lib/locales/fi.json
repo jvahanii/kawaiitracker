@@ -169,6 +169,12 @@
     "revokeSuperuser": "Peruuta pääkäyttäjä",
     "superuserBadge": "Pääkäyttäjä",
     "cannotRevokeLast": "Olet viimeinen pääkäyttäjä — myönnä rooli ensin jollekin toiselle.",
-    "confirmSelfRevoke": "Peruutetaanko oma pääkäyttäjärooli? Menetät pääkäyttäjäoikeudet."
+    "confirmSelfRevoke": "Peruutetaanko oma pääkäyttäjärooli? Menetät pääkäyttäjäoikeudet.",
+    "deleteUser": "Tuhoa käyttäjä",
+    "deleteUserConfirmTitle": "Tuhotaanko käyttäjä pysyvästi?",
+    "deleteUserConfirmBody": "{{name}} poistetaan kirjautumisesta ja kaikista työtiloista, ja kaikki hänen tietonsa tuhotaan. Tätä ei voi peruuttaa.",
+    "deleteUserSuccess": "Käyttäjä tuhottu.",
+    "cannotDeleteSelf": "Et voi tuhota omaa tiliäsi täältä.",
+    "cannotDeleteLastSuperuser": "Viimeistä pääkäyttäjää ei voi tuhota."
   }
 }
