@@ -31,6 +31,8 @@ import {
   grantSuperuserById,
   isSuperuser as isSuperuserFn,
   listAllWorkspaceUsers,
+  listPaidPlanRequests,
+  requestPaidPlan,
   revokeSuperuser,
   superuserDeleteUser,
   superuserRemoveMember,
