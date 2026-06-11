@@ -32,6 +32,7 @@ import {
   isSuperuser as isSuperuserFn,
   listAllWorkspaceUsers,
   revokeSuperuser,
+  superuserDeleteUser,
   superuserRemoveMember,
   superuserUpdateMemberRole,
   superuserUpdateUserEmail,
