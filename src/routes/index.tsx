@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -18,11 +18,26 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    // Safety net: if Supabase's Site URL is misconfigured, Google OAuth lands
+    // here with ?code=... (or #access_token=...) instead of /auth/callback.
+    // Forward to the callback so the session exchange + onboarding redirect run.
+    if (typeof window !== "undefined") {
+      const search = window.location.search;
+      const hash = window.location.hash;
+      const hasCode = /[?&]code=/.test(search);
+      const hasImplicit = /[#&]access_token=/.test(hash);
+      const hasOAuthError = /[?&#]error(_description)?=/.test(search + hash);
+      if (hasCode || hasImplicit || hasOAuthError) {
+        window.location.replace(`/auth/callback${search}${hash}`);
+        return;
+      }
+    }
     setMounted(true);
     applyDetectedLanguage();
-  }, []);
+  }, [navigate]);
   // First client render must match SSR (English) to avoid React error #418.
   // After mount we switch to the detected language.
   const tr = mounted ? t : i18n.getFixedT("en");
