@@ -83,7 +83,7 @@ function LoginPage() {
     },
   });
 
-  const errorMessage = m.error ? (m.error as Error).message : null;
+  const errorMessage = m.error ? safeErrorMessage(m.error) : null;
 
   return (
     <AuthShell title={t("login.title")} subtitle={t("login.subtitle")}>
