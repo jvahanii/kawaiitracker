@@ -157,6 +157,8 @@
     "addDirectBtn": "Add",
     "addedOk": "User added.",
     "alreadyMember": "User is already a member of this workspace.",
+    "freeLimitReached": "Free user limit (4) reached. Upgrade to a paid plan to add more users.",
+
     "editName": "Edit name",
     "editEmail": "Edit email",
     "emailUpdated": "Email updated.",
