@@ -418,6 +418,14 @@ function MembersPage() {
                       <>
                         <div className="flex items-center gap-2">
                           <div className="font-medium">{m.displayName}</div>
+                          {isSuper && paidReqMap.has(m.id) ? (
+                            <span
+                              title={t("members.paidPlanRequestedAt", { when: new Date(paidReqMap.get(m.id)!).toLocaleString() })}
+                              className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"
+                            >
+                              {t("members.paidPlanBadge")}
+                            </span>
+                          ) : null}
                           {isAdmin ? (
                             <button
                               type="button"
