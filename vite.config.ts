@@ -32,9 +32,11 @@ export default defineConfig({
   // to Cloudflare automatically, so this is safe for both targets.
   nitro: {
     preset: "vercel",
-    // Remove `tslib` from Nitro's internal "never bundle" list so it gets
-    // inlined into the server bundle. Otherwise @supabase/auth-js keeps a
-    // bare `import "tslib"` that's missing from the Vercel function output.
-    ...({ traceDeps: ["!tslib"] } as Record<string, unknown>),
+    // Bundle ALL dependencies into the server output instead of externalizing
+    // node_modules. Externalization relied on tracing tslib into the Vercel
+    // function, which kept failing (ERR_MODULE_NOT_FOUND from
+    // _libs/supabase__auth-js.mjs). Full bundling is exactly what the
+    // Cloudflare build already does, so this is proven to work.
+    ...({ noExternals: true } as Record<string, unknown>),
   },
 });
