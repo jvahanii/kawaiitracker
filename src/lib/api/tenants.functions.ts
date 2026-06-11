@@ -6,16 +6,16 @@ import { requireSupabaseAuth } from "@/lib/supabase/auth-middleware";
 export type TenantSummary = {
   id: string;
   name: string;
-  joinCode: string;
+  joinCode: string | null;
   role: "admin" | "member" | "superuser";
 };
 
 export const listMyTenants = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = (await context.supabase.rpc("list_my_tenants")) as { data: { id: string; name: string; join_code: string; role: string }[] | null; error: { message: string } | null };
+    const { data, error } = (await context.supabase.rpc("list_my_tenants")) as { data: { id: string; name: string; join_code: string | null; role: string }[] | null; error: { message: string } | null };
     if (error) throw new Error(error.message);
-    return (data ?? []).map<TenantSummary>((r: { id: string; name: string; join_code: string; role: string }) => ({
+    return (data ?? []).map<TenantSummary>((r: { id: string; name: string; join_code: string | null; role: string }) => ({
       id: r.id,
       name: r.name,
       joinCode: r.join_code,
