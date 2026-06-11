@@ -1,25 +1,19 @@
-## Tavoite
-Kun työtilassa on jo 4 jäsentä ja yritetään lisätä 5., palautuu selkeä virheviesti: "Ilmaisten käyttäjien maksimimäärä (4) saavutettu. Lisää käyttäjiä varten ota maksullinen suunnitelma käyttöön." Superuser saa ohittaa rajan.
+## Goal
 
-## Backend
-**`src/lib/api/tenants.functions.ts` — `addMemberByEmail`**
-- Lisätään vakio `FREE_MEMBER_LIMIT = 4` tiedoston alkuun.
-- Caller-tarkistuksen jälkeen, ennen käyttäjän hakua/luontia:
-  1. Tarkistetaan `has_role(caller, 'superuser')` RPC:llä. Jos true → ohitetaan raja.
-  2. Muuten lasketaan `tenant_members`-rivit `tenant_id = data.tenantId` (admin-clientilla `count: 'exact', head: true`).
-  3. Jos `count >= 4` → palautetaan `{ ok: false, error: 'FREE_LIMIT_REACHED' }` (sentineli-merkkijono, käännetään frontissa).
-- Olemassa olevan jäsenen uudelleenlisäys (duplicate insert) ei kasvata määrää — koska teemme tarkistuksen ennen, lisätään pieni huomio: jos haettava email kuuluu jo tenantin jäseneen, ohitetaan raja (ei estetä uudelleenkutsua). Tämä toteutetaan tarkistamalla raja vasta `userId`:n resolvoinnin jälkeen ja katsomalla onko `userId` jo `tenant_members`-listassa.
+Show the "free user limit" toast immediately when the admin clicks **Add user** in the invite dialog, instead of waiting for the backend round-trip. Superusers continue to bypass the limit.
 
-## Frontend
+## Changes
+
 **`src/routes/_authenticated.members.$tenantId.tsx`**
-- Lisätään-mutaation `onSuccess`/`onError`-käsittelyyn: jos `res.error === 'FREE_LIMIT_REACHED'`, näytetään `toast.error(t('freeLimitReached'))` tavallisen virheen sijaan.
 
-## i18n
-**`src/lib/locales/en.json` & `fi.json`**
-- `freeLimitReached`:
-  - fi: "Ilmaisten käyttäjien maksimimäärä (4) saavutettu. Lisätäksesi käyttäjiä, ota maksullinen suunnitelma käyttöön."
-  - en: "Free user limit (4) reached. Upgrade to a paid plan to add more users."
+1. Add a local constant `FREE_MEMBER_LIMIT = 4` near the top of `MembersPage`.
+2. In the invite form's `onSubmit` (around line 755), before calling `addM.mutate(...)`:
+   - If `!isSuper && members.length >= FREE_MEMBER_LIMIT`, call `toast.error(t("members.freeLimitReached"))` and `return` — do not call the server function.
+3. Disable the submit button when the same condition is true (visual reinforcement), keeping the existing `disabled` logic for pending/empty email.
 
-## Ei muutoksia
-- Ei maksuintegraatiota tässä vaiheessa (käyttäjän valinta).
-- Ei muutoksia muihin rooleihin tai poistoihin.
+No backend, i18n, or other UI changes — the server-side check in `addMemberByEmail` stays as a safety net.
+
+## Notes
+
+- `isSuper` already comes from `isSuperQ` and `members` from `membersQ`, so no new data fetching is needed.
+- Behaviour for existing-member email (already a tenant member) is unaffected because that path is only reachable after the server call; the limit check uses current tenant member count, matching the backend rule.
