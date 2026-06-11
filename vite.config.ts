@@ -10,6 +10,23 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  vite: {
+    ssr: {
+      // Force-bundle the Supabase family + tslib into the SSR output so the
+      // Vercel function never tries to resolve them from node_modules at
+      // runtime (fixes ERR_MODULE_NOT_FOUND: 'tslib' from supabase__auth-js).
+      noExternal: [
+        "@supabase/auth-js",
+        "@supabase/supabase-js",
+        "@supabase/postgrest-js",
+        "@supabase/realtime-js",
+        "@supabase/storage-js",
+        "@supabase/functions-js",
+        "@supabase/node-fetch",
+        "tslib",
+      ],
+    },
+  },
   // Force-enable Nitro outside the Lovable sandbox (e.g. Vercel CI) with the
   // Vercel preset. Inside the Lovable sandbox, the preset is overridden back
   // to Cloudflare automatically, so this is safe for both targets.
