@@ -272,7 +272,46 @@ export const addMemberByEmail = createServerFn({ method: "POST" })
     const admin = getSupabaseAdmin();
     const email = data.email.trim().toLowerCase();
 
+    // Free plan limit: max FREE_MEMBER_LIMIT members per tenant. Superusers bypass.
+    // Re-adding someone who is already a member of this tenant is always allowed.
+    {
+      const { data: isSuper } = await context.supabase.rpc("has_role", {
+        _user_id: context.userId,
+        _role: "superuser",
+      });
+      if (!isSuper) {
+        const { count, error: countErr } = await admin
+          .from("tenant_members")
+          .select("user_id", { count: "exact", head: true })
+          .eq("tenant_id", data.tenantId);
+        if (countErr) throw new Error(countErr.message);
+        if ((count ?? 0) >= FREE_MEMBER_LIMIT) {
+          // Allow if email already belongs to a member of this tenant.
+          const { data: existing } = await admin
+            .from("profiles")
+            .select("id")
+            .ilike("email", email)
+            .limit(1)
+            .maybeSingle();
+          let alreadyMember = false;
+          if (existing?.id) {
+            const { data: tm } = await admin
+              .from("tenant_members")
+              .select("user_id")
+              .eq("tenant_id", data.tenantId)
+              .eq("user_id", existing.id)
+              .maybeSingle();
+            alreadyMember = !!tm;
+          }
+          if (!alreadyMember) {
+            return { ok: false as const, error: "FREE_LIMIT_REACHED" };
+          }
+        }
+      }
+    }
+
     // Find existing user first; only invite if not found. Prefer profiles,
+
     // then paginate Auth users so accounts beyond the first 1000 are found too.
     let userId: string | null = null;
     let lookupErr: string | null = null;
