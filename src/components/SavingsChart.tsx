@@ -387,6 +387,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                       borderRadius: 8,
                       fontSize: 12,
                       boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      opacity: 0.93,
                     }}
                     labelFormatter={(v) => monthFmt.format(new Date(Number(v)))}
                     content={({ payload, label }) => {
@@ -417,6 +418,7 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
                             fontSize: 12,
                             padding: "8px 12px",
                             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                            opacity: 0.93,
                           }}
                         >
                           <div style={{ fontWeight: 600, marginBottom: 6 }}>
