@@ -42,5 +42,9 @@ export const Route = createFileRoute("/_authenticated")({
       },
     };
   },
+  head: (ctx) => {
+    const name = (ctx.match.context as { user?: { displayName?: string } })?.user?.displayName;
+    return { meta: [{ title: name ? `${name} — Keywi` : "Keywi" }] };
+  },
   component: () => <Outlet />,
 });
