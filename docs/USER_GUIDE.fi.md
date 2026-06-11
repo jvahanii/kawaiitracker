@@ -107,6 +107,13 @@ Kansion **Näkyvyys**-asetuksesta voit rajata, ketkä jäsenet näkevät kansion
 ### Muutoshistoria (Audit log)
 **Muutoshistoria**-sivu näyttää työtilan muutokset aikajärjestyksessä: kuka teki muutoksen, mihin kohteeseen ja milloin.
 
+### Ilmaisversion käyttäjäraja
+Ilmaisversion työtilassa voi olla enintään **4 jäsentä**. Kun raja täyttyy, **Lisää käyttäjä** -painikkeen painaminen avaa valintaikkunan, jossa on kaksi vaihtoehtoa:
+- **Ok** — sulkee ikkunan.
+- **Contact me for a paid plan** — lähettää pyynnön Keywi-tiimille. Ikkuna sulkeutuu ja kiinnostuksesi kirjataan. Pääkäyttäjät näkevät pyyntösi Käyttäjät-sivulla (ks. alla).
+
+Pääkäyttäjät ohittavat tämän rajan ja voivat jatkaa jäsenten lisäämistä.
+
 ## 5. Pääkäyttäjän toiminnot (Superuser)
 
 Pääkäyttäjällä on järjestelmänlaajuiset oikeudet.
