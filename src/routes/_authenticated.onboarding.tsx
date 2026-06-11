@@ -104,7 +104,7 @@ function Onboarding() {
                     className="input"
                   />
                   {createM.error ? (
-                    <p className="text-sm text-destructive">{(createM.error as Error).message}</p>
+                    <p className="text-sm text-destructive">{safeErrorMessage(createM.error)}</p>
                   ) : null}
                   <button
                     type="submit"
