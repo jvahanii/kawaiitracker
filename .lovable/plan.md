@@ -1,19 +1,39 @@
+# Replace free-limit toast with a dialog (Ok + Contact me)
+
 ## Goal
+When a non-superuser tries to add a 5th member, show a modal dialog instead of a toast. The dialog has two buttons: **Ok** and **Contact me for a paid plan**.
 
-Show the "free user limit" toast immediately when the admin clicks **Add user** in the invite dialog, instead of waiting for the backend round-trip. Superusers continue to bypass the limit.
+## Where the change happens
+`src/routes/_authenticated.members.$tenantId.tsx` — the invite form's client-side check and the `addM.onSuccess` server fallback.
 
-## Changes
+## Plan
 
-**`src/routes/_authenticated.members.$tenantId.tsx`**
+### 1. New i18n keys
+Add to `src/lib/locales/en.json` and `fi.json` under `members`:
+- `freeLimitTitle` — dialog title
+- `freeLimitOk` — "Ok"
+- `freeLimitContact` — "Contact me for a paid plan" / "Ota yhteyttä maksullisen suunnitelman saamiseksi"
 
-1. Add a local constant `FREE_MEMBER_LIMIT = 4` near the top of `MembersPage`.
-2. In the invite form's `onSubmit` (around line 755), before calling `addM.mutate(...)`:
-   - If `!isSuper && members.length >= FREE_MEMBER_LIMIT`, call `toast.error(t("members.freeLimitReached"))` and `return` — do not call the server function.
-3. Disable the submit button when the same condition is true (visual reinforcement), keeping the existing `disabled` logic for pending/empty email.
+### 2. Component state
+Add `const [limitDialogOpen, setLimitDialogOpen] = useState(false);`
 
-No backend, i18n, or other UI changes — the server-side check in `addMemberByEmail` stays as a safety net.
+### 3. Trigger the dialog instead of toast
+- **Client-side** (invite form `onSubmit`): replace `toast.error(...)` with `setLimitDialogOpen(true)` and still `return` before `addM.mutate(...)`.
+- **Server-side fallback** (`addM.onSuccess` when `res.error === "FREE_LIMIT_REACHED"`): replace `toast.error(...)` with `setLimitDialogOpen(true)`.
 
-## Notes
+### 4. Render the dialog
+Add an `<AlertDialog>` (already imported in the file) with:
+- `open={limitDialogOpen}`
+- Title from `members.freeLimitTitle`
+- Description from the existing `members.freeLimitReached` text
+- Footer with two buttons side by side:
+  1. **Ok** — `setLimitDialogOpen(false)` (closes dialog, leaves invite modal open)
+  2. **Contact me for a paid plan** — `setLimitDialogOpen(false)` (closes dialog; no payment infrastructure exists, so it acts as a dismiss-with-intent button)
 
-- `isSuper` already comes from `isSuperQ` and `members` from `membersQ`, so no new data fetching is needed.
-- Behaviour for existing-member email (already a tenant member) is unaffected because that path is only reachable after the server call; the limit check uses current tenant member count, matching the backend rule.
+### 5. Keep existing behavior
+- Superusers bypass the check entirely (unchanged).
+- The invite modal stays open behind the dialog so the user can continue after dismissing.
+
+## Technical notes
+- Uses the already-imported `AlertDialog` primitives from `@/components/ui/alert-dialog`.
+- No backend or payment-provider changes — still notification-only as previously decided.

@@ -158,6 +158,9 @@
     "addedOk": "User added.",
     "alreadyMember": "User is already a member of this workspace.",
     "freeLimitReached": "Free user limit (4) reached. Upgrade to a paid plan to add more users. Our team will contact you.",
+    "freeLimitTitle": "Free user limit reached",
+    "freeLimitOk": "Ok",
+    "freeLimitContact": "Contact me for a paid plan",
 
     "editName": "Edit name",
     "editEmail": "Edit email",
