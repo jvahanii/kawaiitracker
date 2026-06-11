@@ -753,6 +753,10 @@ function MembersPage() {
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (!addEmail.trim()) return;
+                  if (!isSuper && members.length >= FREE_MEMBER_LIMIT) {
+                    toast.error(t("members.freeLimitReached"));
+                    return;
+                  }
                   addM.mutate({ email: addEmail.trim(), role: addRole });
                 }}
               >
@@ -775,7 +779,11 @@ function MembersPage() {
                   </select>
                   <button
                     type="submit"
-                    disabled={addM.isPending || !addEmail.trim()}
+                    disabled={
+                      addM.isPending ||
+                      !addEmail.trim() ||
+                      (!isSuper && members.length >= FREE_MEMBER_LIMIT)
+                    }
                     className="ml-auto rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                   >
                     {addM.isPending ? t("common.saving") : t("members.addDirectBtn")}
