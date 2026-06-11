@@ -872,6 +872,35 @@ function MembersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!deleteUserId} onOpenChange={(open) => !open && setDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("members.deleteUserConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("members.deleteUserConfirmBody", {
+                name:
+                  (allUsersQ.data ?? []).find((u) => u.userId === deleteUserId)?.displayName ||
+                  (allUsersQ.data ?? []).find((u) => u.userId === deleteUserId)?.email ||
+                  "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteUserId(null)}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteUserId) suDeleteM.mutate(deleteUserId);
+              }}
+            >
+              {t("members.deleteUser")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
