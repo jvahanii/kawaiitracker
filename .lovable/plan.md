@@ -1,55 +1,40 @@
 ## Problem
 
-After Google's "authenticating… authenticated" handshake, the browser is redirected to `/?code=...&state=...` (the `redirectTo` we set in `GoogleSignInButton`). Two things then break the user:
+Vercel deploy crashes with `ERR_MODULE_NOT_FOUND: Cannot find package 'tslib' imported from .../supabase__auth-js.mjs`. `tslib` is already in `package.json`, and `src/server.ts` + `src/lib/supabase/client.ts` already do `import "tslib"`. The previous attempt to remove `tslib` from Nitro's never-bundle list via `nitro.traceDeps` did not take effect on Vercel.
 
-1. **The PKCE code is never exchanged.** `src/lib/supabase/client.ts` initialises the Supabase client with `detectSessionInUrl: false`, so the `?code=...` sitting on the landing URL is never traded for a session. The user is, in fact, not signed in even though Google said they were.
-2. **The landing route SSR runs against `/?code=...`.** Because there is no dedicated callback handler, the OAuth return hits an SSR'd public page that also re-renders during the next navigation, and the worker surfaces this as the generic "This page didn't load" error (matches the `h3 swallowed SSR error` symptom in the user's report). There is no `/auth/callback` route in the repo today — the bundler-level `tslib` work we already did is in place, but the OAuth flow has nowhere safe to land.
-
-The user's prompt asks specifically: make the callback SSR-safe, wrap profile work in try/catch, ensure `tslib` is imported. The repo has no callback route, so we add one.
+The real lever is Vite's SSR externalization. On the Vercel preset, Nitro reuses Vite's SSR settings, and `@supabase/auth-js` (an ESM package) gets externalized — its top-level `import "tslib"` is then resolved at runtime against the Vercel function's `node_modules`, which doesn't include it. Telling Vite to NOT externalize these packages forces them to be bundled, so `tslib`'s helpers are inlined and the runtime lookup goes away.
 
 ## Fix
 
-### 1. New route: `src/routes/auth.callback.tsx`
+### 1. `vite.config.ts` — add `ssr.noExternal`
 
-- `ssr: false` — the PKCE exchange must run in the browser where `localStorage` and the code-verifier live; SSR'ing this route is what produces the swallowed 500.
-- Top of file: `import "tslib";` for parity with the other Supabase entry points already importing it.
-- Component:
-  - Reads `code` / `error` / `error_description` from `window.location.search` inside a `useEffect`.
-  - If `error` is present → show a friendly message + "Back to login" link, do not throw.
-  - If `code` is present → `await supabase.auth.exchangeCodeForSession(code)` inside a strict `try / catch`.
-  - On success: best-effort `ensureProfile()` call (see step 2) wrapped in its own `try / catch` so a profile failure NEVER blocks navigation; then navigate to the user's last tenant (`getLastTenantId`) or `/onboarding`.
-  - On failure: render an inline error card with the Supabase error message and a "Try again" link to `/login`. No throws escape to the route boundary.
-- Render a small "Signing you in…" spinner while the exchange is in flight so the user sees progress instead of a blank flash.
-
-### 2. Idempotent profile bootstrap (optional, defensive)
-
-If a `profiles` table is in play for Google users, add a tiny server fn `ensureProfile` (in `src/lib/api/profile.functions.ts`) using `requireSupabaseAuth` that upserts `{ id: userId, email }` and returns `{ ok: true }`. Wrap the call site in `try / catch` and only `console.error` on failure — callback must succeed even if the upsert errors. If no `profiles` table exists yet, skip this step entirely; the route still works.
-
-### 3. Point Google at the new callback
-
-In `src/components/GoogleSignInButton.tsx` change:
+`@lovable.dev/vite-tanstack-config` accepts a `vite` passthrough. Add:
 
 ```ts
-options: { redirectTo: `${window.location.origin}/auth/callback` }
+vite: {
+  ssr: {
+    noExternal: ["@supabase/auth-js", "@supabase/supabase-js", "@supabase/postgrest-js", "@supabase/realtime-js", "@supabase/storage-js", "@supabase/functions-js", "@supabase/node-fetch", "tslib"],
+  },
+},
 ```
 
-so the OAuth return lands on the dedicated handler instead of the SSR'd landing page.
+Including the whole Supabase family (not just `auth-js`) because they all share `tslib` and the same externalization behavior; bundling them avoids the same class of failure popping up next in another sub-package.
 
-### 4. Supabase Auth provider redirect URL
+Keep the existing `nitro.traceDeps` override in place — harmless belt-and-braces; if anything still slips through external, Nitro will trace `tslib` into the function bundle.
 
-Add `https://kawaiitracker.lovable.app/auth/callback` and the preview origin's `/auth/callback` to the Supabase Auth "Additional Redirect URLs" list. (User-side action — flagged in the closing message; not a code change.)
+### 2. `package.json` — already correct
 
-### 5. Leave `detectSessionInUrl: false` as-is
+`tslib ^2.8.1` is already in `dependencies`. No change.
 
-Intentional — `src/routes/reset-password.tsx` already relies on exchanging its own PKCE code without a race. The new callback route does the same explicit exchange for OAuth.
+### 3. Do NOT change
+
+- `src/server.ts` / `src/lib/supabase/client.ts` — the `import "tslib"` shims stay (cheap insurance).
+- `src/routes/auth.callback.tsx` — unrelated to this build error; leave as-is.
 
 ## Files touched
 
-- **add** `src/routes/auth.callback.tsx` — client-only PKCE exchange + safe profile bootstrap + navigation.
-- **edit** `src/components/GoogleSignInButton.tsx` — redirect to `/auth/callback`.
-- **add (optional)** `src/lib/api/profile.functions.ts` — only if a `profiles` table needs upserting; otherwise omit.
+- **edit** `vite.config.ts` — add `vite.ssr.noExternal` array.
 
-## Out of scope
+## How to verify
 
-- No change to `_authenticated.tsx`, `__root.tsx`'s `SupabaseAuthSync`, or the server entry / `tslib` plumbing — those are already correct.
-- No change to email/password login, reset-password, or signup flows.
+User redeploys on Vercel with build cache disabled. The Vercel function build output should now contain `tslib` helpers inlined into the Supabase chunks, and the runtime `ERR_MODULE_NOT_FOUND` for `tslib` should disappear.
