@@ -1,40 +1,24 @@
-## Problem
+## Root cause found: Vercel has been deploying a stale, broken build snapshot
 
-Vercel deploy crashes with `ERR_MODULE_NOT_FOUND: Cannot find package 'tslib' imported from .../supabase__auth-js.mjs`. `tslib` is already in `package.json`, and `src/server.ts` + `src/lib/supabase/client.ts` already do `import "tslib"`. The previous attempt to remove `tslib` from Nitro's never-bundle list via `nitro.traceDeps` did not take effect on Vercel.
+Your repo has **163 files of pre-built Vercel output committed at `.vercel/output/`** — a snapshot built at 10:50 UTC today, *before* any of the bundling fixes. I inspected it:
 
-The real lever is Vite's SSR externalization. On the Vercel preset, Nitro reuses Vite's SSR settings, and `@supabase/auth-js` (an ESM package) gets externalized — its top-level `import "tslib"` is then resolved at runtime against the Vercel function's `node_modules`, which doesn't include it. Telling Vite to NOT externalize these packages forces them to be bundled, so `tslib`'s helpers are inlined and the runtime lookup goes away.
+- `.vercel/output/functions/__server.func/_libs/supabase__auth-js.mjs` contains the exact broken line: `import { __rest } from "tslib"` (a bare import).
+- The function's `package.json` declares `tslib` as a needed dependency, but **no `node_modules/tslib` folder was ever copied** into the function.
+- This matches your runtime error path `/var/task/_libs/supabase__auth-js.mjs` byte-for-byte.
 
-## Fix
+When a `.vercel/output` directory is present, Vercel treats it as a prebuilt deployment (Build Output API) — so your deploys have been shipping this frozen, broken snapshot. **None of the config fixes ever reached production.** That's why the error never changed no matter what we did.
 
-### 1. `vite.config.ts` — add `ssr.noExternal`
+Meanwhile, I verified the current config is actually correct: the installed nitro version supports `noExternals: true` and its Vite build path skips externalization entirely when it's set — so a fresh build bundles `tslib` inline.
 
-`@lovable.dev/vite-tanstack-config` accepts a `vite` passthrough. Add:
+## Plan
 
-```ts
-vite: {
-  ssr: {
-    noExternal: ["@supabase/auth-js", "@supabase/supabase-js", "@supabase/postgrest-js", "@supabase/realtime-js", "@supabase/storage-js", "@supabase/functions-js", "@supabase/node-fetch", "tslib"],
-  },
-},
-```
+1. **Delete the committed `.vercel/` directory** from the project — this is build output, not source code, and it's overriding fresh builds.
+2. **Add `.vercel/` to `.gitignore`** so build artifacts can never be committed again.
+3. **Verify locally**: run the exact Vercel-preset production build and scan the fresh output to confirm zero remaining bare `tslib` imports (tslib code fully inlined). If anything survives, add a hard alias for `tslib` as a final safety net.
+4. **You redeploy on Vercel** with "Use existing Build Cache" turned OFF, making sure the deployed commit includes these changes.
 
-Including the whole Supabase family (not just `auth-js`) because they all share `tslib` and the same externalization behavior; bundling them avoids the same class of failure popping up next in another sub-package.
+## Technical details
 
-Keep the existing `nitro.traceDeps` override in place — harmless belt-and-braces; if anything still slips through external, Nitro will trace `tslib` into the function bundle.
-
-### 2. `package.json` — already correct
-
-`tslib ^2.8.1` is already in `dependencies`. No change.
-
-### 3. Do NOT change
-
-- `src/server.ts` / `src/lib/supabase/client.ts` — the `import "tslib"` shims stay (cheap insurance).
-- `src/routes/auth.callback.tsx` — unrelated to this build error; leave as-is.
-
-## Files touched
-
-- **edit** `vite.config.ts` — add `vite.ssr.noExternal` array.
-
-## How to verify
-
-User redeploys on Vercel with build cache disabled. The Vercel function build output should now contain `tslib` helpers inlined into the Supabase chunks, and the runtime `ERR_MODULE_NOT_FOUND` for `tslib` should disappear.
+- Committed artifact: `.vercel/output/` (163 files, `nitro.json` timestamped 2026-06-11T10:50Z — predates commits `ad9cbff` and `450e49d` that contain the bundling fixes).
+- `vite.config.ts` stays as-is: `nitro: { preset: "vercel", noExternals: true }` + `vite.ssr.noExternal` for the Supabase family — confirmed effective in nitro `3.0.260603-beta` (`baseBuildPlugins` skips the externals tracer when `noExternals === true`).
+- Verification command after build: grep all `.mjs` files in the new output for `from "tslib"` — expect zero matches.
