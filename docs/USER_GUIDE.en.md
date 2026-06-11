@@ -34,11 +34,13 @@ The workspace view has a **Currency** picker at the top. The selected currency d
 3. You become the workspace **admin** automatically.
 
 ### Join an existing workspace
-1. Ask the workspace admin for an 8-character join code.
+1. Ask the workspace admin for a join code (shown at the top of their workspace view).
 2. On Get started, type the code into the field and press **Join**.
 
 ### Switch between workspaces
-The top bar shows the current workspace. You can create a new workspace with **+ Workspace**.
+- The top bar shows the current workspace name.
+- The **Get started** page lists all workspaces you belong to under **Your workspaces** — pick one to open it.
+- Press **+ Workspace** in the top bar to go to Get started and create or join another workspace.
 
 ## 3. Savings and income (end user)
 
