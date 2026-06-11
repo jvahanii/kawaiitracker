@@ -6,8 +6,6 @@ const REQUIRED = [
   "EXT_SUPABASE_URL",
   "EXT_SUPABASE_PUBLISHABLE_KEY",
   "EXT_SUPABASE_SERVICE_ROLE_KEY",
-  "VITE_SUPABASE_URL",
-  "VITE_SUPABASE_PUBLISHABLE_KEY",
 ] as const;
 
 export function getMissingSupabaseEnv(): string[] {
