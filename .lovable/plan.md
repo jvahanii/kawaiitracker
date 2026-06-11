@@ -1,53 +1,35 @@
 
-## Tavoite
+# Salli superuserin muokata muiden adminien oikeuksia
 
-Normikäyttäjä näkee Muutoshistoria-näkymän, mutta vain ne tapahtumat, jotka koskevat asioita joihin hänellä on käyttöoikeus (esim. kansiot joihin on `folder_visibility`, niiden alla olevat itemit, tehtävät ja entryt). Adminin näkymä säilyy ennallaan (näkee kaiken).
+Tällä hetkellä työtilan jäsenlistalla (`/members/$tenantId`) admin-rivin roolivalitsin ja "Poista" -painike on lukittu, jos kohde on toinen admin. Tämä koskee myös superusereita, mikä estää heitä alentamasta tai poistamasta toista adminia. "Tee superuseriksi" -painike on jo paikallaan superusereille.
 
 ## Muutokset
 
-### 1. Tietokanta (uusi migraatio)
+**`src/routes/_authenticated.members.$tenantId.tsx`**
 
-Päivitetään `public.list_audit_log(p_tenant_id, p_limit)` siten, että se palauttaa:
+1. Päivitä `roleLocked`-logiikka niin, että superuserille rajoitus toista adminia kohtaan ei päde. Säilytä viimeisen adminin suoja itselle ja estä omaan rooliin koskeminen tarvittaessa.
+2. Reititä jäsenrivin roolimuutos `superuserUpdateMemberRole`-funktion kautta, kun `isSuper` on tosi ja kohde on toinen admin (muuten edelleen normaali `updateMemberRole`). Tämä ohittaa "You cannot change another admin's role" -tarkistuksen serverillä.
+3. Reititä "Poista" samalla periaatteella `superuserRemoveMember`-funktioon, kun superuser poistaa toista adminia, jotta poisto onnistuu (admin-vs-admin -poistoa ei muuten sallita; tämäkin pitää viimeisen adminin suojan).
+4. Vahvista, että "Tee superuseriksi" / "Peruuta superuser" -painike näkyy edelleen kaikille jäsenriville superuserille (toiminto on jo `grantSuperM` / `revokeSuperM`). Ei muita muutoksia.
 
-- **Admin/superuser**: kaikki tenantin audit-rivit (nykyinen käytös).
-- **Member**: rivit, jotka kuuluvat käyttäjän näkyvyysalueeseen.
-- **Muu**: tyhjä.
+Ei tietokantamuutoksia: tarvittavat RPC:t (`superuserUpdateMemberRole`, `superuserRemoveMember`, `grant_superuser`) ovat jo olemassa ja tarkistavat itse superuser-oikeuden.
 
-Funktio pysyy `security definer`. Rivien suodatus per `table_name`:
+## Tekniset yksityiskohdat
 
-```text
-folders            -> can_user_see_folder(record_id::uuid, auth.uid())
-items              -> resolve folder_id (items.folder_id, fallback row_data->>'folder_id')
-                       -> can_user_see_folder(folder_id, auth.uid())
-item_tasks         -> resolve item_id -> item.folder_id -> visibility check
-item_entries       -> resolve item_id -> item.folder_id -> visibility check
-item_assignees     -> resolve item_id -> item.folder_id -> visibility check;
-                       lisäksi näytetään aina rivit, joissa user_id = auth.uid()
-folder_visibility  -> folder_id row_datasta -> visibility check;
-                       lisäksi rivit, joissa user_id = auth.uid()
-tenant_members     -> vain rivit, joissa user_id = auth.uid()
+```ts
+const isPeerAdmin = m.role === "admin" && !isSelf;
+const roleLocked = (isPeerAdmin && !isSuper) || (isSelf && isLastAdmin);
+
+const onRoleChange = (role: "admin" | "member") => {
+  if (isSuper && isPeerAdmin) suRoleM.mutate({ tenantId, userId: m.id, role });
+  else updateM.mutate({ userId: m.id, role });
+};
+
+const onRemove = () => {
+  if (isSuper && isPeerAdmin) suRemoveM.mutate({ tenantId, userId: m.id });
+  else removeM.mutate(m.id);
+  // (käytetään edelleen olemassa olevaa AlertDialog-vahvistusta)
+};
 ```
 
-Poistettuja kohteita varten käytetään `row_data`-jsonbia kun base-taulun rivi ei enää löydy. RLS-policy `audit_log` pysyy admin-only (varmistus, ettei suoraa Data API -kyselyä voi tehdä); käyttäjät pääsevät käsiksi vain RPC:n kautta.
-
-### 2. Backend (server function)
-
-`src/lib/api/audit.functions.ts` säilyy ennallaan — kutsuu samaa RPC:tä `list_audit_log`. Ei muutoksia.
-
-### 3. Frontend
-
-`src/routes/_authenticated.app.$tenantId.tsx`:
-- Näytetään "Muutoshistoria"-linkki kaikille tenantin jäsenille (poistetaan `isAdmin`-ehto linkin osalta; pidetään `joinCode` adminilla).
-
-`src/routes/_authenticated.audit.$tenantId.tsx`:
-- Poistetaan admin-pakko: `allowed`-tarkistus → riittää että käyttäjä on tenantin jäsen (`member`/`admin`/`superuser`).
-- Poistetaan "Admin access required" -lohko.
-- `useQuery`:t (`audit`, `items`, `entries-all`) sallitaan kaikille jäsenille.
-
-Filtterit (käyttäjä, tyyppi) toimivat sellaisenaan rajatun datan päällä.
-
-## Tekninen huomio
-
-- `can_user_see_folder` palauttaa adminille aina `true`, joten samaa funktiota voi käyttää myös admin-haaralle, mutta säilytetään erillinen `is_tenant_admin`-pikareitti suorituskyvyn vuoksi.
-- Käytetään `row_data`-jsonbia tallessa olevana lähteenä poistetuille riveille, jotta historiaa ei katoa silloin kun item/folder on poistettu.
-- Migraation polku: `supabase/migrations/2026MMDDHHMMSS_audit_log_member_visibility.sql`. `supabase-schema.sql`:n vastaava funktio päivitetään myös.
+Muutokset ovat puhtaasti frontendissä ja hyödyntävät jo olemassa olevia palvelinfunktioita.

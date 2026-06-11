@@ -372,9 +372,10 @@ function MembersPage() {
               const isLastSuper = memberIsSuper && superuserCount > 0 && superuserCount <= 1;
               const blockSelfSuperRevoke = isSelf && isLastSuper;
               const isLastAdmin = m.role === "admin" && adminCount <= 1;
-              // Admins cannot modify another admin; last admin cannot demote self.
+              const isPeerAdmin = m.role === "admin" && !isSelf;
+              // Admins cannot modify another admin (superusers can); last admin cannot demote self.
               const roleLocked =
-                (m.role === "admin" && !isSelf) || (isSelf && isLastAdmin);
+                (isPeerAdmin && !isSuper) || (isSelf && isLastAdmin);
               const roleLockReason = roleLocked
                 ? isSelf
                   ? t("members.lastAdmin")
