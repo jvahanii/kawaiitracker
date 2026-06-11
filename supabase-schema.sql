@@ -815,7 +815,13 @@ $$;
 create or replace function public.list_my_tenants()
 returns table (id uuid, name text, join_code text, role text)
 language sql stable security definer set search_path = public as $$
-  select t.id, t.name, t.join_code,
+  select t.id,
+         t.name,
+         case
+           when m.role = 'admin' then t.join_code
+           when public.has_role(auth.uid(), 'superuser') then t.join_code
+           else null
+         end as join_code,
          coalesce(m.role,
                   case when public.has_role(auth.uid(), 'superuser')
                        then 'superuser' end) as role
