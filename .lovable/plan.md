@@ -1,14 +1,53 @@
-Muokataan selaimen välilehden (tab) otsikkoa niin, että kirjautuneen käyttäjän nimi näkyy aina alussa kaikilla suojatuilla sivuilla.
 
-Nykyisellään `_authenticated` layout-reitti palauttaa `beforeLoad`-vaiheessa käyttäjän tiedot (`user.displayName`). Jokainen authenticated-alireitti asettaa kuitenkin oman staattisen `title`-nsä, joka ylikirjoittaa vanhemman otsikon. TanStack Routerissa lehtireitin `title` voittaa aina, joten pelkkä `_authenticated.tsx`:n `head`-funktion lisääminen ei riitä.
+## Tavoite
 
-Toteutus:
-1. Lisätään `_authenticated.tsx`:n `head`-funktiolle fallback-otsikko muodossa "{displayName} — Keywi".
-2. Päivitetään jokaisen authenticated-alireitin (`_authenticated.app.$tenantId`, `_authenticated.audit.$tenantId`, `_authenticated.members.$tenantId`, `_authenticated.onboarding`) `head`-funktio niin, että se lukee `ctx.context.user.displayName` ja liittää sen otsikon alkuun: `{displayName} — <nykyinen otsikko>`.
+Normikäyttäjä näkee Muutoshistoria-näkymän, mutta vain ne tapahtumat, jotka koskevat asioita joihin hänellä on käyttöoikeus (esim. kansiot joihin on `folder_visibility`, niiden alla olevat itemit, tehtävät ja entryt). Adminin näkymä säilyy ennallaan (näkee kaiken).
 
-Muokattavat tiedostot:
-- `src/routes/_authenticated.tsx` — lisätään `head`
-- `src/routes/_authenticated.app.$tenantId.tsx` — päivitetään `head`
-- `src/routes/_authenticated.audit.$tenantId.tsx` — päivitetään `head`
-- `src/routes/_authenticated.members.$tenantId.tsx` — päivitetään `head`
-- `src/routes/_authenticated.onboarding.tsx` — päivitetään `head`
+## Muutokset
+
+### 1. Tietokanta (uusi migraatio)
+
+Päivitetään `public.list_audit_log(p_tenant_id, p_limit)` siten, että se palauttaa:
+
+- **Admin/superuser**: kaikki tenantin audit-rivit (nykyinen käytös).
+- **Member**: rivit, jotka kuuluvat käyttäjän näkyvyysalueeseen.
+- **Muu**: tyhjä.
+
+Funktio pysyy `security definer`. Rivien suodatus per `table_name`:
+
+```text
+folders            -> can_user_see_folder(record_id::uuid, auth.uid())
+items              -> resolve folder_id (items.folder_id, fallback row_data->>'folder_id')
+                       -> can_user_see_folder(folder_id, auth.uid())
+item_tasks         -> resolve item_id -> item.folder_id -> visibility check
+item_entries       -> resolve item_id -> item.folder_id -> visibility check
+item_assignees     -> resolve item_id -> item.folder_id -> visibility check;
+                       lisäksi näytetään aina rivit, joissa user_id = auth.uid()
+folder_visibility  -> folder_id row_datasta -> visibility check;
+                       lisäksi rivit, joissa user_id = auth.uid()
+tenant_members     -> vain rivit, joissa user_id = auth.uid()
+```
+
+Poistettuja kohteita varten käytetään `row_data`-jsonbia kun base-taulun rivi ei enää löydy. RLS-policy `audit_log` pysyy admin-only (varmistus, ettei suoraa Data API -kyselyä voi tehdä); käyttäjät pääsevät käsiksi vain RPC:n kautta.
+
+### 2. Backend (server function)
+
+`src/lib/api/audit.functions.ts` säilyy ennallaan — kutsuu samaa RPC:tä `list_audit_log`. Ei muutoksia.
+
+### 3. Frontend
+
+`src/routes/_authenticated.app.$tenantId.tsx`:
+- Näytetään "Muutoshistoria"-linkki kaikille tenantin jäsenille (poistetaan `isAdmin`-ehto linkin osalta; pidetään `joinCode` adminilla).
+
+`src/routes/_authenticated.audit.$tenantId.tsx`:
+- Poistetaan admin-pakko: `allowed`-tarkistus → riittää että käyttäjä on tenantin jäsen (`member`/`admin`/`superuser`).
+- Poistetaan "Admin access required" -lohko.
+- `useQuery`:t (`audit`, `items`, `entries-all`) sallitaan kaikille jäsenille.
+
+Filtterit (käyttäjä, tyyppi) toimivat sellaisenaan rajatun datan päällä.
+
+## Tekninen huomio
+
+- `can_user_see_folder` palauttaa adminille aina `true`, joten samaa funktiota voi käyttää myös admin-haaralle, mutta säilytetään erillinen `is_tenant_admin`-pikareitti suorituskyvyn vuoksi.
+- Käytetään `row_data`-jsonbia tallessa olevana lähteenä poistetuille riveille, jotta historiaa ei katoa silloin kun item/folder on poistettu.
+- Migraation polku: `supabase/migrations/2026MMDDHHMMSS_audit_log_member_visibility.sql`. `supabase-schema.sql`:n vastaava funktio päivitetään myös.
