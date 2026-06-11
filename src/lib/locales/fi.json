@@ -165,7 +165,6 @@
     "paidPlanRequested": "Kiitos — tiimimme ottaa sinuun pian yhteyttä.",
     "paidPlanBadge": "Maksullinen suunnitelma pyydetty",
     "paidPlanRequestedAt": "Pyydetty {{when}}",
-
     "editName": "Muokkaa nimeä",
     "editEmail": "Muokkaa sähköpostia",
     "emailUpdated": "Sähköposti päivitetty.",
@@ -185,5 +184,10 @@
     "deleteUserSuccess": "Käyttäjä tuhottu.",
     "cannotDeleteSelf": "Et voi tuhota omaa tiliäsi täältä.",
     "cannotDeleteLastSuperuser": "Viimeistä pääkäyttäjää ei voi tuhota."
+  },
+  "auth": {
+    "or": "tai",
+    "continueWithGoogle": "Jatka Googlella",
+    "googleSubmitting": "Ohjataan…"
   }
 }

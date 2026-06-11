@@ -10,6 +10,7 @@ import { safeErrorMessage } from "@/lib/errors";
 import { getLastTenantId } from "@/lib/api/tenants.functions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { KiwiWithKey } from "@/components/KiwiWithKey";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Log in — Tracker" }] }),
@@ -143,6 +144,7 @@ function LoginPage() {
           {m.isPending ? t("login.submitting") : `${t("login.submit")} ♡`}
         </button>
       </form>
+      <GoogleSignInButton />
       <p className="mt-4 text-center text-sm">
         <Link
           to="/forgot-password"

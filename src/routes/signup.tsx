@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { ensureSupabase } from "@/lib/supabase/client";
 import { safeErrorMessage } from "@/lib/errors";
 import { AuthShell, Field } from "./login";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Sign up — Tracker" }] }),
@@ -101,6 +102,7 @@ function SignupPage() {
           </button>
         </form>
       )}
+      {!needsConfirm ? <GoogleSignInButton /> : null}
       <p className="mt-6 text-center text-sm text-muted-foreground">
         {t("signup.haveAccount")}{" "}
         <Link to="/login" className="text-foreground underline-offset-4 hover:underline">
