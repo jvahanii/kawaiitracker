@@ -87,7 +87,10 @@ The **Savings breakdown** chart can be grouped:
 - Compared as **Actual / Plan**
 
 ### Save status
-The top of the view shows a status indicator: **Saving…**, **Saved**, or **Unsaved changes**. Changes are saved automatically.
+The top of the view shows a status indicator: **Saving…**, **Saved**, or **Unsaved changes**. Changes are saved automatically. The bar also shows when the entry was last updated.
+
+### Help
+A **Help** link is available in the top bar of the workspace view. It opens this user guide in your selected language.
 
 ## 4. Admin features
 
