@@ -69,6 +69,13 @@ Each entry has a **Monthly entries** section.
 - Values are shown in the selected currency and stored in EUR.
 - You can edit individual months and the totals. Editing a total spreads the value evenly across 12 months.
 
+### Tasks
+Each entry has a **Tasks** subsection for breaking the entry into smaller to-do items.
+- Type a name in **New task…** and press Enter to add a task.
+- Click a task to edit its title; tick the checkbox to mark it done.
+- Drag tasks to reorder them.
+- Use the delete control to remove a task.
+
 ### Goal
 - Set a **Goal** amount and **Target date**.
 - The app shows how many days remain to the target.
