@@ -15,8 +15,20 @@ grant all on public.profiles to service_role;
 alter table public.profiles enable row level security;
 
 drop policy if exists "profiles: read all authenticated" on public.profiles;
-create policy "profiles: read all authenticated"
-  on public.profiles for select to authenticated using (true);
+drop policy if exists "profiles: read same-tenant users" on public.profiles;
+create policy "profiles: read same-tenant users"
+  on public.profiles for select to authenticated
+  using (
+    id = auth.uid()
+    or exists (
+      select 1
+      from public.tenant_members my_m
+      join public.tenant_members their_m
+        on my_m.tenant_id = their_m.tenant_id
+      where my_m.user_id = auth.uid()
+        and their_m.user_id = profiles.id
+    )
+  );
 
 drop policy if exists "profiles: update self" on public.profiles;
 create policy "profiles: update self"
