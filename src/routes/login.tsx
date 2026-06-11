@@ -10,6 +10,7 @@ import { safeErrorMessage } from "@/lib/errors";
 import { getLastTenantId } from "@/lib/api/tenants.functions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { KiwiWithKey } from "@/components/KiwiWithKey";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Log in — Tracker" }] }),
