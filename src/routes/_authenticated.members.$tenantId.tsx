@@ -519,13 +519,15 @@ function MembersPage() {
                     {isAdmin ? (
                       <select
                         value={m.role}
-                        disabled={roleLocked || updateM.isPending}
-                        onChange={(e) =>
-                          updateM.mutate({
-                            userId: m.id,
-                            role: e.target.value as "admin" | "member",
-                          })
-                        }
+                        disabled={roleLocked || updateM.isPending || suRoleM.isPending}
+                        onChange={(e) => {
+                          const role = e.target.value as "admin" | "member";
+                          if (isSuper && isPeerAdmin) {
+                            suRoleM.mutate({ tenantId, userId: m.id, role });
+                          } else {
+                            updateM.mutate({ userId: m.id, role });
+                          }
+                        }}
                         className="input h-8 py-0 text-sm"
                         title={roleLockReason}
                       >
