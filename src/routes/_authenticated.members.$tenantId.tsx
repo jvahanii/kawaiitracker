@@ -43,7 +43,10 @@ import {
 const FREE_MEMBER_LIMIT = 4;
 
 export const Route = createFileRoute("/_authenticated/members/$tenantId")({
-  head: () => ({ meta: [{ title: "Users — Tracker" }] }),
+  head: (ctx) => {
+    const name = (ctx.match.context as { user?: { displayName?: string } })?.user?.displayName;
+    return { meta: [{ title: `${name ? name + " — " : ""}Users — Tracker` }] };
+  },
   component: MembersPage,
   errorComponent: ({ error }) => (
     <div className="p-6 text-sm text-destructive">{error.message}</div>

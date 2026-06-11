@@ -11,7 +11,10 @@ import { listAllEntries } from "@/lib/api/entries.functions";
 import { formatDateTime } from "@/lib/format-date";
 
 export const Route = createFileRoute("/_authenticated/audit/$tenantId")({
-  head: () => ({ meta: [{ title: "Muutoshistoria — Tracker" }] }),
+  head: (ctx) => {
+    const name = (ctx.match.context as { user?: { displayName?: string } })?.user?.displayName;
+    return { meta: [{ title: `${name ? name + " — " : ""}Muutoshistoria — Tracker` }] };
+  },
   component: AuditPage,
   errorComponent: ({ error }) => (
     <div className="p-6 text-sm text-destructive">{error.message}</div>

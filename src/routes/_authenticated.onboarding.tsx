@@ -9,7 +9,10 @@ import { safeErrorMessage } from "@/lib/errors";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
-  head: () => ({ meta: [{ title: "Get started — Tracker" }] }),
+  head: (ctx) => {
+    const name = (ctx.match.context as { user?: { displayName?: string } })?.user?.displayName;
+    return { meta: [{ title: `${name ? name + " — " : ""}Get started — Tracker` }] };
+  },
   component: Onboarding,
 });
 

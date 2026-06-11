@@ -62,7 +62,10 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/app/$tenantId")({
-  head: () => ({ meta: [{ title: "Workspace — Tracker" }] }),
+  head: (ctx) => {
+    const name = (ctx.match.context as { user?: { displayName?: string } })?.user?.displayName;
+    return { meta: [{ title: `${name ? name + " — " : ""}Workspace — Tracker` }] };
+  },
   component: WorkspacePage,
 });
 
