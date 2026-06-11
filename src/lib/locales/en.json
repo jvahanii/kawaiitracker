@@ -165,7 +165,6 @@
     "paidPlanRequested": "Thanks — our team will contact you soon.",
     "paidPlanBadge": "Paid plan requested",
     "paidPlanRequestedAt": "Requested {{when}}",
-
     "editName": "Edit name",
     "editEmail": "Edit email",
     "emailUpdated": "Email updated.",
@@ -185,5 +184,10 @@
     "deleteUserSuccess": "User deleted.",
     "cannotDeleteSelf": "You cannot delete your own account here.",
     "cannotDeleteLastSuperuser": "Cannot delete the last superuser."
+  },
+  "auth": {
+    "or": "or",
+    "continueWithGoogle": "Continue with Google",
+    "googleSubmitting": "Redirecting…"
   }
 }
