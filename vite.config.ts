@@ -15,5 +15,9 @@ export default defineConfig({
   // to Cloudflare automatically, so this is safe for both targets.
   nitro: {
     preset: "vercel",
+    // Remove `tslib` from Nitro's internal "never bundle" list so it gets
+    // inlined into the server bundle. Otherwise @supabase/auth-js keeps a
+    // bare `import "tslib"` that's missing from the Vercel function output.
+    ...({ traceDeps: ["!tslib"] } as Record<string, unknown>),
   },
 });

@@ -1,35 +1,27 @@
+## Why it still fails
 
-# Salli superuserin muokata muiden adminien oikeuksia
+The previous fix added `externals: { traceInclude: ["tslib"] }` to the Nitro config. After reading the installed Nitro source, that option **doesn't exist in this version** — it's silently ignored. So nothing actually changed in the deployed output.
 
-Tällä hetkellä työtilan jäsenlistalla (`/members/$tenantId`) admin-rivin roolivalitsin ja "Poista" -painike on lukittu, jos kohde on toinen admin. Tämä koskee myös superusereita, mikä estää heitä alentamasta tai poistamasta toista adminia. "Tee superuseriksi" -painike on jo paikallaan superusereille.
+What's really happening:
+- Nitro keeps `tslib` on an internal "never bundle" list, so the server bundle (`_libs/supabase__auth-js.mjs`) keeps a bare `import "tslib"`.
+- Nitro is supposed to copy `tslib` into the function's `node_modules` at build time, but on Vercel that copy isn't ending up in the deployed function — hence `ERR_MODULE_NOT_FOUND`.
 
-## Muutokset
+## The fix
 
-**`src/routes/_authenticated.members.$tenantId.tsx`**
+Nitro's source shows the supported escape hatch: the `traceDeps` option accepts negated entries. Setting `traceDeps: ["!tslib"]` removes `tslib` from the never-bundle list, so it gets **compiled directly into the server bundle**. No runtime `tslib` import remains, so there is nothing left to be missing on Vercel.
 
-1. Päivitä `roleLocked`-logiikka niin, että superuserille rajoitus toista adminia kohtaan ei päde. Säilytä viimeisen adminin suoja itselle ja estä omaan rooliin koskeminen tarvittaessa.
-2. Reititä jäsenrivin roolimuutos `superuserUpdateMemberRole`-funktion kautta, kun `isSuper` on tosi ja kohde on toinen admin (muuten edelleen normaali `updateMemberRole`). Tämä ohittaa "You cannot change another admin's role" -tarkistuksen serverillä.
-3. Reititä "Poista" samalla periaatteella `superuserRemoveMember`-funktioon, kun superuser poistaa toista adminia, jotta poisto onnistuu (admin-vs-admin -poistoa ei muuten sallita; tämäkin pitää viimeisen adminin suojan).
-4. Vahvista, että "Tee superuseriksi" / "Peruuta superuser" -painike näkyy edelleen kaikille jäsenriville superuserille (toiminto on jo `grantSuperM` / `revokeSuperM`). Ei muita muutoksia.
+### Changes
 
-Ei tietokantamuutoksia: tarvittavat RPC:t (`superuserUpdateMemberRole`, `superuserRemoveMember`, `grant_superuser`) ovat jo olemassa ja tarkistavat itse superuser-oikeuden.
+1. **vite.config.ts** — replace the ignored `externals` block with:
+   - `nitro: { preset: "vercel", traceDeps: ["!tslib"] }`
+2. **Regenerate `package-lock.json`** — it's currently out of sync with `package.json` (missing the `tslib` entry added earlier). Vercel installs with npm from this lockfile, so it must match.
 
-## Tekniset yksityiskohdat
+### Verification before you redeploy
 
-```ts
-const isPeerAdmin = m.role === "admin" && !isSelf;
-const roleLocked = (isPeerAdmin && !isSuper) || (isSelf && isLastAdmin);
+1. Run a production build locally with the Vercel preset.
+2. Grep `.vercel/output/functions/` to confirm no bare `tslib` import remains in any `.mjs` file.
+3. Only then redeploy on Vercel — with **build cache disabled** ("Redeploy" → uncheck "Use existing Build Cache").
 
-const onRoleChange = (role: "admin" | "member") => {
-  if (isSuper && isPeerAdmin) suRoleM.mutate({ tenantId, userId: m.id, role });
-  else updateM.mutate({ userId: m.id, role });
-};
+### Fallback
 
-const onRemove = () => {
-  if (isSuper && isPeerAdmin) suRemoveM.mutate({ tenantId, userId: m.id });
-  else removeM.mutate(m.id);
-  // (käytetään edelleen olemassa olevaa AlertDialog-vahvistusta)
-};
-```
-
-Muutokset ovat puhtaasti frontendissä ja hyödyntävät jo olemassa olevia palvelinfunktioita.
+`tslib` is on that list due to a rare CJS-interop edge case when inlined. If the local build verification shows any issue, the fallback is to keep it external and force-copy it into the function output via a post-build step instead. I'll only need this if step 2 of verification fails.

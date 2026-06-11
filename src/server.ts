@@ -1,7 +1,8 @@
 import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
-import { renderErrorPage } from "./lib/error-page";
+import { renderErrorPage, renderMissingEnvPage } from "./lib/error-page";
+import { getMissingSupabaseEnv } from "./lib/env-check";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -39,6 +40,13 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const missingEnv = getMissingSupabaseEnv();
+    if (missingEnv.length > 0) {
+      return new Response(renderMissingEnvPage(missingEnv), {
+        status: 503,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+    }
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

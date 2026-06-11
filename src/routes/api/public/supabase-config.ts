@@ -13,11 +13,14 @@ export const Route = createFileRoute("/api/public/supabase-config")({
       GET: async () => {
         const url = process.env.EXT_SUPABASE_URL;
         const publishableKey = process.env.EXT_SUPABASE_PUBLISHABLE_KEY;
-        if (!url || !publishableKey) {
+        const missing: string[] = [];
+        if (!url) missing.push("EXT_SUPABASE_URL");
+        if (!publishableKey) missing.push("EXT_SUPABASE_PUBLISHABLE_KEY");
+        if (missing.length > 0) {
           return new Response(
             JSON.stringify({
-              error:
-                "Supabase env missing on server. Set EXT_SUPABASE_URL and EXT_SUPABASE_PUBLISHABLE_KEY in project secrets.",
+              error: "Supabase env missing on server. Set the listed variables in project secrets.",
+              missing,
             }),
             { status: 500, headers: { "content-type": "application/json" } },
           );
