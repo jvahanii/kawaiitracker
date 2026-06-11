@@ -1429,7 +1429,7 @@ function FolderTreePane({
     | null;
 
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
-  const isOpen = (id: string) => openMap[id] !== false;
+  const isOpen = (id: string) => openMap[id] === true;
   const toggle = (id: string) => setOpenMap((p) => ({ ...p, [id]: !isOpen(id) }));
 
   const [folderModal, setFolderModal] = useState<FolderModal>(null);
