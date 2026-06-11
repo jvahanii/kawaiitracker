@@ -127,6 +127,9 @@ Pääkäyttäjä voi:
 - Poistaa käyttäjän työtilasta
 - Myöntää tai peruuttaa pääkäyttäjäoikeuksia
 
+### Maksullisen version pyynnöt
+Kun ei-pääkäyttäjä törmää ilmaisversion jäsenrajaan ja painaa **Contact me for a paid plan**, kyseiselle käyttäjälle kirjataan pyyntö. Käyttäjät-sivulla pääkäyttäjät näkevät käyttäjän nimen vieressä keltaisen **Maksullista versiota pyydetty** -merkin (sekä jäsenlistassa että **Muut käyttäjät** -osiossa) ja viimeisimmän pyynnön ajankohdan.
+
 ### Suojaukset
 - Et voi peruuttaa omaa pääkäyttäjärooliasi, jos olet viimeinen pääkäyttäjä – myönnä rooli ensin jollekin toiselle.
 - Oman pääkäyttäjäroolin peruutus vaatii vahvistuksen.
