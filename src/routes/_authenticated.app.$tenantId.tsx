@@ -573,6 +573,7 @@ function TaskLists({
   tenantId: string;
   itemId: string;
 }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const listFn = useServerFn(listTasksForItem);
   const createFn = useServerFn(createTask);
@@ -632,7 +633,7 @@ function TaskLists({
   return (
     <div className="mt-6 space-y-4">
       <TaskGroup
-        name="Tehtävät"
+        name={t("workspace.tasks")}
         tasks={tasks}
         userId={undefined}
         onAdd={(title) => createM.mutate({ title })}

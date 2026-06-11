@@ -107,6 +107,7 @@
     "daysLeft": "{{count}} päivää jäljellä",
     "updated": "Päivitetty {{when}}",
     "confirmDelete": "Poistetaanko tämä?",
+    "tasks": "Tehtävät",
     "newTask": "Uusi tehtävä…",
     "dragToReorder": "Järjestä vetämällä",
     "clickToEdit": "Klikkaa muokataksesi",
