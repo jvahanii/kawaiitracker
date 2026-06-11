@@ -69,6 +69,13 @@ Kohteen alta löytyy **Kuukausimerkinnät**-osio.
 - Arvot näytetään valitussa valuutassa ja tallennetaan euroina.
 - Voit muokata sekä yksittäisen kuukauden että kokonaissummia. Kokonaissumman muokkaus jakaa arvon tasaisesti 12 kuukaudelle.
 
+### Tehtävät
+Jokaisella kohteella on **Tehtävät**-alaosio, jolla kohde voidaan pilkkoa pienempiin tehtäviin.
+- Kirjoita nimi **Uusi tehtävä…** -kenttään ja paina Enter lisätäksesi tehtävän.
+- Klikkaa tehtävää muokataksesi otsikkoa; merkitse valmiiksi rastittamalla valintaruutu.
+- Järjestä tehtävät uudelleen vetämällä.
+- Poista tehtävä poistopainikkeella.
+
 ### Tavoite (Goal)
 - Aseta **Tavoite**-summa ja **Tavoiteaika**.
 - Sovellus näyttää montako päivää tavoitepäivään on jäljellä.
