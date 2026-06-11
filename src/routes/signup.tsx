@@ -41,7 +41,7 @@ function SignupPage() {
     },
   });
 
-  const errorMessage = m.error ? (m.error as Error).message : null;
+  const errorMessage = m.error ? safeErrorMessage(m.error) : null;
   const needsConfirm = m.data && !m.data.hasSession;
 
   return (
