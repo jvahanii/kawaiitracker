@@ -15,5 +15,8 @@ export default defineConfig({
   // to Cloudflare automatically, so this is safe for both targets.
   nitro: {
     preset: "vercel",
+    // Inline tslib so the Vercel serverless bundle doesn't try to resolve it
+    // at runtime (transitive dep of @supabase/auth-js).
+    noExternals: ["tslib"],
   },
 });
