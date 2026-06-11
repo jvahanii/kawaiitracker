@@ -6,18 +6,19 @@ Tämä on Keywi-sovelluksen käyttöohje. Sovellus on monikäyttäjäinen sääs
 
 ### Rekisteröityminen
 1. Avaa etusivu ja valitse **Rekisteröidy**.
-2. Syötä nimi, sähköposti ja vähintään 8 merkin salasana.
-3. Vahvista painamalla **Luo tili**.
+2. Syötä nimi, sähköposti ja vähintään 8 merkin salasana — tai käytä **Jatka Googlella** rekisteröityäksesi Google-tilillä.
+3. Vahvista painamalla **Luo tili**. Jos rekisteröidyit sähköpostilla, vahvista osoite sähköpostiin tulevan linkin kautta ennen kirjautumista.
 
 ### Kirjautuminen
 1. Valitse etusivulta **Kirjaudu**.
-2. Syötä sähköposti ja salasana.
+2. Syötä sähköposti ja salasana, tai käytä **Jatka Googlella**.
 3. Voit valita **Muista minut**, jolloin istunto säilyy laitteella.
 
 ### Salasanan nollaus
 - Kirjautumissivulla valitse **Unohditko salasanasi?** ja syötä sähköpostisi.
 - Saat sähköpostiin nollauslinkin. Linkki on kertakäyttöinen ja vanhenee.
 - Linkin kautta voit asettaa uuden salasanan.
+- Googlella kirjautuvat hallitsevat salasanaansa Google-tilinsä kautta.
 
 ### Kielen vaihto
 Yläkulman kielivalitsimesta voit vaihtaa kielen suomen (FI) ja englannin (EN) välillä. Valinta tallennetaan selaimeen.
