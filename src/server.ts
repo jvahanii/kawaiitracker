@@ -1,7 +1,8 @@
 import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
-import { renderErrorPage } from "./lib/error-page";
+import { renderErrorPage, renderMissingEnvPage } from "./lib/error-page";
+import { getMissingSupabaseEnv } from "./lib/env-check";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
