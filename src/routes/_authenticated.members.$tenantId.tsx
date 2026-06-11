@@ -38,6 +38,8 @@ import {
   superuserUpdateUserEmail,
 } from "@/lib/api/superusers.functions";
 
+const FREE_MEMBER_LIMIT = 4;
+
 export const Route = createFileRoute("/_authenticated/members/$tenantId")({
   head: () => ({ meta: [{ title: "Users — Tracker" }] }),
   component: MembersPage,
