@@ -15,5 +15,8 @@ export default defineConfig({
   // to Cloudflare automatically, so this is safe for both targets.
   nitro: {
     preset: "vercel",
+    externals: {
+      traceInclude: ["tslib"],
+    },
   },
 });
