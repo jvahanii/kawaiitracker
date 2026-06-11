@@ -102,6 +102,7 @@ function SignupPage() {
           </button>
         </form>
       )}
+      {!needsConfirm ? <GoogleSignInButton /> : null}
       <p className="mt-6 text-center text-sm text-muted-foreground">
         {t("signup.haveAccount")}{" "}
         <Link to="/login" className="text-foreground underline-offset-4 hover:underline">
