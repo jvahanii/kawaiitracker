@@ -1,24 +1,31 @@
-## Root cause found: Vercel has been deploying a stale, broken build snapshot
+# Fix Google Sign-In
 
-Your repo has **163 files of pre-built Vercel output committed at `.vercel/output/`** — a snapshot built at 10:50 UTC today, *before* any of the bundling fixes. I inspected it:
+## Problem
 
-- `.vercel/output/functions/__server.func/_libs/supabase__auth-js.mjs` contains the exact broken line: `import { __rest } from "tslib"` (a bare import).
-- The function's `package.json` declares `tslib` as a needed dependency, but **no `node_modules/tslib` folder was ever copied** into the function.
-- This matches your runtime error path `/var/task/_libs/supabase__auth-js.mjs` byte-for-byte.
+After picking a Google account the app lands on `/auth/callback` and shows **"Missing authorization code."** No user is created.
 
-When a `.vercel/output` directory is present, Vercel treats it as a prebuilt deployment (Build Output API) — so your deploys have been shipping this frozen, broken snapshot. **None of the config fixes ever reached production.** That's why the error never changed no matter what we did.
+Root cause: `GoogleSignInButton` calls `supabase.auth.signInWithOAuth({ provider: "google" })` directly. In Lovable Cloud, Google OAuth must go through the **Lovable broker** (`lovable.auth.signInWithOAuth("google", ...)`). The broker doesn't return a PKCE `?code=` to our `/auth/callback`, so the callback's `params.get("code")` is always null — hence the error and no session.
 
-Meanwhile, I verified the current config is actually correct: the installed nitro version supports `noExternals: true` and its Vite build path skips externalization entirely when it's set — so a fresh build bundles `tslib` inline.
+Additionally, the Google provider must be enabled in Supabase Auth (the broker doesn't do that for us).
 
-## Plan
+## Fix
 
-1. **Delete the committed `.vercel/` directory** from the project — this is build output, not source code, and it's overriding fresh builds.
-2. **Add `.vercel/` to `.gitignore`** so build artifacts can never be committed again.
-3. **Verify locally**: run the exact Vercel-preset production build and scan the fresh output to confirm zero remaining bare `tslib` imports (tslib code fully inlined). If anything survives, add a hard alias for `tslib` as a final safety net.
-4. **You redeploy on Vercel** with "Use existing Build Cache" turned OFF, making sure the deployed commit includes these changes.
+1. **`src/components/GoogleSignInButton.tsx`** — replace the raw Supabase call with the Lovable broker:
+   ```ts
+   import { lovable } from "@/integrations/lovable";
+   await lovable.auth.signInWithOAuth("google", {
+     redirect_uri: window.location.origin,
+   });
+   ```
+   Drop the `/auth/callback` redirect — the broker hands the session straight back to the origin and the supabase client persists it.
 
-## Technical details
+2. **Delete `src/routes/auth.callback.tsx`** — no longer reached by the broker flow. (If we keep a route for safety, make it just redirect home once a session is detected, but removing it is cleaner.)
 
-- Committed artifact: `.vercel/output/` (163 files, `nitro.json` timestamped 2026-06-11T10:50Z — predates commits `ad9cbff` and `450e49d` that contain the bundling fixes).
-- `vite.config.ts` stays as-is: `nitro: { preset: "vercel", noExternals: true }` + `vite.ssr.noExternal` for the Supabase family — confirmed effective in nitro `3.0.260603-beta` (`baseBuildPlugins` skips the externals tracer when `noExternals === true`).
-- Verification command after build: grep all `.mjs` files in the new output for `from "tslib"` — expect zero matches.
+3. **Enable Google in Supabase Auth** via `supabase--configure_social_auth` for the `google` provider, so the broker's token exchange actually succeeds server-side.
+
+4. After sign-in, the existing root `onAuthStateChange` handler / `_authenticated` gate will route the user; if you want the "go to last tenant or onboarding" logic that lived in the callback, move it into a small effect on the landing route (e.g. `/` or `/app`) that runs once when a session is present.
+
+## Verification
+
+- Click "Continue with Google" → Google account picker → returns to app origin already signed in, redirected to last tenant or `/onboarding`. No "Missing authorization code" screen.
+- New Google users appear in Lovable Cloud → Users.

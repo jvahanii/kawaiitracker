@@ -22,21 +22,48 @@ function AuthCallback() {
     let cancelled = false;
     (async () => {
       try {
-        const params = new URLSearchParams(window.location.search);
-        const oauthError = params.get("error_description") ?? params.get("error");
+        const query = new URLSearchParams(window.location.search);
+        const hash = new URLSearchParams(
+          window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "",
+        );
+
+        const oauthError =
+          query.get("error_description") ??
+          query.get("error") ??
+          hash.get("error_description") ??
+          hash.get("error");
         if (oauthError) {
           if (!cancelled) setError(oauthError);
           return;
         }
-        const code = params.get("code");
-        if (!code) {
-          if (!cancelled) setError("Missing authorization code.");
-          return;
-        }
 
         const supabase = await ensureSupabase();
-        const { error: exchErr } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchErr) throw new Error(exchErr.message);
+
+        const code = query.get("code");
+        const accessToken = hash.get("access_token");
+        const refreshToken = hash.get("refresh_token");
+
+        if (code) {
+          // PKCE flow
+          const { error: exchErr } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchErr) throw new Error(exchErr.message);
+        } else if (accessToken && refreshToken) {
+          // Implicit flow — tokens come back in the URL hash.
+          const { error: setErr } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (setErr) throw new Error(setErr.message);
+          // Clean tokens out of the URL.
+          history.replaceState(null, "", window.location.pathname);
+        } else {
+          // Maybe the session is already set (e.g. broker handled it).
+          const { data } = await supabase.auth.getSession();
+          if (!data.session) {
+            if (!cancelled) setError("Missing authorization code.");
+            return;
+          }
+        }
 
         // Best-effort: figure out where to go. Never let this block the redirect.
         let lastTenantId: string | null = null;
