@@ -1,39 +1,25 @@
-# Superuserille mahdollisuus tuhota mikä tahansa käyttäjä
-
-## Mitä tehdään
-
-Lisätään `/members/$tenantId` -sivun "Muut käyttäjät" -superuser-listalle "Poista käyttäjä" -nappi, joka tuhoaa käyttäjän kokonaan (auth + profiili + jäsenyydet).
+## Tavoite
+Kun työtilassa on jo 4 jäsentä ja yritetään lisätä 5., palautuu selkeä virheviesti: "Ilmaisten käyttäjien maksimimäärä (4) saavutettu. Lisää käyttäjiä varten ota maksullinen suunnitelma käyttöön." Superuser saa ohittaa rajan.
 
 ## Backend
-
-Uusi server function `superuserDeleteUser` tiedostoon `src/lib/api/superusers.functions.ts`:
-
-- Input: `{ userId: uuid }`.
-- Tarkistaa että kutsuja on superuser (`has_role`).
-- Estot:
-  - Ei voi poistaa itseään (`data.userId === context.userId` → virhe).
-  - Jos kohde on superuser ja superusereita on vain 1 → virhe ("Cannot delete the last superuser").
-- Käyttää `getSupabaseAdmin()` ja `admin.auth.admin.deleteUser(userId)`.
-  - Auth-käyttäjän poisto cascadoi FK:n kautta `profiles`, `user_roles`, `tenant_members` jne. (kaikki viittaavat `auth.users(id) on delete cascade`).
-- Palauttaa `{ ok: true }`.
+**`src/lib/api/tenants.functions.ts` — `addMemberByEmail`**
+- Lisätään vakio `FREE_MEMBER_LIMIT = 4` tiedoston alkuun.
+- Caller-tarkistuksen jälkeen, ennen käyttäjän hakua/luontia:
+  1. Tarkistetaan `has_role(caller, 'superuser')` RPC:llä. Jos true → ohitetaan raja.
+  2. Muuten lasketaan `tenant_members`-rivit `tenant_id = data.tenantId` (admin-clientilla `count: 'exact', head: true`).
+  3. Jos `count >= 4` → palautetaan `{ ok: false, error: 'FREE_LIMIT_REACHED' }` (sentineli-merkkijono, käännetään frontissa).
+- Olemassa olevan jäsenen uudelleenlisäys (duplicate insert) ei kasvata määrää — koska teemme tarkistuksen ennen, lisätään pieni huomio: jos haettava email kuuluu jo tenantin jäseneen, ohitetaan raja (ei estetä uudelleenkutsua). Tämä toteutetaan tarkistamalla raja vasta `userId`:n resolvoinnin jälkeen ja katsomalla onko `userId` jo `tenant_members`-listassa.
 
 ## Frontend
+**`src/routes/_authenticated.members.$tenantId.tsx`**
+- Lisätään-mutaation `onSuccess`/`onError`-käsittelyyn: jos `res.error === 'FREE_LIMIT_REACHED'`, näytetään `toast.error(t('freeLimitReached'))` tavallisen virheen sijaan.
 
-`src/routes/_authenticated.members.$tenantId.tsx`:
+## i18n
+**`src/lib/locales/en.json` & `fi.json`**
+- `freeLimitReached`:
+  - fi: "Ilmaisten käyttäjien maksimimäärä (4) saavutettu. Lisätäksesi käyttäjiä, ota maksullinen suunnitelma käyttöön."
+  - en: "Free user limit (4) reached. Upgrade to a paid plan to add more users."
 
-- Lisää `useServerFn(superuserDeleteUser)` ja `useMutation` joka invalidoi `["all-workspace-users"]` ja näyttää toastin.
-- Lisää state `deleteUserId: string | null` AlertDialogia varten.
-- Riveille "Muut käyttäjät" -listalla (rinnalle grant/revoke-napin viereen): pieni "Poista" -nappi (destructive). Disabloitu jos `isSelf` tai `isLastSuper`.
-- AlertDialog vahvistus ennen poistoa.
-
-## Lokalisointi
-
-`src/lib/locales/en.json` ja `fi.json`, `members.*`:
-- `deleteUser` ("Delete user" / "Poista käyttäjä")
-- `deleteUserConfirmTitle`, `deleteUserConfirmBody` (varoittaa pysyvyydestä)
-- `deleteUserSuccess`
-- `cannotDeleteSelf`, `cannotDeleteLastSuperuser`
-
-## Tekninen huomio
-
-`auth.admin.deleteUser` poistaa kovasti — kaikki käyttäjän data katoaa kaskadina. Tämä on tarkoituksella, koska superuser voi näin "tuhota minkä tahansa käyttäjän" pyynnön mukaan. AlertDialog-vahvistus on ainoa undo-mekanismi.
+## Ei muutoksia
+- Ei maksuintegraatiota tässä vaiheessa (käyttäjän valinta).
+- Ei muutoksia muihin rooleihin tai poistoihin.
