@@ -15,5 +15,9 @@ export default defineConfig({
   // to Cloudflare automatically, so this is safe for both targets.
   nitro: {
     preset: "vercel",
+    // Force the dep tracer to copy `tslib` into the Vercel function output.
+    // @supabase/auth-js imports it at runtime, and Nitro 3 keeps tslib
+    // externalized — so without this it's missing from /var/task/node_modules.
+    ...({ externals: { traceInclude: ["tslib"] } } as Record<string, unknown>),
   },
 });
