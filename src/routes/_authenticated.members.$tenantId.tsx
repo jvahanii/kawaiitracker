@@ -325,7 +325,13 @@ function MembersPage() {
           {isAdmin ? (
             <button
               type="button"
-              onClick={() => setInviteOpen(true)}
+              onClick={() => {
+                if (!isSuper && members.length >= FREE_MEMBER_LIMIT) {
+                  setLimitDialogOpen(true);
+                  return;
+                }
+                setInviteOpen(true);
+              }}
               className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
             >
               {t("workspace.addUser")}
