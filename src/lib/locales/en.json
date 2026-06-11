@@ -107,6 +107,7 @@
     "daysLeft": "{{count}} days left",
     "updated": "Updated {{when}}",
     "confirmDelete": "Delete this entry?",
+    "tasks": "Tasks",
     "newTask": "New task…",
     "dragToReorder": "Drag to reorder",
     "clickToEdit": "Click to edit",
