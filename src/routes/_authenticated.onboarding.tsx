@@ -133,7 +133,7 @@ function Onboarding() {
                     className="input font-mono tracking-widest"
                   />
                   {joinM.error ? (
-                    <p className="text-sm text-destructive">{(joinM.error as Error).message}</p>
+                    <p className="text-sm text-destructive">{safeErrorMessage(joinM.error)}</p>
                   ) : joinM.data && !joinM.data.ok ? (
                     <p className="text-sm text-destructive">{joinM.data.error}</p>
                   ) : null}
