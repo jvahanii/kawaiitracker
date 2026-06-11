@@ -949,7 +949,18 @@ function MembersPage() {
             <AlertDialogCancel onClick={() => setLimitDialogOpen(false)}>
               {t("members.freeLimitOk")}
             </AlertDialogCancel>
-            <AlertDialogAction onClick={() => setLimitDialogOpen(false)}>
+            <AlertDialogAction
+              onClick={() => {
+                requestPaidM.mutate(undefined, {
+                  onSuccess: () => {
+                    toast.success(t("members.paidPlanRequested"));
+                    qc.invalidateQueries({ queryKey: ["paid-plan-requests"] });
+                  },
+                  onError: (e: Error) => toast.error(e.message),
+                });
+                setLimitDialogOpen(false);
+              }}
+            >
               {t("members.freeLimitContact")}
             </AlertDialogAction>
           </AlertDialogFooter>
