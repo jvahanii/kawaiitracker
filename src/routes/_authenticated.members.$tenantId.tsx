@@ -307,6 +307,7 @@ function MembersPage() {
   });
 
   const members = membersQ.data ?? [];
+  const allUsersById = new Map((allUsersQ.data ?? []).map((u) => [u.userId, u]));
   const adminCount = members.filter((m) => m.role === "admin").length;
   const otherUsers = (allUsersQ.data ?? []).filter(
     (u) => !u.tenants.some((tn) => tn.id === tenantId),
@@ -367,6 +368,9 @@ function MembersPage() {
           <ul className="divide-y divide-border rounded-md border border-border">
             {members.map((m) => {
               const isSelf = currentUserId === m.id;
+              const memberIsSuper = !!allUsersById.get(m.id)?.isSuperuser;
+              const isLastSuper = memberIsSuper && superuserCount > 0 && superuserCount <= 1;
+              const blockSelfSuperRevoke = isSelf && isLastSuper;
               const isLastAdmin = m.role === "admin" && adminCount <= 1;
               // Admins cannot modify another admin; last admin cannot demote self.
               const roleLocked =
@@ -534,6 +538,36 @@ function MembersPage() {
                     )}
                     {isAdmin ? (
                       <>
+                        {isSuper ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (memberIsSuper) {
+                                if (blockSelfSuperRevoke) {
+                                  toast.error(t("members.cannotRevokeLast"));
+                                  return;
+                                }
+                                if (isSelf && !window.confirm(t("members.confirmSelfRevoke"))) return;
+                                revokeSuperM.mutate(m.id);
+                              } else {
+                                grantSuperM.mutate(m.id);
+                              }
+                            }}
+                            disabled={
+                              blockSelfSuperRevoke || grantSuperM.isPending || revokeSuperM.isPending
+                            }
+                            title={blockSelfSuperRevoke ? t("members.cannotRevokeLast") : undefined}
+                            className={
+                              memberIsSuper
+                                ? "rounded-md px-2 py-1 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                                : "rounded-md border border-border px-2 py-1 text-sm hover:bg-accent disabled:opacity-50"
+                            }
+                          >
+                            {memberIsSuper
+                              ? t("members.revokeSuperuser")
+                              : t("members.grantSuperuser")}
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => {
