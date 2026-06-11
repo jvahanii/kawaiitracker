@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Eye, EyeOff } from "lucide-react";
 
 import { ensureSupabase } from "@/lib/supabase/client";
+import { safeErrorMessage } from "@/lib/errors";
 import { getLastTenantId } from "@/lib/api/tenants.functions";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { KiwiWithKey } from "@/components/KiwiWithKey";
