@@ -181,9 +181,14 @@ function MembersPage() {
     meta: { silent: true },
     onSuccess: (res) => {
       if (res?.ok === false) {
-        toast.error(res.error);
+        if (res.error === "FREE_LIMIT_REACHED") {
+          toast.error(t("members.freeLimitReached"));
+        } else {
+          toast.error(res.error);
+        }
         return;
       }
+
       invalidate();
       setAddEmail("");
       setAddRole("member");
