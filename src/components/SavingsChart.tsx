@@ -17,6 +17,7 @@ import {
 
 import { listAllEntries } from "@/lib/api/entries.functions";
 import { listItems } from "@/lib/api/items.functions";
+import type { FolderRow } from "@/lib/api/folders.functions";
 import { getGoal, upsertGoal } from "@/lib/api/goals.functions";
 import { ensureSupabase } from "@/lib/supabase/client";
 import { useCurrency } from "@/lib/currency";
@@ -41,7 +42,17 @@ function darkColorFor(id: string, idx: number): string {
   return `oklch(0.42 0.17 ${hue})`;
 }
 
-export function SavingsChart({ tenantId }: { tenantId: string }) {
+export function SavingsChart({
+  tenantId,
+  folders = [],
+  selectedFolderIds,
+  onClearFolderSelection,
+}: {
+  tenantId: string;
+  folders?: FolderRow[];
+  selectedFolderIds?: Set<string>;
+  onClearFolderSelection?: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
   const [groupBy, setGroupBy] = useState<"item" | "assignee">("item");
@@ -161,11 +172,43 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short" });
 
   const allEntries = entriesQ.data ?? [];
-  const entries = useMemo(
-    () => allEntries.filter((e) => new Date(e.month).getFullYear() === year),
-    [allEntries, year],
-  );
   const items = itemsQ.data ?? [];
+
+  // Expand selected folder set with all descendants.
+  const effectiveFolderIds = useMemo(() => {
+    if (!selectedFolderIds || selectedFolderIds.size === 0) return null;
+    const childrenByParent = new Map<string | null, string[]>();
+    for (const f of folders) {
+      const arr = childrenByParent.get(f.parentId) ?? [];
+      arr.push(f.id);
+      childrenByParent.set(f.parentId, arr);
+    }
+    const out = new Set<string>();
+    const walk = (id: string) => {
+      if (out.has(id)) return;
+      out.add(id);
+      for (const c of childrenByParent.get(id) ?? []) walk(c);
+    };
+    for (const id of selectedFolderIds) walk(id);
+    return out;
+  }, [selectedFolderIds, folders]);
+
+  const itemFolder = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const it of items) m.set(it.id, it.folderId);
+    return m;
+  }, [items]);
+
+  const entries = useMemo(() => {
+    return allEntries.filter((e) => {
+      if (new Date(e.month).getFullYear() !== year) return false;
+      if (effectiveFolderIds) {
+        const fid = itemFolder.get(e.itemId);
+        if (!fid || !effectiveFolderIds.has(fid)) return false;
+      }
+      return true;
+    });
+  }, [allEntries, year, effectiveFolderIds, itemFolder]);
   const total = useMemo(() => entries.reduce((s, e) => s + (e.amount ?? 0), 0), [entries]);
   const actualTotal = useMemo(() => entries.reduce((s, e) => s + (e.actual ?? 0), 0), [entries]);
 
@@ -266,7 +309,18 @@ export function SavingsChart({ tenantId }: { tenantId: string }) {
   return (
     <section className="border-b border-border bg-card/40 px-4 py-3">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold tracking-tight">{t("workspace.chartTitle")}</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+          {t("workspace.chartTitle")}
+          {selectedFolderIds && selectedFolderIds.size > 0 && onClearFolderSelection ? (
+            <button
+              type="button"
+              onClick={onClearFolderSelection}
+              className="rounded-full border border-border bg-accent px-2 py-0.5 text-xs font-normal text-foreground hover:bg-accent/70"
+            >
+              {t("workspace.clearFolderFilter", { count: selectedFolderIds.size })}
+            </button>
+          ) : null}
+        </h2>
         <span className="text-xs text-muted-foreground">
           {t("workspace.chartTotal")}:{" "}
           <span className="font-mono font-semibold text-foreground">{fmt(total)}</span>

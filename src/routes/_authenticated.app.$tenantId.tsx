@@ -158,6 +158,15 @@ function WorkspacePage() {
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "ROOT">(null);
   const [visibilityFolderId, setVisibilityFolderId] = useState<string | null>(null);
+  const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(() => new Set());
+  const toggleFolderSelected = (id: string) =>
+    setSelectedFolderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const clearFolderSelection = () => setSelectedFolderIds(new Set());
   const folders = foldersQ.data ?? [];
   const isSuperuser = !!isSuperuserQ.data?.is || currentTenant?.role === "superuser";
   const isAdmin = currentTenant?.role === "admin" || isSuperuser;
@@ -477,6 +486,8 @@ function WorkspacePage() {
               setNewItemDialogFolderId(folderId);
               setNewItemDialogTitle("");
             }}
+            selectedFolderIds={selectedFolderIds}
+            onToggleFolderSelected={toggleFolderSelected}
           />
         </aside>
 
@@ -484,7 +495,12 @@ function WorkspacePage() {
 
         {/* Right pane */}
         <main className="flex min-h-0 flex-1 flex-col">
-          <SavingsChart tenantId={tenantId} />
+          <SavingsChart
+            tenantId={tenantId}
+            folders={folders}
+            selectedFolderIds={selectedFolderIds}
+            onClearFolderSelection={clearFolderSelection}
+          />
           <div className="min-h-0 flex-1 overflow-y-auto">
             {selected ? (
               <ItemDetail
@@ -1398,6 +1414,8 @@ function FolderTreePane({
   onManageVisibility,
   onCreateItemInFolder,
   isAdmin,
+  selectedFolderIds,
+  onToggleFolderSelected,
 }: {
   tenantId: string;
   t: TFunc;
@@ -1425,6 +1443,8 @@ function FolderTreePane({
   onManageVisibility: (id: string) => void;
   onCreateItemInFolder: (folderId: string | null) => void;
   isAdmin: boolean;
+  selectedFolderIds: Set<string>;
+  onToggleFolderSelected: (id: string) => void;
 }) {
   type FolderModal =
     | { type: "create"; parentId: string | null }
@@ -1607,7 +1627,15 @@ function FolderTreePane({
           <button onClick={() => toggle(folder.id)} className="p-0.5 text-muted-foreground hover:text-foreground" aria-label="toggle">
             {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
-          <span className="flex-1 truncate font-medium">{folder.name}</span>
+          <button
+            type="button"
+            onClick={() => onToggleFolderSelected(folder.id)}
+            className={`flex-1 truncate rounded px-1 text-left font-medium hover:bg-accent ${
+              selectedFolderIds.has(folder.id) ? "bg-accent font-semibold" : ""
+            }`}
+          >
+            {folder.name}
+          </button>
           {folder.restricted ? (
             <Lock size={11} className="text-muted-foreground" aria-label="restricted" />
           ) : null}
