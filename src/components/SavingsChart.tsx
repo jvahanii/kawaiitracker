@@ -17,6 +17,7 @@ import {
 
 import { listAllEntries } from "@/lib/api/entries.functions";
 import { listItems } from "@/lib/api/items.functions";
+import type { FolderRow } from "@/lib/api/folders.functions";
 import { getGoal, upsertGoal } from "@/lib/api/goals.functions";
 import { ensureSupabase } from "@/lib/supabase/client";
 import { useCurrency } from "@/lib/currency";
