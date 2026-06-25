@@ -309,7 +309,18 @@ export function SavingsChart({
   return (
     <section className="border-b border-border bg-card/40 px-4 py-3">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold tracking-tight">{t("workspace.chartTitle")}</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+          {t("workspace.chartTitle")}
+          {selectedFolderIds && selectedFolderIds.size > 0 && onClearFolderSelection ? (
+            <button
+              type="button"
+              onClick={onClearFolderSelection}
+              className="rounded-full border border-border bg-accent px-2 py-0.5 text-xs font-normal text-foreground hover:bg-accent/70"
+            >
+              {t("workspace.clearFolderFilter", { count: selectedFolderIds.size })}
+            </button>
+          ) : null}
+        </h2>
         <span className="text-xs text-muted-foreground">
           {t("workspace.chartTotal")}:{" "}
           <span className="font-mono font-semibold text-foreground">{fmt(total)}</span>
