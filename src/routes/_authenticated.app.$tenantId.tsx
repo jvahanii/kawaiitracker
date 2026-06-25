@@ -486,6 +486,8 @@ function WorkspacePage() {
               setNewItemDialogFolderId(folderId);
               setNewItemDialogTitle("");
             }}
+            selectedFolderIds={selectedFolderIds}
+            onToggleFolderSelected={toggleFolderSelected}
           />
         </aside>
 
@@ -493,7 +495,12 @@ function WorkspacePage() {
 
         {/* Right pane */}
         <main className="flex min-h-0 flex-1 flex-col">
-          <SavingsChart tenantId={tenantId} />
+          <SavingsChart
+            tenantId={tenantId}
+            folders={folders}
+            selectedFolderIds={selectedFolderIds}
+            onClearFolderSelection={clearFolderSelection}
+          />
           <div className="min-h-0 flex-1 overflow-y-auto">
             {selected ? (
               <ItemDetail
