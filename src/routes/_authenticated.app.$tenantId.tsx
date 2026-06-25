@@ -1414,6 +1414,8 @@ function FolderTreePane({
   onManageVisibility,
   onCreateItemInFolder,
   isAdmin,
+  selectedFolderIds,
+  onToggleFolderSelected,
 }: {
   tenantId: string;
   t: TFunc;
@@ -1441,6 +1443,8 @@ function FolderTreePane({
   onManageVisibility: (id: string) => void;
   onCreateItemInFolder: (folderId: string | null) => void;
   isAdmin: boolean;
+  selectedFolderIds: Set<string>;
+  onToggleFolderSelected: (id: string) => void;
 }) {
   type FolderModal =
     | { type: "create"; parentId: string | null }
