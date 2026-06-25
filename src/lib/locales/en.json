@@ -121,6 +121,7 @@
     "renameFolder": "Rename folder",
     "confirmDeleteFolder": "Delete this folder? Items will become uncategorized.",
     "uncategorized": "Uncategorized",
+    "clearFolderFilter": "Clear filter ({{count}})",
     "folderVisibility": "Visibility",
     "folderVisibilityTitle": "Folder visibility",
     "folderVisibilityBody": "Restrict who can see this folder and the items inside it. Admins always have access. Subfolders inherit unless they have their own restriction.",
