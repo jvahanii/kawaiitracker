@@ -158,6 +158,15 @@ function WorkspacePage() {
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "ROOT">(null);
   const [visibilityFolderId, setVisibilityFolderId] = useState<string | null>(null);
+  const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(() => new Set());
+  const toggleFolderSelected = (id: string) =>
+    setSelectedFolderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const clearFolderSelection = () => setSelectedFolderIds(new Set());
   const folders = foldersQ.data ?? [];
   const isSuperuser = !!isSuperuserQ.data?.is || currentTenant?.role === "superuser";
   const isAdmin = currentTenant?.role === "admin" || isSuperuser;
