@@ -172,11 +172,43 @@ export function SavingsChart({
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: "short" });
 
   const allEntries = entriesQ.data ?? [];
-  const entries = useMemo(
-    () => allEntries.filter((e) => new Date(e.month).getFullYear() === year),
-    [allEntries, year],
-  );
   const items = itemsQ.data ?? [];
+
+  // Expand selected folder set with all descendants.
+  const effectiveFolderIds = useMemo(() => {
+    if (!selectedFolderIds || selectedFolderIds.size === 0) return null;
+    const childrenByParent = new Map<string | null, string[]>();
+    for (const f of folders) {
+      const arr = childrenByParent.get(f.parentId) ?? [];
+      arr.push(f.id);
+      childrenByParent.set(f.parentId, arr);
+    }
+    const out = new Set<string>();
+    const walk = (id: string) => {
+      if (out.has(id)) return;
+      out.add(id);
+      for (const c of childrenByParent.get(id) ?? []) walk(c);
+    };
+    for (const id of selectedFolderIds) walk(id);
+    return out;
+  }, [selectedFolderIds, folders]);
+
+  const itemFolder = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const it of items) m.set(it.id, it.folderId);
+    return m;
+  }, [items]);
+
+  const entries = useMemo(() => {
+    return allEntries.filter((e) => {
+      if (new Date(e.month).getFullYear() !== year) return false;
+      if (effectiveFolderIds) {
+        const fid = itemFolder.get(e.itemId);
+        if (!fid || !effectiveFolderIds.has(fid)) return false;
+      }
+      return true;
+    });
+  }, [allEntries, year, effectiveFolderIds, itemFolder]);
   const total = useMemo(() => entries.reduce((s, e) => s + (e.amount ?? 0), 0), [entries]);
   const actualTotal = useMemo(() => entries.reduce((s, e) => s + (e.actual ?? 0), 0), [entries]);
 
