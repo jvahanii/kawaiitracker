@@ -1627,7 +1627,15 @@ function FolderTreePane({
           <button onClick={() => toggle(folder.id)} className="p-0.5 text-muted-foreground hover:text-foreground" aria-label="toggle">
             {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
-          <span className="flex-1 truncate font-medium">{folder.name}</span>
+          <button
+            type="button"
+            onClick={() => onToggleFolderSelected(folder.id)}
+            className={`flex-1 truncate rounded px-1 text-left font-medium hover:bg-accent ${
+              selectedFolderIds.has(folder.id) ? "bg-accent font-semibold" : ""
+            }`}
+          >
+            {folder.name}
+          </button>
           {folder.restricted ? (
             <Lock size={11} className="text-muted-foreground" aria-label="restricted" />
           ) : null}
