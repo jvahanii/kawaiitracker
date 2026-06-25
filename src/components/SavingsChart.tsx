@@ -42,7 +42,17 @@ function darkColorFor(id: string, idx: number): string {
   return `oklch(0.42 0.17 ${hue})`;
 }
 
-export function SavingsChart({ tenantId }: { tenantId: string }) {
+export function SavingsChart({
+  tenantId,
+  folders = [],
+  selectedFolderIds,
+  onClearFolderSelection,
+}: {
+  tenantId: string;
+  folders?: FolderRow[];
+  selectedFolderIds?: Set<string>;
+  onClearFolderSelection?: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
   const [groupBy, setGroupBy] = useState<"item" | "assignee">("item");
