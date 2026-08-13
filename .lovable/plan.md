@@ -1,37 +1,36 @@
-# Folder selection filters the chart
+# Workspace data export & import
 
-## What
+Give admins and superusers a way to download everything in a workspace as a single file, and load such a file back in later.
 
-In the workspace view, let the user toggle folders by clicking their name in the left-pane folder tree. The savings chart (top of the right pane) then shows only data from items inside the selected folders. With nothing selected, the chart behaves as today (shows everything).
+## Export
 
-## UX
+- New **Export data** button in the workspace top bar (visible to admins and superusers only).
+- Downloads a `.json` file named e.g. `tracker-<workspace>-<date>.json` containing:
+  - folder tree (names, nesting, order)
+  - entries (title, status, notes, amount, order, folder)
+  - monthly values per entry (planned and actual)
+  - tasks per entry (title, done, order)
+  - the savings goal(s)
+- Excluded on purpose: member accounts, assignments, per-folder visibility, and the change history. The file is content only, so it can be imported into any workspace safely.
+- The file carries a format version and the source workspace name so imports can be validated.
 
-- Click a folder name → toggles it in/out of the selection. Multiple folders can be selected.
-- Selected folders get a clear visual state (accent background + bold name), matching the existing item-selected styling.
-- Selecting a parent implicitly includes its subfolders' items — no need to also click children.
-- A small "Clear filter (N)" chip appears in the chart header when ≥1 folder is selected; clicking it resets the selection.
-- The folder chevron (expand/collapse), action icons (+, rename, delete, visibility, add subfolder) and drag handle behavior are unchanged. Clicking the chevron does not toggle selection; clicking the name does.
-- The left-pane item list is **not** filtered — only the chart is. (Matches the user request: "filter the graph".)
+## Import
+
+- **Import data** button next to Export, same permissions.
+- Admin picks a file, then a confirmation dialog shows what the file contains (counts of folders, entries, tasks) and asks how to import:
+  - **Replace everything** — deletes the workspace's current folders, entries, monthly values, tasks and goals, then loads the file.
+  - **Add alongside** — keeps existing content and adds the file's folders and entries as new ones.
+  - Replace requires an extra explicit confirmation because it is destructive.
+- Invalid or wrong-version files are rejected with a clear message; nothing is changed.
+- On success the workspace refreshes and a confirmation toast shows how much was imported.
+- The import is recorded in the change history.
 
 ## Technical notes
 
-Files touched:
-- `src/routes/_authenticated.app.$tenantId.tsx`
-  - Add `selectedFolderIds: Set<string>` state on the workspace component.
-  - Pass `selectedFolderIds`, `onToggleFolder(id)`, `onClearFolders()` into `FolderTreePane`.
-  - In `FolderTreePane`'s `renderFolder`, wrap the folder name in a `<button onClick={() => onToggleFolder(folder.id)}>` and apply `bg-accent font-semibold` when selected. Keep the chevron button separate.
-  - Pass `selectedFolderIds` to `<SavingsChart tenantId={...} selectedFolderIds={...} onClearFolders={...} />`.
-- `src/components/SavingsChart.tsx`
-  - New optional props `selectedFolderIds?: Set<string>`, `onClearFolders?: () => void`.
-  - Build an "effective folder set" by expanding each selected id with all descendants using the folders list. Folders are already available via items query? No — fetch via `listFolders` server fn (already used in route). Pass `folders` down too, or derive descendants in the route and pass the expanded set. Simpler: pass `folders` array into chart (already loaded in parent) and expand there.
-  - Filter `entries` to those whose `itemId`'s folder is in the effective set; build itemId→folderId map from `items` query already loaded in the chart. If the effective set is empty/undefined, no filtering.
-  - Render a small "Clear (N)" button in the header when filter is active.
-- i18n: add `workspace.clearFolderFilter` to `en.json` and `fi.json`.
-
-No server, schema, or API changes. No changes to drag-and-drop, visibility, or chart math beyond pre-filtering the entries list.
-
-## Out of scope
-
-- Persisting the selection across reloads.
-- Filtering the item list in the left pane.
-- Selecting individual items to filter the chart.
+- Two new server functions in `src/lib/api/backup.functions.ts`, both behind `requireSupabaseAuth`:
+  - `exportWorkspace({ tenantId })` — verifies the caller is admin of that tenant or a superuser (`has_role`), then reads `folders`, `items`, `item_entries`, `item_tasks`, `savings_goals` scoped to the tenant and returns a versioned JSON DTO. IDs are replaced with local reference keys so the file is portable.
+  - `importWorkspace({ tenantId, mode: "replace" | "append", payload })` — same permission check, Zod-validates the payload (with size caps), then in `replace` mode deletes tenant-scoped rows in dependency order (tasks → entries → item_assignees → items → folder_visibility → folders → savings_goals) before inserting. Inserts folders parent-first, remapping reference keys to new UUIDs, then items, then entries and tasks. Writes an `audit_log` row.
+- All work goes through the RLS-scoped `context.supabase` client; no service-role usage.
+- UI lives in `src/routes/_authenticated.app.$tenantId.tsx`: a small toolbar group plus an import dialog (shadcn `Dialog` + `AlertDialog` for the destructive confirm), a hidden file input, and query invalidation of `items`/`folders`/`entries`/`goal` on success.
+- New i18n keys in `src/lib/locales/en.json` and `fi.json`.
+- No schema migration needed.
