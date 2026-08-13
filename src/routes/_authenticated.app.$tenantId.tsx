@@ -9,6 +9,8 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { CurrencySwitcher } from "@/components/CurrencySwitcher";
 import { useCurrency } from "@/lib/currency";
 import { SavingsChart } from "@/components/SavingsChart";
+import { WorkspaceBackupControls } from "@/components/WorkspaceBackupControls";
+
 import {
   Dialog,
   DialogContent,
