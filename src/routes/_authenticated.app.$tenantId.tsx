@@ -403,6 +403,7 @@ function WorkspacePage() {
           </Link>
           {isAdmin ? (
             <>
+              <WorkspaceBackupControls tenantId={tenantId} workspaceName={currentTenant.name} />
               <button
                 type="button"
                 onClick={copyJoinCode}
@@ -416,6 +417,7 @@ function WorkspacePage() {
               </button>
             </>
           ) : null}
+
 
           <button onClick={() => logoutM.mutate()} className="rounded-md px-2 py-1 hover:bg-accent">
             {t("common.logout")}
