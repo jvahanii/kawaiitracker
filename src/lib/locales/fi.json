@@ -190,5 +190,20 @@
     "or": "tai",
     "continueWithGoogle": "Jatka Googlella",
     "googleSubmitting": "Ohjataan…"
+  },
+  "backup": {
+    "export": "Vie tiedot",
+    "import": "Tuo tiedot",
+    "exportDone": "Työtilan tiedot viety",
+    "importTitle": "Tuo työtilan tiedot",
+    "importSummary": "Tiedosto sisältää {{folders}} kansiota, {{items}} riviä ja {{tasks}} tehtävää.",
+    "importHelp": "Valitse tuontitapa: lisää tiedoston sisältö nykyisten rinnalle tai korvaa työtilan kaikki tiedot tiedostolla.",
+    "modeAppend": "Lisää nykyisten rinnalle",
+    "modeReplace": "Korvaa kaikki",
+    "replaceTitle": "Korvataanko työtilan kaikki tiedot?",
+    "replaceBody": "Tämä poistaa pysyvästi työtilan nykyiset kansiot, rivit, kuukausiarvot, tehtävät ja säästötavoitteet ja lataa sitten tiedoston. Toimintoa ei voi perua.",
+    "replaceConfirm": "Poista ja tuo",
+    "importDone": "Tuotiin {{folders}} kansiota, {{items}} riviä ja {{tasks}} tehtävää",
+    "invalidFile": "Tiedosto ei ole kelvollinen työtilan vienti."
   }
 }

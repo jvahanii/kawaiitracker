@@ -190,5 +190,20 @@
     "or": "or",
     "continueWithGoogle": "Continue with Google",
     "googleSubmitting": "Redirecting…"
+  },
+  "backup": {
+    "export": "Export data",
+    "import": "Import data",
+    "exportDone": "Workspace data exported",
+    "importTitle": "Import workspace data",
+    "importSummary": "This file contains {{folders}} folders, {{items}} entries and {{tasks}} tasks.",
+    "importHelp": "Choose how to import: add the file's content alongside what is already here, or replace everything in this workspace with the file.",
+    "modeAppend": "Add alongside",
+    "modeReplace": "Replace everything",
+    "replaceTitle": "Replace all workspace data?",
+    "replaceBody": "This permanently deletes all current folders, entries, monthly values, tasks and savings goals in this workspace, and then loads the file. This cannot be undone.",
+    "replaceConfirm": "Delete and import",
+    "importDone": "Imported {{folders}} folders, {{items}} entries and {{tasks}} tasks",
+    "invalidFile": "This file is not a valid workspace export."
   }
 }
